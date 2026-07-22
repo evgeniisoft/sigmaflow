@@ -130,25 +130,143 @@
     // ============================================================
 
     function loadDemo() {
-        fetch('../examples/demo_retail.yaml')
-            .then(function(response) {
-                if (!response.ok) throw new Error('Файл не найден');
-                return response.text();
-            })
-            .then(function(text) {
-                var data = parseYAML(text);
-                graph = Graph.fromDict(data);
-                elProjectName.textContent = graph.name;
-                updateStatusBar('Демо загружено');
-                notify('Демо-проект загружен');
-                renderAll();
-            })
-            .catch(function(err) {
-                updateStatusBar('Ошибка загрузки');
-                notify('Ошибка загрузки демо: ' + err.message, true);
-                console.error(err);
-            });
+    // Встроенные данные демо-проекта
+    var yamlText = [
+        'project:',
+        '  name: "Розничная компания (демо)"',
+        '  version: 1',
+        '',
+        'nodes:',
+        '  - id: PRICE',
+        '    type: INPUT',
+        '    value: 1200',
+        '    min: 900',
+        '    max: 1500',
+        '    source: manual',
+        '',
+        '  - id: MARKETING',
+        '    type: INPUT',
+        '    value: 1200000',
+        '    min: 500000',
+        '    max: 2500000',
+        '    source: manual',
+        '',
+        '  - id: HEADCOUNT',
+        '    type: INPUT',
+        '    value: 95',
+        '    min: 80',
+        '    max: 120',
+        '    source: manual',
+        '',
+        '  - id: VOLUME',
+        '    type: INTERMEDIATE',
+        '    source: computed',
+        '',
+        '  - id: REVENUE',
+        '    type: INTERMEDIATE',
+        '    source: computed',
+        '',
+        '  - id: COGS',
+        '    type: INTERMEDIATE',
+        '    source: computed',
+        '',
+        '  - id: NET_PROFIT',
+        '    type: TARGET',
+        '    source: computed',
+        '',
+        '  - id: GEO_INDEX',
+        '    type: EXTERNAL',
+        '    value: 0.7',
+        '    source: manual',
+        '',
+        '  - id: SUPPLIER_A_PDEF',
+        '    type: EXTERNAL',
+        '    value: 0.05',
+        '    source: api',
+        '',
+        '  - id: ATTRITION',
+        '    type: INTERMEDIATE',
+        '    source: computed',
+        '',
+        '  - id: SPI',
+        '    type: INPUT',
+        '    value: 4.2',
+        '    min: 1.0',
+        '    max: 10.0',
+        '    source: manual',
+        '',
+        'edges:',
+        '  - from: PRICE',
+        '    to: VOLUME',
+        '    type: LIN',
+        '    coefficient: -0.35',
+        '    lag_days: 14',
+        '',
+        '  - from: MARKETING',
+        '    to: VOLUME',
+        '    type: DIM',
+        '    coefficient: 0.12',
+        '',
+        '  - from: VOLUME',
+        '    to: REVENUE',
+        '    type: LIN',
+        '    coefficient: 1.0',
+        '',
+        '  - from: VOLUME',
+        '    to: COGS',
+        '    type: LIN',
+        '    coefficient: 520.0',
+        '',
+        '  - from: GEO_INDEX',
+        '    to: COGS',
+        '    type: LIN',
+        '    coefficient: 0.15',
+        '',
+        '  - from: REVENUE',
+        '    to: NET_PROFIT',
+        '    type: LIN',
+        '    coefficient: 1.0',
+        '',
+        '  - from: COGS',
+        '    to: NET_PROFIT',
+        '    type: LIN',
+        '    coefficient: -1.0',
+        '',
+        '  - from: HEADCOUNT',
+        '    to: NET_PROFIT',
+        '    type: LIN',
+        '    coefficient: -85000',
+        '',
+        '  - from: MARKETING',
+        '    to: NET_PROFIT',
+        '    type: LIN',
+        '    coefficient: -1.0',
+        '',
+        '  - from: SPI',
+        '    to: ATTRITION',
+        '    type: EXP',
+        '    coefficient: 0.40',
+        '    lag_days: 90',
+        '',
+        'constraints:',
+        '  - node: NET_PROFIT',
+        '    operator: ">="',
+        '    value: 0'
+    ].join('\n');
+
+    try {
+        var data = parseYAML(yamlText);
+        graph = Graph.fromDict(data);
+        elProjectName.textContent = graph.name;
+        updateStatusBar('Демо загружено');
+        notify('Демо-проект загружен');
+        renderAll();
+    } catch (err) {
+        updateStatusBar('Ошибка загрузки');
+        notify('Ошибка: ' + err.message, true);
+        console.error(err);
     }
+}
 
     // ============================================================
     // ВЫЧИСЛЕНИЕ
