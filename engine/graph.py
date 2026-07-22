@@ -3,6 +3,8 @@
 Node, Edge, Constraint, Graph.
 """
 
+from engine.models import compute_edge
+
 class Node:
     """
     Узел графа факторов.
@@ -153,3 +155,43 @@ class Graph:
         for c in data.get("constraints", []):
             g.add_constraint(Constraint(**c))
         return g
+    def compute(self, iterations=1):
+        """
+        Прямой проход по графу. Вычисляет значения INTERMEDIATE и TARGET
+        узлов на основе INPUT и EXTERNAL узлов.
+        """
+        for _ in range(iterations):
+            self._compute_once()
+
+    def _compute_once(self):
+        # Сброс вычисляемых узлов
+        for node in self.nodes.values():
+            if node.type in ("INTERMEDIATE", "TARGET"):
+                node.value = 0.0
+
+        # Суммируем вклады по каждому ребру
+        for edge in self.edges:
+            from_node = self.nodes.get(edge.from_node)
+            to_node = self.nodes.get(edge.to_node)
+
+            if from_node is None or to_node is None:
+                continue
+            if from_node.value is None:
+                continue
+            if to_node.type not in ("INTERMEDIATE", "TARGET"):
+                continue
+
+            contribution = compute_edge(
+                edge_type=edge.type,
+                coefficient=(
+                    edge.coefficient
+                    if edge.coefficient is not None
+                    else 1.0
+                ),
+                input_value=from_node.value,
+                threshold=edge.threshold,
+                above=edge.above,
+                below=edge.below
+            )
+
+            to_node.value = (to_node.value or 0.0) + contribution
