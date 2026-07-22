@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMAFLOW</title>
+    <link rel="stylesheet" href="sigmaflow.css">
+</head>
+<body>
+
+    <!-- ЗАГОЛОВОК -->
+    <header>
+        <span class="logo">SIGMAFLOW</span>
+        <span class="project-name" id="project-name">Проект не загружен</span>
+        <button id="btn-load-demo">ЗАГРУЗИТЬ ДЕМО</button>
+        <button id="btn-save">СОХРАНИТЬ</button>
+    </header>
+
+    <!-- НАВИГАЦИЯ -->
+    <nav>
+        <button class="nav-btn active" data-panel="strategy">СТРАТЕГИЯ</button>
+        <button class="nav-btn" data-panel="data">ДАННЫЕ</button>
+        <button class="nav-btn" data-panel="calibrate">КАЛИБРОВКА</button>
+        <button class="nav-btn" data-panel="scenarios">СЦЕНАРИИ</button>
+        <button class="nav-btn" data-panel="optimize">ОПТИМИЗАЦИЯ</button>
+    </nav>
+
+    <!-- ОСНОВНАЯ ОБЛАСТЬ -->
+    <main>
+
+        <!-- ПАНЕЛЬ СТРАТЕГИЯ -->
+        <div id="panel-strategy" class="panel active">
+            <div id="strategy-left">
+                <div id="strategy-toolbar">
+                    <button id="btn-compute" class="primary">ВЫЧИСЛИТЬ</button>
+                    <button id="btn-reset-view">СБРОСИТЬ ВИД</button>
+                </div>
+                <div id="graph-container"></div>
+            </div>
+            <div id="inspector">
+                <h3>СВОЙСТВА</h3>
+                <div id="inspector-content">Выберите узел на графе</div>
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ ДАННЫЕ -->
+        <div id="panel-data" class="panel">
+            <h3>ТАБЛИЦА УЗЛОВ</h3>
+            <div style="overflow-x: auto;">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>ТИП</th>
+                            <th>ЗНАЧЕНИЕ</th>
+                            <th>МИН</th>
+                            <th>МАКС</th>
+                            <th>ИСТОЧНИК</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body">
+                    </tbody>
+                </table>
+            </div>
+            <div id="compute-results" style="display:none;">
+                <h4>РЕЗУЛЬТАТЫ ВЫЧИСЛЕНИЙ</h4>
+                <div id="compute-results-body"></div>
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ КАЛИБРОВКА -->
+        <div id="panel-calibrate" class="panel">
+            <h3>КАЛИБРОВКА МОДЕЛИ</h3>
+            <div class="placeholder">
+                Загрузите CSV-файл с историческими данными для калибровки коэффициентов модели.
+                <br><br>
+                <input type="file" id="calibrate-file" accept=".csv" style="display:block; margin: 8px auto;">
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ СЦЕНАРИИ -->
+        <div id="panel-scenarios" class="panel">
+            <h3>СТРЕСС-ТЕСТЫ И СЦЕНАРИИ</h3>
+            <div class="placeholder">
+                Создавайте сценарии внешних шоков и проверяйте устойчивость модели.
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ ОПТИМИЗАЦИЯ -->
+        <div id="panel-optimize" class="panel">
+            <h3>ОПТИМИЗАЦИЯ</h3>
+            <div class="placeholder">
+                Обратный счёт от цели, многокритериальная оптимизация, подбор рычагов.
+            </div>
+        </div>
+
+    </main>
+
+    <!-- СТРОКА СОСТОЯНИЯ -->
+    <footer id="status-bar">
+        SigmaFlow v1.0-dev | Узлов: 0 | Связей: 0 | Готов
+    </footer>
+
+    <!-- УВЕДОМЛЕНИЕ -->
+    <div id="notification" class="notification"></div>
+
+    <!-- СКРИПТЫ -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="sigmaflow.js"></script>
+    <script>
+    // ============================================================
+    // ГЛАВНЫЙ МОДУЛЬ ПРИЛОЖЕНИЯ
+    // ============================================================
+
+    var graph = null;
+    var selectedNodeId = null;
+
+    // DOM-элементы
+    var elProjectName = document.getElementById('project-name');
+    var elStatusBar = document.getElementById('status-bar');
+    var elInspector = document.getElementById('inspector-content');
+    var elDataTable = document.getElementById('data-table-body');
+    var elComputeResults = document.getElementById('compute-results');
+    var elComputeBody = document.getElementById('compute-results-body');
+    var elGraphContainer = document.getElementById('graph-container');
+    var elNotification = document.getElementById('notification');
+
+    // ============================================================
+    // ЗАГРУЗКА ДЕМО
+    // ============================================================
+
+    function loadDemo() {
+        fetch('../examples/demo_retail.yaml')
+            .then(function(response) {
+                if (!response.ok) throw new Error('Файл не найден');
+                return response.text();
+            })
+            .then(function(text) {
+                var data = parseYAML(text);
+                graph = Graph.fromDict(data);
+                elProjectName.textContent = graph.name;
+                updateStatusBar('Демо загружено');
+                notify('Демо-проект загружен');
+                renderAll();
+            })
+            .catch(function(err) {
+                updateStatusBar('Ошибка загрузки');
+                notify('Ошибка загрузки демо: ' + err.message, true);
+                console.error(err);
+            });
+    }
+
+    // ============================================================
+    // ВЫЧИСЛЕНИЕ
+    // ============================================================
+
+    function runCompute() {
+        if (!graph) {
+            notify('Сначала загрузите проект', true);
+            return;
+        }
+
+        graph.compute();
+        updateStatusBar('Вычисления выполнены');
+        notify('Вычисления выполнены');
+        renderAll();
+    }
+
+    // ============================================================
+    // ОТРИСОВКА ГРАФА (D3.js)
+    // ============================================================
+
+    var svg = null;
+    var simulation = null;
+
+    function renderGraph() {
+        elGraphContainer.innerHTML = '';
+
+        var width = elGraphContainer.clientWidth;
+        var height = elGraphContainer.clientHeight;
+
+        svg = d3.select('#graph-container')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        // Преобразование данных для D3
+        var nodeList = Object.keys(graph.nodes).map(function(key) {
+            return graph.nodes[key];
+        });
+
+        var linkList = graph.edges.map(function(e) {
+            return {
+                source: e.from,
+                target: e.to,
+                type: e.type,
+                coefficient: e.coefficient
+            };
+        });
+
+        // Симуляция сил
+        simulation = d3.forceSimulation(nodeList)
+            .force('link', d3.forceLink(linkList).id(function(d) { return d.id; }).distance(160))
+            .force('charge', d3.forceManyBody().strength(-500))
+            .force('center', d3.forceCenter(width / 2, height / 2));
+
+        // Стрелки
+        svg.append('defs').selectAll('marker')
+            .data(['arrow'])
+            .join('marker')
+            .attr('id', 'arrow')
+            .attr('viewBox', '0 -4 8 8')
+            .attr('refX', 84)
+            .attr('refY', 0)
+            .attr('markerWidth', 6)
+            .attr('markerHeight', 6)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M0,-4L8,0L0,4')
+            .attr('fill', '#2a3040');
+
+        // Связи
+        var link = svg.append('g')
+            .selectAll('line')
+            .data(linkList)
+            .join('line')
+            .attr('stroke', '#2a3040')
+            .attr('stroke-width', 1.5)
+            .attr('marker-end', 'url(#arrow)');
+
+        // Метки связей
+        var linkLabel = svg.append('g')
+            .selectAll('text')
+            .data(linkList)
+            .join('text')
+            .attr('fill', '#6a7080')
+            .attr('font-size', '9px')
+            .attr('font-family', "'JetBrains Mono', monospace")
+            .attr('text-anchor', 'middle')
+            .text(function(d) {
+                var s = d.type;
+                if (d.coefficient !== null && d.coefficient !== undefined) {
+                    s += ' ' + (d.coefficient > 0 ? '+' : '') + d.coefficient.toFixed(2);
+                }
+                return s;
+            });
+
+        // Узлы
+        var node = svg.append('g')
+            .selectAll('g')
+            .data(nodeList)
+            .join('g')
+            .attr('class', 'node')
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended))
+            .on('click', function(event, d) {
+                selectNode(d.id);
+            });
+
+        // Рамка узла
+        node.append('rect')
+            .attr('width', 170)
+            .attr('height', 70)
+            .attr('x', -85)
+            .attr('y', -35)
+            .attr('rx', 2)
+            .attr('fill', '#131820')
+            .attr('stroke', function(d) {
+                switch (d.type) {
+                    case 'TARGET': return '#5a9fd4';
+                    case 'INPUT': return '#4b8c5a';
+                    case 'EXTERNAL': return '#d4a843';
+                    default: return '#2a3040';
+                }
+            })
+            .attr('stroke-width', function(d) {
+                return d.type === 'TARGET' ? 2 : 1;
+            })
+            .attr('stroke-dasharray', function(d) {
+                switch (d.type) {
+                    case 'INTERMEDIATE': return '4 2';
+                    case 'EXTERNAL': return '2 2';
+                    default: return null;
+                }
+            });
+
+        // ID узла
+        node.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('dy', -14)
+            .attr('fill', '#e0e3e8')
+            .attr('font-size', '11px')
+            .attr('font-family', "'JetBrains Mono', monospace")
+            .attr('font-weight', '500')
+            .text(function(d) { return d.id; });
+
+        // Значение
+        node.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('dy', 6)
+            .attr('fill', '#c8ccd4')
+            .attr('font-size', '14px')
+            .attr('font-family', "'JetBrains Mono', monospace")
+            .text(function(d) { return formatValue(d.value); });
+
+        // Тип узла
+        node.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('dy', 24)
+            .attr('fill', '#6a7080')
+            .attr('font-size', '9px')
+            .attr('font-family', "'JetBrains Mono', monospace")
+            .text(function(d) { return d.type; });
+
+        // Анимация
+        simulation.on('tick', function() {
+            link
+                .attr('x1', function(d) { return d.source.x; })
+                .attr('y1', function(d) { return d.source.y; })
+                .attr('x2', function(d) { return d.target.x; })
+                .attr('y2', function(d) { return d.target.y; });
+
+            linkLabel
+                .attr('x', function(d) { return (d.source.x + d.target.x) / 2; })
+                .attr('y', function(d) { return (d.source.y + d.target.y) / 2 - 10; });
+
+            node.attr('transform', function(d) {
+                // Ограничение по краям
+                d.x = Math.max(85, Math.min(width - 85, d.x));
+                d.y = Math.max(35, Math.min(height - 35, d.y));
+                return 'translate(' + d.x + ',' + d.y + ')';
+            });
+        });
+    }
+
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+
+    // ============================================================
+    // ИНСПЕКТОР
+    // ============================================================
+
+    function selectNode(id) {
+        selectedNodeId = id;
+        updateInspector();
+    }
+
+    function updateInspector() {
+        if (!selectedNodeId || !graph || !graph.nodes[selectedNodeId]) {
+            elInspector.innerHTML = 'Выберите узел на графе';
+            return;
+        }
+
+        var n = graph.nodes[selectedNodeId];
+        var html = '';
+
+        html += '<div class="form-group">';
+        html += '<label>ИДЕНТИФИКАТОР</label>';
+        html += '<input type="text" value="' + n.id + '" readonly>';
+        html += '</div>';
+
+        html += '<div class="form-group">';
+        html += '<label>ТИП</label>';
+        html += '<select disabled>';
+        ['INPUT', 'INTERMEDIATE', 'TARGET', 'EXTERNAL'].forEach(function(t) {
+            html += '<option ' + (n.type === t ? 'selected' : '') + '>' + t + '</option>';
+        });
+        html += '</select>';
+        html += '</div>';
+
+        html += '<div class="form-group">';
+        html += '<label>ЗНАЧЕНИЕ</label>';
+        html += '<input type="text" id="inspector-value" value="' + formatValue(n.value) + '"';
+        if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
+            html += ' readonly';
+        }
+        html += '>';
+        html += '</div>';
+
+        if (n.type === 'INPUT') {
+            html += '<div class="form-group">';
+            html += '<label>МИНИМУМ</label>';
+            html += '<input type="number" id="inspector-min" value="' + (n.min !== null ? n.min : '') + '">';
+            html += '</div>';
+
+            html += '<div class="form-group">';
+            html += '<label>МАКСИМУМ</label>';
+            html += '<input type="number" id="inspector-max" value="' + (n.max !== null ? n.max : '') + '">';
+            html += '</div>';
+
+            html += '<button id="btn-apply-changes" class="primary" style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>';
+        }
+
+        html += '<div class="form-group" style="margin-top:12px;">';
+        html += '<label>ИСТОЧНИК</label>';
+        html += '<input type="text" value="' + n.source + '" readonly>';
+        html += '</div>';
+
+        elInspector.innerHTML = html;
+
+        // Обработчик кнопки Применить
+        var btnApply = document.getElementById('btn-apply-changes');
+        if (btnApply) {
+            btnApply.addEventListener('click', function() {
+                var valInput = document.getElementById('inspector-value');
+                var minInput = document.getElementById('inspector-min');
+                var maxInput = document.getElementById('inspector-max');
+
+                var newVal = parseFloat(valInput.value);
+                if (!isNaN(newVal)) n.value = newVal;
+
+                var newMin = parseFloat(minInput.value);
+                n.min = isNaN(newMin) ? null : newMin;
+
+                var newMax = parseFloat(maxInput.value);
+                n.max = isNaN(newMax) ? null : newMax;
+
+                updateStatusBar('Значения обновлены. Нажмите ВЫЧИСЛИТЬ');
+                notify('Изменения применены');
+                renderAll();
+            });
+        }
+    }
+
+    // ============================================================
+    // ТАБЛИЦА ДАННЫХ
+    // ============================================================
+
+    function renderDataTable() {
+        if (!graph) return;
+
+        var html = '';
+        var nodeKeys = Object.keys(graph.nodes).sort();
+
+        nodeKeys.forEach(function(key) {
+            var n = graph.nodes[key];
+            html += '<tr>';
+            html += '<td class="id-cell">' + n.id + '</td>';
+            html += '<td>' + n.type + '</td>';
+            html += '<td class="value-cell">' + formatValue(n.value) + '</td>';
+            html += '<td class="value-cell">' + formatValue(n.min) + '</td>';
+            html += '<td class="value-cell">' + formatValue(n.max) + '</td>';
+            html += '<td>' + n.source + '</td>';
+            html += '</tr>';
+        });
+
+        elDataTable.innerHTML = html;
+    }
+
+    function renderComputeResults() {
+        if (!graph) return;
+
+        var html = '';
+
+        // Результаты TARGET и INTERMEDIATE узлов
+        var computedNodes = Object.keys(graph.nodes)
+            .map(function(k) { return graph.nodes[k]; })
+            .filter(function(n) {
+                return n.type === 'TARGET' || n.type === 'INTERMEDIATE';
+            });
+
+        if (computedNodes.length > 0) {
+            html += '<div style="margin-bottom:8px;color:var(--text-hint);font-size:11px;">ВЫЧИСЛЕННЫЕ УЗЛЫ</div>';
+            computedNodes.forEach(function(n) {
+                html += '<div class="result-row">';
+                html += '<span class="label">' + n.id + '</span>';
+                html += '<span class="value">' + formatValue(n.value) + '</span>';
+                html += '</div>';
+            });
+        }
+
+        // Ограничения
+        if (graph.constraints.length > 0) {
+            html += '<div style="margin-top:12px;margin-bottom:8px;color:var(--text-hint);font-size:11px;">ОГРАНИЧЕНИЯ</div>';
+            graph.constraints.forEach(function(c) {
+                var node = graph.nodes[c.node];
+                var ok = node ? checkConstraint(c, node) : null;
+                var cls = 'result-row';
+                if (ok === true) cls += ' constraint-ok';
+                if (ok === false) cls += ' constraint-fail';
+
+                html += '<div class="' + cls + '">';
+                html += '<span class="label">' + c.node + ' ' + c.operator + ' ' + formatValue(c.value) + '</span>';
+                html += '<span class="value">';
+                if (ok === true) html += 'OK';
+                else if (ok === false) html += 'НАРУШЕНО';
+                else html += '—';
+                html += '</span>';
+                html += '</div>';
+            });
+        }
+
+        elComputeBody.innerHTML = html;
+        elComputeResults.style.display = 'block';
+    }
+
+    // ============================================================
+    // ПОЛНАЯ ПЕРЕРИСОВКА
+    // ============================================================
+
+    function renderAll() {
+        renderGraph();
+        renderDataTable();
+        renderComputeResults();
+        updateInspector();
+    }
+
+    // ============================================================
+    // СТРОКА СОСТОЯНИЯ
+    // ============================================================
+
+    function updateStatusBar(msg) {
+        var nodesCount = graph ? Object.keys(graph.nodes).length : 0;
+        var edgesCount = graph ? graph.edges.length : 0;
+        elStatusBar.textContent =
+            'SigmaFlow v1.0-dev | Узлов: ' + nodesCount +
+            ' | Связей: ' + edgesCount +
+            ' | ' + (msg || 'Готов');
+    }
+
+    // ============================================================
+    // УВЕДОМЛЕНИЯ
+    // ============================================================
+
+    function notify(msg, isError) {
+        elNotification.textContent = msg;
+        elNotification.className = 'notification';
+        if (isError) elNotification.classList.add('error');
+        elNotification.classList.add('show');
+
+        setTimeout(function() {
+            elNotification.classList.remove('show');
+        }, 2500);
+    }
+
+    // ============================================================
+    // СОХРАНЕНИЕ
+    // ============================================================
+
+    function saveProject() {
+        if (!graph) {
+            notify('Нечего сохранять', true);
+            return;
+        }
+        var yamlText = toYAML(graph);
+        var blob = new Blob([yamlText], { type: 'text/yaml;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'project.yaml';
+        a.click();
+        URL.revokeObjectURL(url);
+        notify('Проект сохранён');
+    }
+
+    // ============================================================
+    // НАВИГАЦИЯ
+    // ============================================================
+
+    function initNavigation() {
+        document.querySelectorAll('.nav-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.nav-btn').forEach(function(b) {
+                    b.classList.remove('active');
+                });
+                btn.classList.add('active');
+
+                var panelId = 'panel-' + btn.dataset.panel;
+                document.querySelectorAll('.panel').forEach(function(p) {
+                    p.classList.remove('active');
+                });
+                var panel = document.getElementById(panelId);
+                if (panel) panel.classList.add('active');
+            });
+        });
+    }
+
+    // ============================================================
+    // ИНИЦИАЛИЗАЦИЯ
+    // ============================================================
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initNavigation();
+
+        document.getElementById('btn-load-demo').addEventListener('click', loadDemo);
+        document.getElementById('btn-compute').addEventListener('click', runCompute);
+        document.getElementById('btn-save').addEventListener('click', saveProject);
+        document.getElementById('btn-reset-view').addEventListener('click', function() {
+            if (graph) renderGraph();
+        });
+
+        // Загружаем демо при старте
+        loadDemo();
+    });
+    </script>
+
+</body>
+</html>
