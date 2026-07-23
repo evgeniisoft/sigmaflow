@@ -819,13 +819,13 @@
 
                     html += '<tr class="section-header" onclick="toggleSection(this)" style="cursor:pointer;">';
                     html += '<td colspan="6" style="color:var(--accent);font-size:11px;letter-spacing:2px;padding:12px 8px 4px 8px;">';
-                    html += '<span class="section-arrow" style="display:inline-block;width:12px;">▼</span> ' + section.title + ' (' + visibleNodes.length + ')';
+                    html += '<span class="section-arrow" style="display:inline-block;width:12px;">▶</span> ' + section.title + ' (' + visibleNodes.length + ')';
                     html += '</td></tr>';
 
                     visibleNodes.forEach(function (nid) {
                         var n = graph.nodes[nid];
                         var isEditable = (n.type === 'INPUT' || n.type === 'EXTERNAL');
-                        var rowStyle = '';
+                        var rowStyle = 'display:none;';
                         if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
                             rowStyle = 'background:rgba(42,48,64,0.3);';
                         } else if (n.type === 'EXTERNAL') {
