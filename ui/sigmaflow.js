@@ -149,19 +149,20 @@ Graph.prototype.compute = function (iterations) {
 Graph.prototype._computeOnce = function () {
     var self = this;
 
-    // Шаг 1: вычисляем узлы с формулами
+    // Шаг 1: вычисляем узлы с формулами (используем стрелочные функции для сохранения this)
     Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
         if (n.formula && n.enabled !== false) {
             try {
                 n.value = self._evalFormula(n.formula);
             } catch (e) {
+                console.error('Ошибка вычисления узла ' + key + ':', e.message);
                 n.value = 0;
             }
         }
     });
 
-    // Шаг 2: сброс вычисляемых узлов (кроме тех, что уже по формулам)
+    // Шаг 2: сброс вычисляемых узлов без формул
     Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
         if ((n.type === 'INTERMEDIATE' || n.type === 'TARGET') && !n.formula) {
@@ -176,7 +177,7 @@ Graph.prototype._computeOnce = function () {
         if (!fromNode || !toNode) return;
         if (fromNode.enabled === false || toNode.enabled === false) return;
         if (fromNode.value === null || fromNode.value === undefined) return;
-        if (toNode.formula) return; // пропускаем узлы с формулами
+        if (toNode.formula) return;
         if (toNode.type !== 'INTERMEDIATE' && toNode.type !== 'TARGET') return;
 
         var coeff = edge.coefficient !== null ? edge.coefficient : 1.0;
@@ -187,19 +188,34 @@ Graph.prototype._computeOnce = function () {
 
 Graph.prototype._evalFormula = function (formula) {
     var self = this;
-    var expr = formula;
-    Object.keys(self.nodes).forEach(function (key) {
-        var n = self.nodes[key];
-        var val = n.value !== null && n.value !== undefined ? n.value : 0;
-        var regex = new RegExp('\\b' + key + '\\b', 'g');
-        expr = expr.replace(regex, val);
-    });
-    expr = expr.replace(/\bMAX\b/gi, 'Math.max');
-    expr = expr.replace(/\bMIN\b/gi, 'Math.min');
-    expr = expr.replace(/\bABS\b/gi, 'Math.abs');
-    expr = expr.replace(/\bSQRT\b/gi, 'Math.sqrt');
-    var result = eval(expr);
-    return typeof result === 'number' ? result : 0;
+    try {
+        if (!formula) return 0;
+        var expr = formula;
+
+        // Сортируем ID узлов по длине (от длинных к коротким) — чтобы TAX_RATE не заменился на TAX_0
+        var sortedKeys = Object.keys(self.nodes).sort(function (a, b) {
+            return b.length - a.length;
+        });
+
+        sortedKeys.forEach(function (key) {
+            var n = self.nodes[key];
+            var val = n.value !== null && n.value !== undefined ? n.value : 0;
+            var regex = new RegExp('\\b' + key + '\\b', 'g');
+            expr = expr.replace(regex, val);
+        });
+
+        // Заменяем функции
+        expr = expr.replace(/\bMAX\b/gi, 'Math.max');
+        expr = expr.replace(/\bMIN\b/gi, 'Math.min');
+        expr = expr.replace(/\bABS\b/gi, 'Math.abs');
+        expr = expr.replace(/\bSQRT\b/gi, 'Math.sqrt');
+
+        var result = new Function('return (' + expr + ');')();
+        return typeof result === 'number' && !isNaN(result) ? result : 0;
+    } catch (e) {
+        console.error('Ошибка в формуле "' + formula + '":', e.message);
+        return 0;
+    }
 };
 
 // ============================================================
