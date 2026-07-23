@@ -1002,22 +1002,23 @@
         // ============================================================
 
         function initNavigation() {
-            document.querySelectorAll('.nav-btn').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    document.querySelectorAll('.nav-btn').forEach(function (b) {
-                        b.classList.remove('active');
+                document.querySelectorAll('.nav-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); });
+                        btn.classList.add('active');
+                        var panelId = 'panel-' + btn.dataset.panel;
+                        document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+                        var panel = document.getElementById(panelId);
+                        if (panel) {
+                            panel.classList.add('active');
+                            // При переключении на СТРАТЕГИЮ — перерисовать граф
+                            if (btn.dataset.panel === 'strategy' && graph) {
+                                setTimeout(function () { renderGraph(); }, 100);
+                            }
+                        }
                     });
-                    btn.classList.add('active');
-
-                    var panelId = 'panel-' + btn.dataset.panel;
-                    document.querySelectorAll('.panel').forEach(function (p) {
-                        p.classList.remove('active');
-                    });
-                    var panel = document.getElementById(panelId);
-                    if (panel) panel.classList.add('active');
                 });
-            });
-        }
+            }
 
         // ============================================================
         // ДИАГНОСТИКА
@@ -1273,11 +1274,8 @@
             });
             document.getElementById('btn-run-diagnostics').addEventListener('click', runDiagnostics);
             // Применить изменения из таблицы
-            document.getElementById('btn-apply-table').addEventListener('click', function () {
-                if (!graph) {
-                    notify('Сначала загрузите модель', true);
-                    return;
-                }
+                document.getElementById('btn-apply-table').addEventListener('click', function () {
+                if (!graph) { notify('Сначала загрузите модель', true); return; }
                 var inputs = document.querySelectorAll('.table-input');
                 var changed = 0;
                 inputs.forEach(function (inp) {
@@ -1304,13 +1302,7 @@
             // Кнопка ВЫЧИСЛИТЬ на вкладке ДАННЫЕ
             document.getElementById('btn-compute-data').addEventListener('click', runCompute);
 
-            // Фильтр и поиск в таблице
-            document.getElementById('table-filter').addEventListener('change', function () {
-                renderDataTable();
-            });
-            document.getElementById('table-search').addEventListener('input', function () {
-                renderDataTable();
-            });
+           
             // Календарь денежного потока
             document.getElementById('btn-run-calendar').addEventListener('click', function () {
                 if (!graph) {
