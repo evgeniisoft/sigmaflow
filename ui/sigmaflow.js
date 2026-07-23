@@ -190,9 +190,9 @@ Graph.prototype._evalFormula = function (formula) {
     var self = this;
     try {
         if (!formula) return 0;
-        var expr = formula;
+        // Убираем внешние кавычки (могут остаться от YAML-парсинга)
+        var expr = String(formula).replace(/^"(.*)"$/, '$1');
 
-        // Сортируем ID узлов по длине (от длинных к коротким) — чтобы TAX_RATE не заменился на TAX_0
         var sortedKeys = Object.keys(self.nodes).sort(function (a, b) {
             return b.length - a.length;
         });
@@ -204,7 +204,6 @@ Graph.prototype._evalFormula = function (formula) {
             expr = expr.replace(regex, val);
         });
 
-        // Заменяем функции
         expr = expr.replace(/\bMAX\b/gi, 'Math.max');
         expr = expr.replace(/\bMIN\b/gi, 'Math.min');
         expr = expr.replace(/\bABS\b/gi, 'Math.abs');
