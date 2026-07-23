@@ -50,7 +50,7 @@ function Node(id, type, value, min, max, source, label, enabled, temporalType) {
     this.values = [];
 }
 
-Node.prototype.toDict = function() {
+Node.prototype.toDict = function () {
     var r = {
         id: this.id,
         type: this.type,
@@ -65,7 +65,7 @@ Node.prototype.toDict = function() {
     return r;
 };
 
-Node.fromDict = function(data) {
+Node.fromDict = function (data) {
     return new Node(
         data.id,
         data.type,
@@ -90,7 +90,7 @@ function Edge(fromNode, toNode, type, coefficient, lagDays, threshold, above, be
     this.below = below !== undefined ? below : null;
 }
 
-Edge.prototype.toDict = function() {
+Edge.prototype.toDict = function () {
     var r = { from: this.from, to: this.to, type: this.type };
     if (this.coefficient !== null) r.coefficient = this.coefficient;
     if (this.lag_days) r.lag_days = this.lag_days;
@@ -100,7 +100,7 @@ Edge.prototype.toDict = function() {
     return r;
 };
 
-Edge.fromDict = function(data) {
+Edge.fromDict = function (data) {
     return new Edge(
         data.from,
         data.to,
@@ -130,34 +130,34 @@ function Graph(name) {
     this.currentPeriod = 0;
 }
 
-Graph.prototype.addNode = function(node) {
+Graph.prototype.addNode = function (node) {
     this.nodes[node.id] = node;
 };
 
-Graph.prototype.addEdge = function(edge) {
+Graph.prototype.addEdge = function (edge) {
     this.edges.push(edge);
 };
 
-Graph.prototype.addConstraint = function(c) {
+Graph.prototype.addConstraint = function (c) {
     this.constraints.push(c);
 };
 
-Graph.prototype.compute = function(iterations) {
+Graph.prototype.compute = function (iterations) {
     iterations = iterations || 1;
     for (var iter = 0; iter < iterations; iter++) {
         this._computeOnce();
     }
 };
 
-Graph.prototype._computeOnce = function() {
+Graph.prototype._computeOnce = function () {
     var self = this;
-    Object.keys(self.nodes).forEach(function(key) {
+    Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
         if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
             n.value = 0;
         }
     });
-    self.edges.forEach(function(edge) {
+    self.edges.forEach(function (edge) {
         var fromNode = self.nodes[edge.from];
         var toNode = self.nodes[edge.to];
         if (!fromNode || !toNode) return;
@@ -175,7 +175,7 @@ Graph.prototype._computeOnce = function() {
 // ПЕРИОДЫ ПЛАНИРОВАНИЯ
 // ============================================================
 
-Graph.prototype.computePeriods = function(horizon, stepMonths) {
+Graph.prototype.computePeriods = function (horizon, stepMonths) {
     horizon = horizon || this.horizon || 12;
     stepMonths = stepMonths || this.stepMonths || 1;
     var periods = Math.floor(horizon / stepMonths);
@@ -183,7 +183,7 @@ Graph.prototype.computePeriods = function(horizon, stepMonths) {
     this.horizon = horizon;
     this.stepMonths = stepMonths;
 
-    Object.keys(self.nodes).forEach(function(key) {
+    Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
         n.values = [];
         for (var i = 0; i < periods; i++) {
@@ -196,14 +196,14 @@ Graph.prototype.computePeriods = function(horizon, stepMonths) {
     });
 
     for (var p = 0; p < periods; p++) {
-        Object.keys(self.nodes).forEach(function(key) {
+        Object.keys(self.nodes).forEach(function (key) {
             var n = self.nodes[key];
             if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
                 n.values[p] = 0;
             }
         });
 
-        self.edges.forEach(function(edge) {
+        self.edges.forEach(function (edge) {
             var fromNode = self.nodes[edge.from];
             var toNode = self.nodes[edge.to];
             if (!fromNode || !toNode) return;
@@ -221,7 +221,7 @@ Graph.prototype.computePeriods = function(horizon, stepMonths) {
     return periods;
 };
 
-Graph.prototype.getPeriodValue = function(nodeId, periodIndex) {
+Graph.prototype.getPeriodValue = function (nodeId, periodIndex) {
     var n = this.nodes[nodeId];
     if (!n) return null;
     if (n.values && n.values.length > 0 && periodIndex !== undefined && periodIndex < n.values.length) {
@@ -237,95 +237,185 @@ Graph.prototype.getPeriodValue = function(nodeId, periodIndex) {
     return n.value;
 };
 
-Graph.prototype.getCashFlowCalendar = function() {
+Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var self = this;
-    var periods = this.computePeriods();
-    var calendar = [];
+    horizon = horizon || 12;
+    startMonth = startMonth !== undefined ? startMonth : new Date().getMonth();
+    var periods = horizon;
 
-    var cashNode = self.nodes['CASH'];
-    var cashStart = self.nodes['CASH_START'];
-    var startValue = cashStart ? (cashStart.value || 0) : (cashNode ? (cashNode.value || 0) : 0);
+    var cashStartNode = self.nodes['CASH_START'];
+    var startCash = cashStartNode ? (cashStartNode.value || 0) : 5000000;
 
     var revenueNode = self.nodes['REVENUE'];
     var cogsNode = self.nodes['COGS'];
-    var opexNode = self.nodes['ADMIN_EXP'];
-    var sellingNode = self.nodes['SELLING_EXP'];
-    var taxNode = self.nodes['TAX'];
+    var adminExpNode = self.nodes['ADMIN_EXP'];
+    var sellingExpNode = self.nodes['SELLING_EXP'];
     var interestNode = self.nodes['INTEREST'];
+    var interestIncomeNode = self.nodes['INTEREST_INCOME'];
+    var otherIncNode = self.nodes['OTHER_INCOME'];
+    var otherExpNode = self.nodes['OTHER_EXP'];
     var penaltiesNode = self.nodes['PENALTIES'];
     var loanRepaymentNode = self.nodes['LOAN_REPAYMENT'];
     var newLoansNode = self.nodes['NEW_LOANS'];
     var capexNode = self.nodes['CAPEX'];
+    var dividendsNode = self.nodes['DIVIDENDS'];
 
-    var runningCash = startValue;
+    // Налоговые узлы
+    var taxRateNode = self.nodes['TAX_RATE'];
+    var ebtNode = self.nodes['EBT'];
+
+    var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    var calendar = [];
+    var runningCash = startCash;
+
     var totalRevenue = 0;
     var totalCosts = 0;
     var totalTax = 0;
     var totalInterest = 0;
+    var totalInterestIncome = 0;
+    var totalOtherInc = 0;
+    var totalOtherExp = 0;
     var totalPenalties = 0;
     var totalLoanRepayment = 0;
     var totalNewLoans = 0;
     var totalCapex = 0;
+    var totalDividends = 0;
+
+    // Годовая прибыль для расчёта налога на прибыль
+    var annualEBT = ebtNode ? (ebtNode.value || 0) : 0;
+    var taxRate = taxRateNode ? (taxRateNode.value || 0.20) : 0.20;
+    var annualTax = Math.abs(annualEBT) * taxRate;
+    var quarterlyTax = annualTax / 4;
+
+    // Годовые значения (для равномерного распределения)
+    var monthlyRevenue = revenueNode ? (revenueNode.value || 0) : 0;
+    var monthlyCOGS = cogsNode ? (Math.abs(cogsNode.value) || 0) : 0;
+    var monthlyAdmin = adminExpNode ? (Math.abs(adminExpNode.value) || 0) : 0;
+    var monthlySelling = sellingExpNode ? (Math.abs(sellingExpNode.value) || 0) : 0;
+    var monthlyCosts = monthlyCOGS + monthlyAdmin + monthlySelling;
+    var monthlyInterest = interestNode ? (Math.abs(interestNode.value) || 0) : 0;
+    var monthlyInterestIncome = interestIncomeNode ? (Math.abs(interestIncomeNode.value) || 0) : 0;
+    var monthlyOtherInc = otherIncNode ? (Math.abs(otherIncNode.value) || 0) : 0;
+    var monthlyOtherExp = otherExpNode ? (Math.abs(otherExpNode.value) || 0) : 0;
+    var monthlyPenalties = penaltiesNode ? (Math.abs(penaltiesNode.value) || 0) : 0;
+    var monthlyLoanRepayment = loanRepaymentNode ? (Math.abs(loanRepaymentNode.value) || 0) : 0;
+    var monthlyNewLoans = newLoansNode ? (Math.abs(newLoansNode.value) || 0) : 0;
+    var monthlyCapex = capexNode ? (Math.abs(capexNode.value) || 0) : 0;
+    var monthlyDividends = dividendsNode ? (Math.abs(dividendsNode.value) || 0) : 0;
+
+    // НДС (квартальный) — уплата равными долями в месяцах, следующих за кварталом
+    var hasNDS = true;
+    var ndsRate = 0.20;
+    var monthlyRevenueForNDS = revenueNode ? (Math.abs(revenueNode.value) || 0) : 0;
+    var monthlyNDS = monthlyRevenueForNDS * ndsRate / (1 + ndsRate);
+    var quarterlyNDS = monthlyNDS * 3;
+    var ndsMonthlyPayment = quarterlyNDS / 3;
+
+    // Страховые взносы (ежемесячно)
+    var adminPayrollNode = self.nodes['ADMIN_PAYROLL'];
+    var directLaborNode = self.nodes['DIRECT_LABOR'];
+    var totalPayroll = 0;
+    if (adminPayrollNode && adminPayrollNode.value) totalPayroll += Math.abs(adminPayrollNode.value);
+    if (directLaborNode && directLaborNode.value) totalPayroll += Math.abs(directLaborNode.value);
+    var insuranceRate = 0.30;
+    var monthlyInsurance = totalPayroll * insuranceRate;
+
+    // НДФЛ (ежемесячно)
+    var ndflRate = 0.13;
+    var monthlyNDFL = totalPayroll * ndflRate;
 
     for (var p = 0; p < periods; p++) {
-        var revenue = revenueNode && revenueNode.values ? (revenueNode.values[p] || 0) : 0;
-        var cogs = cogsNode && cogsNode.values ? (cogsNode.values[p] || 0) : 0;
-        var opex = opexNode && opexNode.values ? (opexNode.values[p] || 0) : 0;
-        var selling = sellingNode && sellingNode.values ? (sellingNode.values[p] || 0) : 0;
-        var tax = taxNode && taxNode.values ? (taxNode.values[p] || 0) : 0;
-        var interest = interestNode && interestNode.values ? (interestNode.values[p] || 0) : 0;
-        var penalties = penaltiesNode && penaltiesNode.values ? (penaltiesNode.values[p] || 0) : 0;
-        var loanRepayment = loanRepaymentNode && loanRepaymentNode.values ? (loanRepaymentNode.values[p] || 0) : 0;
-        var newLoans = newLoansNode && newLoansNode.values ? (newLoansNode.values[p] || 0) : 0;
-        var capex = capexNode && capexNode.values ? (capexNode.values[p] || 0) : 0;
+        var actualMonth = (startMonth + p) % 12;
+        var year = 2026 + Math.floor((startMonth + p) / 12);
+        var label = months[actualMonth] + ' ' + year;
 
-        var periodCosts = cogs + opex + selling;
-        var periodNet = revenue - periodCosts - tax - interest - penalties + newLoans - loanRepayment - capex;
+        // Налог на прибыль — квартальные авансы
+        var quarterMonth = actualMonth % 3;
+        var isQuarterEnd = (quarterMonth === 2);
+        var profitTaxThisMonth = 0;
+        if (actualMonth === 2) profitTaxThisMonth = quarterlyTax;  // Март — аванс за 4 кв пред года
+        if (actualMonth === 3) profitTaxThisMonth = quarterlyTax;  // Апрель — аванс за 1 кв
+        if (actualMonth === 6) profitTaxThisMonth = quarterlyTax;  // Июль — аванс за 2 кв
+        if (actualMonth === 9) profitTaxThisMonth = quarterlyTax;  // Октябрь — аванс за 3 кв
 
-        var startCash = runningCash;
-        runningCash += periodNet;
+        // НДС — уплата в месяцах после квартала
+        var ndsThisMonth = 0;
+        if (hasNDS) {
+            if (actualMonth === 3 || actualMonth === 4 || actualMonth === 5) ndsThisMonth = ndsMonthlyPayment;
+            if (actualMonth === 6 || actualMonth === 7 || actualMonth === 8) ndsThisMonth = ndsMonthlyPayment;
+            if (actualMonth === 9 || actualMonth === 10 || actualMonth === 11) ndsThisMonth = ndsMonthlyPayment;
+            if (actualMonth === 0 || actualMonth === 1 || actualMonth === 2) ndsThisMonth = ndsMonthlyPayment;
+        }
+
+        var totalTaxThisMonth = profitTaxThisMonth + monthlyInsurance + monthlyNDFL + ndsThisMonth;
+
+        // Итоговый поток
+        var totalInflow = monthlyRevenue + monthlyInterestIncome + monthlyOtherInc + monthlyNewLoans;
+        var totalOutflow = monthlyCosts + totalTaxThisMonth + monthlyInterest + monthlyOtherExp + monthlyPenalties + monthlyLoanRepayment + monthlyCapex + monthlyDividends;
+        var netFlow = totalInflow - totalOutflow;
+
+        var startCashPeriod = runningCash;
+        runningCash += netFlow;
 
         calendar.push({
             period: p,
-            label: 'Период ' + (p + 1),
-            startCash: startCash,
-            revenue: revenue,
-            costs: periodCosts,
-            tax: tax,
-            interest: interest,
-            penalties: penalties,
-            loanRepayment: loanRepayment,
-            newLoans: newLoans,
-            capex: capex,
-            netFlow: periodNet,
+            label: label,
+            month: actualMonth,
+            startCash: startCashPeriod,
+            revenue: monthlyRevenue,
+            costs: monthlyCosts,
+            profitTax: profitTaxThisMonth,
+            nds: ndsThisMonth,
+            insurance: monthlyInsurance,
+            ndfl: monthlyNDFL,
+            totalTax: totalTaxThisMonth,
+            interest: monthlyInterest,
+            interestIncome: monthlyInterestIncome,
+            otherIncome: monthlyOtherInc,
+            otherExp: monthlyOtherExp,
+            penalties: monthlyPenalties,
+            newLoans: monthlyNewLoans,
+            loanRepayment: monthlyLoanRepayment,
+            capex: monthlyCapex,
+            dividends: monthlyDividends,
+            netFlow: netFlow,
             endCash: runningCash,
             isGap: runningCash < 0,
-            isWarning: periodNet < 0 && runningCash >= 0
+            isWarning: netFlow < 0 && runningCash >= 0
         });
 
-        totalRevenue += revenue;
-        totalCosts += periodCosts;
-        totalTax += tax;
-        totalInterest += interest;
-        totalPenalties += penalties;
-        totalLoanRepayment += loanRepayment;
-        totalNewLoans += newLoans;
-        totalCapex += capex;
+        totalRevenue += monthlyRevenue;
+        totalCosts += monthlyCosts;
+        totalTax += totalTaxThisMonth;
+        totalInterest += monthlyInterest;
+        totalInterestIncome += monthlyInterestIncome;
+        totalOtherInc += monthlyOtherInc;
+        totalOtherExp += monthlyOtherExp;
+        totalPenalties += monthlyPenalties;
+        totalLoanRepayment += monthlyLoanRepayment;
+        totalNewLoans += monthlyNewLoans;
+        totalCapex += monthlyCapex;
+        totalDividends += monthlyDividends;
     }
 
     return {
         periods: calendar,
+        startMonth: startMonth,
         totalRevenue: totalRevenue,
         totalCosts: totalCosts,
         totalTax: totalTax,
         totalInterest: totalInterest,
+        totalInterestIncome: totalInterestIncome,
+        totalOtherInc: totalOtherInc,
+        totalOtherExp: totalOtherExp,
         totalPenalties: totalPenalties,
         totalLoanRepayment: totalLoanRepayment,
         totalNewLoans: totalNewLoans,
         totalCapex: totalCapex,
+        totalDividends: totalDividends,
         endCash: runningCash,
-        gapCount: calendar.filter(function(p) { return p.isGap; }).length,
-        warningCount: calendar.filter(function(p) { return p.isWarning; }).length
+        gapCount: calendar.filter(function (p) { return p.isGap; }).length,
+        warningCount: calendar.filter(function (p) { return p.isWarning; }).length
     };
 };
 
@@ -333,14 +423,14 @@ Graph.prototype.getCashFlowCalendar = function() {
 // САМОДИАГНОСТИКА
 // ============================================================
 
-Graph.prototype.selfCheck = function() {
+Graph.prototype.selfCheck = function () {
     var self = this;
     self.diagnostics = [];
 
-    Object.keys(self.nodes).forEach(function(key) {
+    Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
         if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
-            var hasIncoming = self.edges.some(function(e) { return e.to === n.id; });
+            var hasIncoming = self.edges.some(function (e) { return e.to === n.id; });
             if (!hasIncoming) {
                 self.diagnostics.push({
                     code: 'S01',
@@ -352,10 +442,10 @@ Graph.prototype.selfCheck = function() {
         }
     });
 
-    Object.keys(self.nodes).forEach(function(key) {
+    Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
         if (n.type === 'INPUT' || n.type === 'INTERMEDIATE' || n.type === 'EXTERNAL') {
-            var hasOutgoing = self.edges.some(function(e) { return e.from === n.id; });
+            var hasOutgoing = self.edges.some(function (e) { return e.from === n.id; });
             if (!hasOutgoing) {
                 self.diagnostics.push({
                     code: 'S02',
@@ -367,7 +457,7 @@ Graph.prototype.selfCheck = function() {
         }
     });
 
-    self.edges.forEach(function(e) {
+    self.edges.forEach(function (e) {
         if (e.type !== 'THR' && e.coefficient === null) {
             self.diagnostics.push({
                 code: 'S06',
@@ -398,7 +488,7 @@ Graph.prototype.selfCheck = function() {
         'REVENUE->NET_PROFIT': 'positive',
         'REVENUE->GROSS_PROFIT': 'positive'
     };
-    self.edges.forEach(function(e) {
+    self.edges.forEach(function (e) {
         var key = e.from + '->' + e.to;
         var expected = expectedSigns[key];
         if (expected && e.coefficient !== null) {
@@ -417,7 +507,7 @@ Graph.prototype.selfCheck = function() {
     });
 
     var nonNegativeNodes = ['INVENTORY', 'CASH', 'FIXED_ASSETS', 'RECEIVABLES', 'HEADCOUNT', 'ADMIN_HEADCOUNT', 'PROD_HEADCOUNT'];
-    nonNegativeNodes.forEach(function(nid) {
+    nonNegativeNodes.forEach(function (nid) {
         var n = self.nodes[nid];
         if (n && n.value !== null && n.value < 0) {
             self.diagnostics.push({
@@ -497,14 +587,14 @@ Graph.prototype.selfCheck = function() {
     return self.diagnostics;
 };
 
-Graph.prototype.toDict = function() {
+Graph.prototype.toDict = function () {
     var nodeList = [];
     var self = this;
-    Object.keys(self.nodes).forEach(function(key) {
+    Object.keys(self.nodes).forEach(function (key) {
         nodeList.push(self.nodes[key].toDict());
     });
-    var edgeList = self.edges.map(function(e) { return e.toDict(); });
-    var constrList = self.constraints.map(function(c) {
+    var edgeList = self.edges.map(function (e) { return e.toDict(); });
+    var constrList = self.constraints.map(function (c) {
         return { node: c.node, operator: c.operator, value: c.value };
     });
     return {
@@ -515,11 +605,11 @@ Graph.prototype.toDict = function() {
     };
 };
 
-Graph.fromDict = function(data) {
+Graph.fromDict = function (data) {
     var g = new Graph(data.project.name);
-    (data.nodes || []).forEach(function(n) { g.addNode(Node.fromDict(n)); });
-    (data.edges || []).forEach(function(e) { g.addEdge(Edge.fromDict(e)); });
-    (data.constraints || []).forEach(function(c) { g.addConstraint(new Constraint(c.node, c.operator, c.value)); });
+    (data.nodes || []).forEach(function (n) { g.addNode(Node.fromDict(n)); });
+    (data.edges || []).forEach(function (e) { g.addEdge(Edge.fromDict(e)); });
+    (data.constraints || []).forEach(function (c) { g.addConstraint(new Constraint(c.node, c.operator, c.value)); });
     return g;
 };
 
@@ -602,7 +692,7 @@ function parseYAML(text) {
 function toYAML(graph) {
     var dict = graph.toDict();
     var y = 'project:\n  name: "' + dict.project.name + '"\n  version: 2\n\nnodes:\n';
-    dict.nodes.forEach(function(n) {
+    dict.nodes.forEach(function (n) {
         y += '  - id: ' + n.id + '\n';
         y += '    type: ' + n.type + '\n';
         y += '    label: "' + n.label + '"\n';
@@ -614,7 +704,7 @@ function toYAML(graph) {
         y += '    enabled: ' + n.enabled + '\n';
     });
     y += '\nedges:\n';
-    dict.edges.forEach(function(e) {
+    dict.edges.forEach(function (e) {
         y += '  - from: ' + e.from + '\n    to: ' + e.to + '\n    type: ' + e.type + '\n';
         if (e.coefficient !== undefined && e.coefficient !== null) y += '    coefficient: ' + e.coefficient + '\n';
         if (e.lag_days) y += '    lag_days: ' + e.lag_days + '\n';
@@ -622,7 +712,7 @@ function toYAML(graph) {
     });
     if (dict.constraints && dict.constraints.length > 0) {
         y += '\nconstraints:\n';
-        dict.constraints.forEach(function(c) {
+        dict.constraints.forEach(function (c) {
             y += '  - node: ' + c.node + '\n    operator: "' + c.operator + '"\n    value: ' + c.value + '\n';
         });
     }
@@ -652,8 +742,8 @@ function checkConstraint(constraint, node) {
         case '>=': return actual >= target;
         case '<=': return actual <= target;
         case '==': return actual === target;
-        case '>':  return actual > target;
-        case '<':  return actual < target;
-        default:   return null;
+        case '>': return actual > target;
+        case '<': return actual < target;
+        default: return null;
     }
 }
