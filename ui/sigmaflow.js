@@ -187,7 +187,6 @@ Graph.prototype._computeOnce = function () {
 
 Graph.prototype._evalFormula = function (formula) {
     var self = this;
-    // Заменяем ID узлов на их значения
     var expr = formula;
     Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
@@ -195,27 +194,12 @@ Graph.prototype._evalFormula = function (formula) {
         var regex = new RegExp('\\b' + key + '\\b', 'g');
         expr = expr.replace(regex, val);
     });
-    // Поддерживаемые функции
     expr = expr.replace(/\bMAX\b/gi, 'Math.max');
     expr = expr.replace(/\bMIN\b/gi, 'Math.min');
     expr = expr.replace(/\bABS\b/gi, 'Math.abs');
     expr = expr.replace(/\bSQRT\b/gi, 'Math.sqrt');
-    // Вычисляем
     var result = eval(expr);
     return typeof result === 'number' ? result : 0;
-};
-    self.edges.forEach(function (edge) {
-        var fromNode = self.nodes[edge.from];
-        var toNode = self.nodes[edge.to];
-        if (!fromNode || !toNode) return;
-        if (fromNode.enabled === false) return;
-        if (toNode.enabled === false) return;
-        if (fromNode.value === null || fromNode.value === undefined) return;
-        if (toNode.type !== 'INTERMEDIATE' && toNode.type !== 'TARGET') return;
-        var coeff = edge.coefficient !== null ? edge.coefficient : 1.0;
-        var contrib = computeEdge(edge.type, coeff, fromNode.value, edge.threshold, edge.above, edge.below);
-        toNode.value = (toNode.value || 0) + contrib;
-    });
 };
 
 // ============================================================
