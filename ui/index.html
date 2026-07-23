@@ -339,14 +339,7 @@
                 .force('x', d3.forceX(function (d) { return d.fx; }).strength(0.3))
                 .force('y', d3.forceY(function (d) { return d.fy; }).strength(0.5))
                 .force('collision', d3.forceCollide(55));
-
-            simulation = d3.forceSimulation(nodeList)
-                .force('link', d3.forceLink(linkList).id(function (d) { return d.id; }).distance(120))
-                .force('charge', d3.forceManyBody().strength(-300))
-                .force('x', d3.forceX(width / 2).strength(0.05))
-                .force('y', d3.forceY(function (d) { return d.fy; }).strength(0.5))
-                .force('collision', d3.forceCollide(60));
-
+            
             svg.append('defs').selectAll('marker')
                 .data(['arrow'])
                 .join('marker')
