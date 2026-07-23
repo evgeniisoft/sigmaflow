@@ -29,6 +29,7 @@
         <button class="nav-btn" data-panel="calibrate">КАЛИБРОВКА</button>
         <button class="nav-btn" data-panel="scenarios">СЦЕНАРИИ</button>
         <button class="nav-btn" data-panel="optimize">ОПТИМИЗАЦИЯ</button>
+        <button class="nav-btn" data-panel="calendar">КАЛЕНДАРЬ</button>
         <button class="nav-btn" data-panel="diagnostics">ДИАГНОСТИКА</button>
     </nav>
 
@@ -115,6 +116,39 @@
                 Обратный счёт от цели, многокритериальная оптимизация, подбор рычагов.
             </div>
         </div>
+
+                <!-- ПАНЕЛЬ КАЛЕНДАРЬ -->
+                <div id="panel-calendar" class="panel">
+                    <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
+                        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
+                            <h3 style="margin:0;">КАЛЕНДАРЬ ДВИЖЕНИЯ ДЕНЕГ</h3>
+                            <button id="btn-run-calendar" class="primary" style="margin-left:auto;">ПОСТРОИТЬ КАЛЕНДАРЬ</button>
+                        </div>
+                        <div id="calendar-summary" style="margin-bottom:12px;font-size:12px;color:var(--text-hint);"></div>
+                        <div style="overflow-x:auto;flex:1;">
+                            <table id="calendar-table">
+                                <thead>
+                                    <tr>
+                                        <th>ПЕРИОД</th>
+                                        <th>ОСТАТОК НА НАЧАЛО</th>
+                                        <th>ВЫРУЧКА</th>
+                                        <th>РАСХОДЫ</th>
+                                        <th>НАЛОГИ</th>
+                                        <th>ПРОЦЕНТЫ</th>
+                                        <th>ШТРАФЫ</th>
+                                        <th>КРЕДИТЫ (+/-)</th>
+                                        <th>CAPEX</th>
+                                        <th>ИТОГО</th>
+                                        <th>ОСТАТОК НА КОНЕЦ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="calendar-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="calendar-gaps" style="margin-top:12px;flex-shrink:0;"></div>
+                    </div>
+                </div>
 
         <!-- ПАНЕЛЬ ДИАГНОСТИКА -->
         <div id="panel-diagnostics" class="panel">
@@ -676,109 +710,109 @@
         }
 
         function renderComputeResults() {
-                if (!graph) return;
+            if (!graph) return;
 
-                // Ключевые узлы для отображения в сводке
-                var keyNodes = ['NET_PROFIT', 'REVENUE', 'EBITDA', 'FCF', 'ASSETS', 'DEBT_EBITDA'];
+            // Ключевые узлы для отображения в сводке
+            var keyNodes = ['NET_PROFIT', 'REVENUE', 'EBITDA', 'FCF', 'ASSETS', 'DEBT_EBITDA'];
 
-                // Группы для детализации
-                var detailGroups = [
-                    {
-                        title: 'ПРИБЫЛЬ',
-                        nodes: ['GROSS_PROFIT', 'EBIT', 'EBT']
-                    },
-                    {
-                        title: 'РАСХОДЫ',
-                        nodes: ['COGS', 'SELLING_EXP', 'ADMIN_EXP', 'DA', 'INTEREST']
-                    },
-                    {
-                        title: 'ДЕНЕЖНЫЙ ПОТОК',
-                        nodes: ['CFO', 'CFI', 'CFF', 'CASH']
-                    }
-                ];
+            // Группы для детализации
+            var detailGroups = [
+                {
+                    title: 'ПРИБЫЛЬ',
+                    nodes: ['GROSS_PROFIT', 'EBIT', 'EBT']
+                },
+                {
+                    title: 'РАСХОДЫ',
+                    nodes: ['COGS', 'SELLING_EXP', 'ADMIN_EXP', 'DA', 'INTEREST']
+                },
+                {
+                    title: 'ДЕНЕЖНЫЙ ПОТОК',
+                    nodes: ['CFO', 'CFI', 'CFF', 'CASH']
+                }
+            ];
 
-                var html = '';
+            var html = '';
 
-                // Основные показатели
-                html += '<div style="margin-bottom:8px;color:var(--text-hint);font-size:11px;">ОСНОВНЫЕ ПОКАЗАТЕЛИ</div>';
-                keyNodes.forEach(function (nodeId) {
+            // Основные показатели
+            html += '<div style="margin-bottom:8px;color:var(--text-hint);font-size:11px;">ОСНОВНЫЕ ПОКАЗАТЕЛИ</div>';
+            keyNodes.forEach(function (nodeId) {
+                var n = graph.nodes[nodeId];
+                if (n && n.value !== null && n.value !== undefined) {
+                    var val = formatValue(n.value);
+                    var label = (n.label || n.id);
+                    html += '<div class="result-row" style="padding:4px 0;">';
+                    html += '<span class="label">' + label + ' (' + n.id + ')</span>';
+                    html += '<span class="value" style="font-weight:500;">' + val + '</span>';
+                    html += '</div>';
+                }
+            });
+
+            // Детализация (скрыта по умолчанию)
+            html += '<div style="margin-top:12px;">';
+            html += '<div id="detail-toggle" style="cursor:pointer;color:var(--accent);font-size:12px;user-select:none;">';
+            html += '\u25B6 ДЕТАЛИЗАЦИЯ';
+            html += '</div>';
+            html += '<div id="detail-content" style="display:none;margin-top:8px;">';
+
+            detailGroups.forEach(function (group) {
+                html += '<div style="margin-bottom:8px;color:var(--text-hint);font-size:10px;letter-spacing:1px;">' + group.title + '</div>';
+                var hasContent = false;
+                group.nodes.forEach(function (nodeId) {
                     var n = graph.nodes[nodeId];
                     if (n && n.value !== null && n.value !== undefined) {
-                        var val = formatValue(n.value);
-                        var label = (n.label || n.id);
-                        html += '<div class="result-row" style="padding:4px 0;">';
-                        html += '<span class="label">' + label + ' (' + n.id + ')</span>';
-                        html += '<span class="value" style="font-weight:500;">' + val + '</span>';
+                        hasContent = true;
+                        html += '<div class="result-row" style="padding:2px 0;">';
+                        html += '<span class="label" style="font-size:12px;">' + (n.label || n.id) + '</span>';
+                        html += '<span class="value" style="font-size:12px;">' + formatValue(n.value) + '</span>';
                         html += '</div>';
                     }
                 });
+                if (!hasContent) {
+                    html += '<div style="font-size:11px;color:var(--text-hint);padding:2px 0;">Нет данных</div>';
+                }
+            });
 
-                // Детализация (скрыта по умолчанию)
-                html += '<div style="margin-top:12px;">';
-                html += '<div id="detail-toggle" style="cursor:pointer;color:var(--accent);font-size:12px;user-select:none;">';
-                html += '\u25B6 ДЕТАЛИЗАЦИЯ';
-                html += '</div>';
-                html += '<div id="detail-content" style="display:none;margin-top:8px;">';
+            html += '</div></div>';
 
-                detailGroups.forEach(function (group) {
-                    html += '<div style="margin-bottom:8px;color:var(--text-hint);font-size:10px;letter-spacing:1px;">' + group.title + '</div>';
-                    var hasContent = false;
-                    group.nodes.forEach(function (nodeId) {
-                        var n = graph.nodes[nodeId];
-                        if (n && n.value !== null && n.value !== undefined) {
-                            hasContent = true;
-                            html += '<div class="result-row" style="padding:2px 0;">';
-                            html += '<span class="label" style="font-size:12px;">' + (n.label || n.id) + '</span>';
-                            html += '<span class="value" style="font-size:12px;">' + formatValue(n.value) + '</span>';
-                            html += '</div>';
-                        }
-                    });
-                    if (!hasContent) {
-                        html += '<div style="font-size:11px;color:var(--text-hint);padding:2px 0;">Нет данных</div>';
-                    }
+            // Ограничения
+            if (graph.constraints.length > 0) {
+                html += '<div style="margin-top:12px;margin-bottom:8px;color:var(--text-hint);font-size:11px;">ОГРАНИЧЕНИЯ</div>';
+                graph.constraints.forEach(function (c) {
+                    var node = graph.nodes[c.node];
+                    var ok = node ? checkConstraint(c, node) : null;
+                    var cls = 'result-row';
+                    if (ok === true) cls += ' constraint-ok';
+                    if (ok === false) cls += ' constraint-fail';
+
+                    html += '<div class="' + cls + '" style="padding:2px 0;">';
+                    html += '<span class="label">' + (node ? (node.label || node.id) : c.node) + ' ' + c.operator + ' ' + formatValue(c.value) + '</span>';
+                    html += '<span class="value">';
+                    if (ok === true) html += 'OK';
+                    else if (ok === false) html += 'НАРУШЕНО';
+                    else html += '\u2014';
+                    html += '</span>';
+                    html += '</div>';
                 });
-
-                html += '</div></div>';
-
-                // Ограничения
-                if (graph.constraints.length > 0) {
-                    html += '<div style="margin-top:12px;margin-bottom:8px;color:var(--text-hint);font-size:11px;">ОГРАНИЧЕНИЯ</div>';
-                    graph.constraints.forEach(function (c) {
-                        var node = graph.nodes[c.node];
-                        var ok = node ? checkConstraint(c, node) : null;
-                        var cls = 'result-row';
-                        if (ok === true) cls += ' constraint-ok';
-                        if (ok === false) cls += ' constraint-fail';
-
-                        html += '<div class="' + cls + '" style="padding:2px 0;">';
-                        html += '<span class="label">' + (node ? (node.label || node.id) : c.node) + ' ' + c.operator + ' ' + formatValue(c.value) + '</span>';
-                        html += '<span class="value">';
-                        if (ok === true) html += 'OK';
-                        else if (ok === false) html += 'НАРУШЕНО';
-                        else html += '\u2014';
-                        html += '</span>';
-                        html += '</div>';
-                    });
-                }
-
-                elComputeBody.innerHTML = html;
-                elComputeResults.style.display = 'block';
-
-                // Добавляем обработчик клика для раскрытия детализации
-                var toggle = document.getElementById('detail-toggle');
-                var content = document.getElementById('detail-content');
-                if (toggle && content) {
-                    toggle.addEventListener('click', function () {
-                        if (content.style.display === 'none') {
-                            content.style.display = 'block';
-                            toggle.innerHTML = '\u25BC ДЕТАЛИЗАЦИЯ';
-                        } else {
-                            content.style.display = 'none';
-                            toggle.innerHTML = '\u25B6 ДЕТАЛИЗАЦИЯ';
-                        }
-                    });
-                }
             }
+
+            elComputeBody.innerHTML = html;
+            elComputeResults.style.display = 'block';
+
+            // Добавляем обработчик клика для раскрытия детализации
+            var toggle = document.getElementById('detail-toggle');
+            var content = document.getElementById('detail-content');
+            if (toggle && content) {
+                toggle.addEventListener('click', function () {
+                    if (content.style.display === 'none') {
+                        content.style.display = 'block';
+                        toggle.innerHTML = '\u25BC ДЕТАЛИЗАЦИЯ';
+                    } else {
+                        content.style.display = 'none';
+                        toggle.innerHTML = '\u25B6 ДЕТАЛИЗАЦИЯ';
+                    }
+                });
+            }
+        }
 
         // ============================================================
         // ПОЛНАЯ ПЕРЕРИСОВКА
@@ -902,6 +936,93 @@
             container.innerHTML = html;
             updateStatusBar('Диагностика: ' + counts.critical + ' критических, ' + counts.warning + ' предупреждений');
         }
+        function buildCalendar() {
+                if (!graph) return;
+
+                graph.compute();
+                var cal = graph.getCashFlowCalendar();
+
+                var summary = document.getElementById('calendar-summary');
+                var gapCount = cal.gapCount || 0;
+                var endCash = cal.endCash || 0;
+
+                if (gapCount > 0) {
+                    summary.innerHTML = '<span style="color:var(--critical);">Обнаружено кассовых разрывов: ' + gapCount + '</span> | ' +
+                        'Остаток на конец периода: <span style="color:var(--critical);">' + formatValue(endCash) + '</span>';
+                } else {
+                    summary.innerHTML = 'Кассовых разрывов: 0 | ' +
+                        'Остаток на конец периода: <span style="color:var(--ok);">' + formatValue(endCash) + '</span>';
+                }
+
+                var tbody = document.getElementById('calendar-table-body');
+                var html = '';
+                var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+
+                cal.periods.forEach(function (p) {
+                    var rowClass = '';
+                    if (p.isGap) {
+                        rowClass = 'style="background:rgba(212,75,60,0.15);"';
+                    } else if (p.isWarning) {
+                        rowClass = 'style="background:rgba(212,168,67,0.1);"';
+                    }
+
+                    var label = months[p.period] ? months[p.period] + ' 2026' : 'Пер ' + (p.period + 1);
+
+                    html += '<tr ' + rowClass + '>';
+                    html += '<td>' + label + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.startCash) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.revenue) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.costs) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.tax) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.interest) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.penalties) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.newLoans - p.loanRepayment) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.capex) + '</td>';
+                    html += '<td class="value-cell" style="font-weight:500;color:' + (p.netFlow >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(p.netFlow) + '</td>';
+                    html += '<td class="value-cell" style="font-weight:500;color:' + (p.endCash >= 0 ? 'var(--text-heading)' : 'var(--critical)') + ';">' + formatValue(p.endCash) + '</td>';
+                    html += '</tr>';
+                });
+
+                // Итого
+                html += '<tr style="border-top:2px solid var(--border);font-weight:500;">';
+                html += '<td>ИТОГО</td>';
+                html += '<td class="value-cell">' + formatValue(cal.periods[0].startCash) + '</td>';
+                html += '<td class="value-cell">' + formatValue(cal.totalRevenue) + '</td>';
+                html += '<td class="value-cell">' + formatValue(cal.totalCosts) + '</td>';
+                html += '<td class="value-cell">' + formatValue(cal.totalTax) + '</td>';
+                html += '<td class="value-cell">' + formatValue(cal.totalInterest) + '</td>';
+                html += '<td class="value-cell">' + formatValue(cal.totalPenalties) + '</td>';
+                html += '<td class="value-cell">' + formatValue(cal.totalNewLoans - cal.totalLoanRepayment) + '</td>';
+                html += '<td class="value-cell">' + formatValue(cal.totalCapex) + '</td>';
+                html += '<td class="value-cell">—</td>';
+                html += '<td class="value-cell">' + formatValue(cal.endCash) + '</td>';
+                html += '</tr>';
+
+                tbody.innerHTML = html;
+
+                // Список разрывов
+                var gapsDiv = document.getElementById('calendar-gaps');
+                if (gapCount > 0) {
+                    var gapsHtml = '<div style="margin-top:8px;">';
+                    cal.periods.forEach(function (p) {
+                        if (p.isGap) {
+                            gapsHtml += '<div style="padding:8px;margin-bottom:4px;border:1px solid var(--critical);background:rgba(212,75,60,0.1);">';
+                            gapsHtml += '<span style="color:var(--critical);font-weight:500;">[!] КАССОВЫЙ РАЗРЫВ: ' + months[p.period] + ' 2026</span><br>';
+                            gapsHtml += 'Остаток на начало: ' + formatValue(p.startCash) + ' | ';
+                            gapsHtml += 'Дефицит: ' + formatValue(Math.abs(p.endCash)) + '<br>';
+                            gapsHtml += 'Рекомендация: привлечь кредит, сократить запасы или перенести CAPEX.';
+                            gapsHtml += '</div>';
+                        }
+                    });
+                    gapsHtml += '</div>';
+                    gapsDiv.innerHTML = gapsHtml;
+                } else {
+                    gapsDiv.innerHTML = '';
+                }
+
+                updateStatusBar('Календарь построен. Разрывов: ' + gapCount);
+                notify('Календарь денежного потока построен');
+            }
 
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
@@ -955,6 +1076,14 @@
             });
             document.getElementById('table-search').addEventListener('input', function () {
                 renderDataTable();
+            });
+            // Календарь денежного потока
+            document.getElementById('btn-run-calendar').addEventListener('click', function () {
+                if (!graph) {
+                    notify('Сначала загрузите модель', true);
+                    return;
+                }
+                buildCalendar();
             });
             // Загружаем демо при старте
             loadDemo();
