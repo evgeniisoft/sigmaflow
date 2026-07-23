@@ -747,57 +747,123 @@
         // ============================================================
 
         function renderDataTable() {
-            if (!graph) return;
+                if (!graph) return;
 
-            var filter = document.getElementById('table-filter');
-            var filterVal = filter ? filter.value : 'ALL';
-            var search = document.getElementById('table-search');
-            var searchVal = search ? search.value.toLowerCase() : '';
+                var filter = document.getElementById('table-filter');
+                var filterVal = filter ? filter.value : 'ALL';
+                var search = document.getElementById('table-search');
+                var searchVal = search ? search.value.toLowerCase() : '';
 
-            var html = '';
-            var nodeKeys = Object.keys(graph.nodes).sort();
+                var sections = [
+                    {
+                        title: 'ФИНАНСОВЫЕ РЕЗУЛЬТАТЫ',
+                        nodes: ['NET_PROFIT', 'EBT', 'TAX', 'EBIT', 'EBITDA', 'GROSS_PROFIT', 'REVENUE', 'COGS']
+                    },
+                    {
+                        title: 'ОПЕРАЦИОННЫЕ ПОКАЗАТЕЛИ',
+                        nodes: ['VOLUME', 'PRICE', 'SEASON', 'MARKETING', 'COMPETITION', 'BUSINESS_ACTIVITY']
+                    },
+                    {
+                        title: 'СЕБЕСТОИМОСТЬ',
+                        nodes: ['BASE_MATERIAL_PRICE', 'UNIT_MATERIAL', 'MATERIAL_COST', 'ENERGY_RATE', 'ENERGY_COST', 'LOGISTICS_RATE', 'LOGISTICS_COST', 'DEFECT_RATE', 'SCALE_EFFECT']
+                    },
+                    {
+                        title: 'ПЕРСОНАЛ',
+                        nodes: ['PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'DIRECT_LABOR', 'ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'ADMIN_PAYROLL', 'EFFECTIVE_HEADCOUNT', 'ATTRITION', 'SPI', 'ENGAGEMENT', 'LABOR_INDEX']
+                    },
+                    {
+                        title: 'OPEX',
+                        nodes: ['RENT', 'IT_EXP', 'RD_EXP', 'TRAINING_EXP', 'SELLING_EXP', 'ADMIN_EXP']
+                    },
+                    {
+                        title: 'АМОРТИЗАЦИЯ И CAPEX',
+                        nodes: ['FIXED_ASSETS', 'INTANGIBLE_ASSETS', 'DA_RATE', 'DA', 'WEAR', 'CAPEX', 'CAPACITY_UTIL', 'TECH_OBSOLESCENCE']
+                    },
+                    {
+                        title: 'КРЕДИТЫ И ДОЛГ',
+                        nodes: ['LOANS', 'CB_RATE', 'BANK_SPREAD', 'LOAN_RATE', 'INTEREST', 'LOAN_REPAYMENT', 'NEW_LOANS', 'DEBT_EBITDA', 'CREDIT_RATING', 'RATE_TYPE']
+                    },
+                    {
+                        title: 'БАЛАНС',
+                        nodes: ['CASH', 'CASH_START', 'INVENTORY', 'RECEIVABLES', 'PAYABLES', 'CURRENT_ASSETS', 'ASSETS', 'EQUITY', 'RETAINED_START', 'RETAINED_EARNINGS', 'FCF']
+                    },
+                    {
+                        title: 'ВНЕШНИЕ ФАКТОРЫ',
+                        nodes: ['INFLATION', 'FX_RATE', 'GEO_INDEX', 'SANCTIONS', 'PMI', 'CCI', 'HOUSEHOLD_INCOME', 'SUPPLIER_RISK', 'TARIFFS']
+                    },
+                    {
+                        title: 'ДЕНЕЖНЫЙ ПОТОК',
+                        nodes: ['CFO', 'CFI', 'CFF', 'delta_RECEIVABLES', 'delta_PAYABLES', 'delta_INVENTORY', 'OTHER_INCOME', 'OTHER_EXP', 'PENALTIES', 'INTEREST_INCOME', 'DIVIDENDS']
+                    }
+                ];
 
-            nodeKeys.forEach(function (key) {
-                var n = graph.nodes[key];
+                var html = '';
 
-                // Фильтр по типу
-                if (filterVal === 'INPUT' && n.type !== 'INPUT') return;
-                if (filterVal === 'EXTERNAL' && n.type !== 'EXTERNAL') return;
-                if (filterVal === 'COMPUTED' && n.type !== 'INTERMEDIATE' && n.type !== 'TARGET') return;
+                sections.forEach(function (section) {
+                    // Проверяем, есть ли узлы из этой секции после фильтрации
+                    var visibleNodes = section.nodes.filter(function (nid) {
+                        var n = graph.nodes[nid];
+                        if (!n) return false;
+                        if (filterVal === 'INPUT' && n.type !== 'INPUT') return false;
+                        if (filterVal === 'EXTERNAL' && n.type !== 'EXTERNAL') return false;
+                        if (filterVal === 'COMPUTED' && n.type !== 'INTERMEDIATE' && n.type !== 'TARGET') return false;
+                        if (searchVal) {
+                            var lm = (n.label || '').toLowerCase().indexOf(searchVal) >= 0;
+                            var im = n.id.toLowerCase().indexOf(searchVal) >= 0;
+                            if (!lm && !im) return false;
+                        }
+                        return true;
+                    });
 
-                // Поиск по названию или ID
-                if (searchVal) {
-                    var labelMatch = (n.label || '').toLowerCase().indexOf(searchVal) >= 0;
-                    var idMatch = n.id.toLowerCase().indexOf(searchVal) >= 0;
-                    if (!labelMatch && !idMatch) return;
+                    if (visibleNodes.length === 0) return;
+
+                    html += '<tr class="section-header" onclick="toggleSection(this)" style="cursor:pointer;">';
+                    html += '<td colspan="6" style="color:var(--accent);font-size:11px;letter-spacing:2px;padding:12px 8px 4px 8px;">';
+                    html += '<span class="section-arrow" style="display:inline-block;width:12px;">▼</span> ' + section.title + ' (' + visibleNodes.length + ')';
+                    html += '</td></tr>';
+
+                    visibleNodes.forEach(function (nid) {
+                        var n = graph.nodes[nid];
+                        var isEditable = (n.type === 'INPUT' || n.type === 'EXTERNAL');
+                        var rowStyle = '';
+                        if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
+                            rowStyle = 'background:rgba(42,48,64,0.3);';
+                        } else if (n.type === 'EXTERNAL') {
+                            rowStyle = 'background:rgba(212,168,67,0.05);';
+                        }
+
+                        html += '<tr class="section-row" style="' + rowStyle + '">';
+                        html += '<td class="id-cell">' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
+                        html += '<td>' + n.type + '</td>';
+                        html += '<td class="value-cell">';
+                        if (isEditable) {
+                            html += '<input type="number" class="table-input" data-node-id="' + n.id + '" value="' + (n.value !== null ? n.value : '') + '" step="any" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;">';
+                        } else {
+                            html += '<span style="color:var(--text-hint);">' + formatValue(n.value) + '</span>';
+                        }
+                        html += '</td>';
+                        html += '<td class="value-cell">' + formatValue(n.min) + '</td>';
+                        html += '<td class="value-cell">' + formatValue(n.max) + '</td>';
+                        html += '<td>' + n.source + '</td>';
+                        html += '</tr>';
+                    });
+                });
+
+                elDataTable.innerHTML = html;
+            }
+
+            // Сворачивание/разворачивание секций
+            function toggleSection(header) {
+                var arrow = header.querySelector('.section-arrow');
+                var next = header.nextElementSibling;
+                while (next && !next.classList.contains('section-header')) {
+                    if (next.classList.contains('section-row')) {
+                        next.style.display = next.style.display === 'none' ? '' : 'none';
+                    }
+                    next = next.nextElementSibling;
                 }
-
-                var isEditable = (n.type === 'INPUT' || n.type === 'EXTERNAL');
-                var rowStyle = '';
-                if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
-                    rowStyle = 'background:rgba(42,48,64,0.3);';
-                } else if (n.type === 'EXTERNAL') {
-                    rowStyle = 'background:rgba(212,168,67,0.05);';
-                }
-
-                html += '<tr style="' + rowStyle + '">';
-                html += '<td class="id-cell">' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
-                html += '<td>' + n.type + '</td>';
-                html += '<td class="value-cell">';
-                if (isEditable) {
-                    html += '<input type="number" class="table-input" data-node-id="' + n.id + '" value="' + (n.value !== null ? n.value : '') + '" step="any" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;">';
-                } else {
-                    html += '<span style="color:var(--text-hint);">' + formatValue(n.value) + '</span>';
-                }
-                html += '</td>';
-                html += '<td class="value-cell">' + formatValue(n.min) + '</td>';
-                html += '<td class="value-cell">' + formatValue(n.max) + '</td>';
-                html += '<td>' + n.source + '</td>';
-                html += '</tr>';
-            });
-
-            elDataTable.innerHTML = html;
-        }
+                arrow.textContent = arrow.textContent === '▼' ? '▶' : '▼';
+            }
 
         function renderComputeResults() {
             if (!graph) return;
