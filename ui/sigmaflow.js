@@ -221,7 +221,6 @@ Graph.prototype._evalFormula = function (formula) {
 // ============================================================
 // ПЕРИОДЫ ПЛАНИРОВАНИЯ
 // ============================================================
-
 Graph.prototype.computePeriods = function (horizon, stepMonths) {
     horizon = horizon || this.horizon || 12;
     stepMonths = stepMonths || this.stepMonths || 1;
@@ -230,6 +229,7 @@ Graph.prototype.computePeriods = function (horizon, stepMonths) {
     this.horizon = horizon;
     this.stepMonths = stepMonths;
 
+    // Инициализация values
     Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
         n.values = [];
@@ -242,8 +242,9 @@ Graph.prototype.computePeriods = function (horizon, stepMonths) {
         }
     });
 
+    // Для каждого периода
     for (var p = 0; p < periods; p++) {
-        // Временно подставляем values[p] в value для формул
+        // Сохраняем оригинальные value и подставляем values[p]
         Object.keys(self.nodes).forEach(function (key) {
             var n = self.nodes[key];
             n._savedValue = n.value;
@@ -259,11 +260,12 @@ Graph.prototype.computePeriods = function (horizon, stepMonths) {
                     n.value = n.values[p];
                 } catch (e) {
                     n.values[p] = 0;
+                    n.value = 0;
                 }
             }
         });
 
-        // Сброс
+        // Сброс вычисляемых узлов без формул
         Object.keys(self.nodes).forEach(function (key) {
             var n = self.nodes[key];
             if ((n.type === 'INTERMEDIATE' || n.type === 'TARGET') && !n.formula) {
@@ -272,7 +274,7 @@ Graph.prototype.computePeriods = function (horizon, stepMonths) {
             }
         });
 
-        // Суммируем
+        // Суммируем вклады по рёбрам
         self.edges.forEach(function (edge) {
             var fromNode = self.nodes[edge.from];
             var toNode = self.nodes[edge.to];
@@ -288,10 +290,12 @@ Graph.prototype.computePeriods = function (horizon, stepMonths) {
             toNode.value = toNode.values[p];
         });
 
-        // Восстанавливаем value
+        // Восстанавливаем оригинальные value
         Object.keys(self.nodes).forEach(function (key) {
             var n = self.nodes[key];
-            n.value = n._savedValue;
+            if (n._savedValue !== undefined) {
+                n.value = n._savedValue;
+            }
         });
     }
 
