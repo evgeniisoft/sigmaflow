@@ -322,166 +322,181 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     horizon = horizon || 12;
     startMonth = startMonth !== undefined ? startMonth : new Date().getMonth();
 
-    // Получаем ГОДОВЫЕ значения из модели
-    var revenueYear = self.nodes['REVENUE'] ? (self.nodes['REVENUE'].value || 0) : 0;
-    var cogsYear = self.nodes['COGS'] ? (Math.abs(self.nodes['COGS'].value) || 0) : 0;
-    var adminExpYear = self.nodes['ADMIN_EXP'] ? (Math.abs(self.nodes['ADMIN_EXP'].value) || 0) : 0;
-    var sellingExpYear = self.nodes['SELLING_EXP'] ? (Math.abs(self.nodes['SELLING_EXP'].value) || 0) : 0;
-    var costsYear = cogsYear + adminExpYear + sellingExpYear;
+    // Годовые значения из модели
+    var revY = self._val('REVENUE');
+    var matY = self._val('MATERIAL_COST');
+    var enerY = self._val('ENERGY_COST');
+    var logY = self._val('LOGISTICS_COST');
+    var prodY = self._val('DIRECT_LABOR');
+    var admY = self._val('ADMIN_PAYROLL');
+    var markY = self._val('MARKETING');
+    var rentY = self._val('RENT');
+    var itY = self._val('IT_EXP');
+    var rdY = self._val('RD_EXP');
+    var trainY = self._val('TRAINING_EXP');
+    var daY = self._val('DA');
+    var intY = self._val('INTEREST');
+    var intIncY = self._val('INTEREST_INCOME');
+    var othIncY = self._val('OTHER_INCOME');
+    var othExpY = self._val('OTHER_EXP');
+    var penY = self._val('PENALTIES');
+    var divY = self._val('DIVIDENDS');
 
-    var daYear = self.nodes['DA'] ? (Math.abs(self.nodes['DA'].value) || 0) : 0;
-    var ebitYear = self.nodes['EBIT'] ? (self.nodes['EBIT'].value || 0) : 0;
-    var interestYear = self.nodes['INTEREST'] ? (Math.abs(self.nodes['INTEREST'].value) || 0) : 0;
-    var interestIncomeYear = self.nodes['INTEREST_INCOME'] ? (Math.abs(self.nodes['INTEREST_INCOME'].value) || 0) : 0;
-    var otherIncYear = self.nodes['OTHER_INCOME'] ? (Math.abs(self.nodes['OTHER_INCOME'].value) || 0) : 0;
-    var otherExpYear = self.nodes['OTHER_EXP'] ? (Math.abs(self.nodes['OTHER_EXP'].value) || 0) : 0;
-    var penaltiesYear = self.nodes['PENALTIES'] ? (Math.abs(self.nodes['PENALTIES'].value) || 0) : 0;
-    var loanRepaymentYear = self.nodes['LOAN_REPAYMENT'] ? (Math.abs(self.nodes['LOAN_REPAYMENT'].value) || 0) : 0;
-    var newLoansYear = self.nodes['NEW_LOANS'] ? (Math.abs(self.nodes['NEW_LOANS'].value) || 0) : 0;
-    var capexYear = self.nodes['CAPEX'] ? (Math.abs(self.nodes['CAPEX'].value) || 0) : 0;
-    var dividendsYear = self.nodes['DIVIDENDS'] ? (Math.abs(self.nodes['DIVIDENDS'].value) || 0) : 0;
+    // Кредиты
+    var repayY = self._val('LOAN_REPAYMENT');
+    var newLoansY = self._val('NEW_LOANS');
+    var loanSch = self._schedule('LOAN_REPAYMENT', repayY, horizon);
+    var newLoanSch = self._schedule('NEW_LOANS', newLoansY, horizon);
 
-    var cashStartNode = self.nodes['CASH_START'];
-    var startCash = cashStartNode ? (cashStartNode.value || 0) : 5000000;
+    // CAPEX
+    var capexY = self._val('CAPEX');
+    var capexSch = self._schedule('CAPEX', capexY, horizon);
 
-    // Месячные значения
-    var monthlyRevenue = revenueYear / 12;
-    var monthlyCosts = costsYear / 12;
-    var monthlyDA = daYear / 12;
-    var monthlyInterest = interestYear / 12;
-    var monthlyInterestIncome = interestIncomeYear / 12;
-    var monthlyOtherInc = otherIncYear / 12;
-    var monthlyOtherExp = otherExpYear / 12;
-    var monthlyPenalties = penaltiesYear / 12;
-    var monthlyLoanRepayment = loanRepaymentYear / 12;
-    var monthlyNewLoans = newLoansYear / 12;
-    var monthlyCapex = capexYear / 12;
-    var monthlyDividends = dividendsYear / 12;
+    // Стартовый остаток
+    var cashStart = self._val('CASH_START');
+    if (cashStart === 0 && self.nodes['CASH']) cashStart = self._val('CASH');
 
-    // Налог на прибыль — годовой, разбитый на квартальные авансы
-    var ebtYear = self.nodes['EBT'] ? (self.nodes['EBT'].value || 0) : 0;
-    var taxRate = self.nodes['TAX_RATE'] ? (self.nodes['TAX_RATE'].value || 0.20) : 0.20;
-    var annualProfitTax = Math.max(0, ebtYear) * taxRate;
+    // Налоги
+    var ebtY = self._val('EBT');
+    var taxRate = self._val('TAX_RATE') || 0.20;
+    var annualProfitTax = Math.max(0, ebtY) * taxRate;
     var quarterlyTax = annualProfitTax / 4;
 
-    // Страховые взносы (ежемесячно)
-    var adminPayrollYear = self.nodes['ADMIN_PAYROLL'] ? (Math.abs(self.nodes['ADMIN_PAYROLL'].value) || 0) : 0;
-    var directLaborYear = self.nodes['DIRECT_LABOR'] ? (Math.abs(self.nodes['DIRECT_LABOR'].value) || 0) : 0;
-    var totalPayrollYear = adminPayrollYear + directLaborYear;
-    var totalPayrollMonth = totalPayrollYear / 12;
-    var insuranceRate = 0.30;
-    var monthlyInsurance = totalPayrollMonth * insuranceRate;
+    // ФОТ для страховых и НДФЛ
+    var monthlyPayroll = (prodY + admY) / 12;
+    var insRate = self._company('insurance_rate', 0.30);
+    var monthlyInsurance = monthlyPayroll * insRate;
+    var monthlyNDFL = monthlyPayroll * 0.13;
 
-    // НДФЛ (ежемесячно)
-    var ndflRate = 0.13;
-    var monthlyNDFL = totalPayrollMonth * ndflRate;
+    // НДС
+    var ndsRate = self._company('nds_rate', 0.20);
+    var ndsExempt = self._company('nds_exempt', false);
+    var hasNDS = !ndsExempt && ndsRate > 0;
+    var monthlyRevenueForNDS = (revY / 12);
+    var monthlyNDSaccrued = monthlyRevenueForNDS * ndsRate / (1 + ndsRate);
+    var quarterlyNDS = monthlyNDSaccrued * 3;
+    var ndsMonthlyPayment = quarterlyNDS / 3;
 
-    // НДС (квартальный, помесячная уплата в следующем квартале)
-    var hasNDS = true;
-    var ndsRate = 0.20;
-    var monthlyNDSaccrued = monthlyRevenue * ndsRate / (1 + ndsRate);
-    var ndsMonthlyPayment = monthlyNDSaccrued;
-
-    // Налог на имущество (упрощённо — годовой / 12)
-    var propertyTaxYear = (self.nodes['FIXED_ASSETS'] ? (self.nodes['FIXED_ASSETS'].value || 0) : 0) * 0.022;
-    var monthlyPropertyTax = propertyTaxYear / 12;
+    // Налог на имущество
+    var propertyTaxRate = self._company('property_tax_rate', 0);
+    var hasPropertyTax = self._company('has_property_tax', false);
+    var fixedAssets = self._val('FIXED_ASSETS');
+    var annualPropertyTax = hasPropertyTax ? fixedAssets * propertyTaxRate : 0;
+    var monthlyPropertyTax = annualPropertyTax / 12;
 
     var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-    var calendar = [];
-    var runningCash = startCash;
-
-    var totalRevenue = 0, totalCosts = 0, totalTax = 0, totalInterest = 0;
-    var totalPenalties = 0, totalLoanRepayment = 0, totalNewLoans = 0, totalCapex = 0;
-    var totalDividends = 0, totalDA = 0;
+    var cal = [];
+    var runningCash = cashStart;
+    var totals = { rev: 0, mat: 0, ener: 0, log: 0, prod: 0, adm: 0, mark: 0, rent: 0, it: 0, tax: 0, int: 0, pen: 0, repay: 0, newLoan: 0, capex: 0, div: 0 };
 
     for (var p = 0; p < horizon; p++) {
-        var actualMonth = (startMonth + p) % 12;
-        var year = 2026 + Math.floor((startMonth + p) / 12);
-        var label = months[actualMonth] + ' ' + year;
+        var mo = (startMonth + p) % 12;
+        var yr = 2026 + Math.floor((startMonth + p) / 12);
+        var label = months[mo] + ' ' + yr;
 
-        // Налог на прибыль: уплата в месяцы после квартала
+        // Налог на прибыль — квартальные авансы
         var profitTax = 0;
-        if (actualMonth === 2) profitTax = quarterlyTax;   // Мар — аванс за 4 кв
-        if (actualMonth === 3) profitTax = quarterlyTax;   // Апр — аванс за 1 кв
-        if (actualMonth === 6) profitTax = quarterlyTax;   // Июл — аванс за 2 кв
-        if (actualMonth === 9) profitTax = quarterlyTax;   // Окт — аванс за 3 кв
+        if (mo === 2) profitTax = quarterlyTax;
+        if (mo === 3) profitTax = quarterlyTax;
+        if (mo === 6) profitTax = quarterlyTax;
+        if (mo === 9) profitTax = quarterlyTax;
 
-        // НДС: уплата в месяцах после квартала
-        var ndsThisMonth = 0;
+        // НДС — уплата в следующем квартале
+        var ndsThis = 0;
         if (hasNDS) {
-            if (actualMonth === 3 || actualMonth === 4 || actualMonth === 5) ndsThisMonth = ndsMonthlyPayment;
-            if (actualMonth === 6 || actualMonth === 7 || actualMonth === 8) ndsThisMonth = ndsMonthlyPayment;
-            if (actualMonth === 9 || actualMonth === 10 || actualMonth === 11) ndsThisMonth = ndsMonthlyPayment;
-            if (actualMonth === 0 || actualMonth === 1 || actualMonth === 2) ndsThisMonth = ndsMonthlyPayment;
+            if (mo === 3 || mo === 4 || mo === 5) ndsThis = ndsMonthlyPayment;
+            if (mo === 6 || mo === 7 || mo === 8) ndsThis = ndsMonthlyPayment;
+            if (mo === 9 || mo === 10 || mo === 11) ndsThis = ndsMonthlyPayment;
+            if (mo === 0 || mo === 1 || mo === 2) ndsThis = ndsMonthlyPayment;
         }
 
-        var totalTaxThisMonth = profitTax + monthlyInsurance + monthlyNDFL + ndsThisMonth + monthlyPropertyTax;
+        var taxThisMonth = profitTax + monthlyInsurance + monthlyNDFL + ndsThis + monthlyPropertyTax;
 
-        var totalInflow = monthlyRevenue + monthlyInterestIncome + monthlyOtherInc + monthlyNewLoans;
-        var totalOutflow = monthlyCosts + totalTaxThisMonth + monthlyInterest + monthlyOtherExp + monthlyPenalties + monthlyLoanRepayment + monthlyCapex + monthlyDividends;
-        var netFlow = totalInflow - totalOutflow;
+        // Приходы
+        var inflow = (revY / 12) + (intIncY / 12) + (othIncY / 12) + newLoanSch[p];
 
+        // Расходы
+        var outflow = (matY / 12) + (enerY / 12) + (logY / 12) + (prodY / 12) + (admY / 12)
+            + (markY / 12) + (rentY / 12) + ((itY + rdY + trainY) / 12)
+            + taxThisMonth + (intY / 12) + (othExpY / 12) + (penY / 12)
+            + loanSch[p] + capexSch[p] + (divY / 12);
+
+        var netFlow = inflow - outflow;
         var startCashPeriod = runningCash;
         runningCash += netFlow;
 
-        calendar.push({
-            period: p,
-            label: label,
-            month: actualMonth,
+        cal.push({
+            period: p, label: label, month: mo,
             startCash: startCashPeriod,
-            revenue: monthlyRevenue,
-            costs: monthlyCosts,
-            da: monthlyDA,
+            revenue: revY / 12,
+            material: matY / 12,
+            energy: enerY / 12,
+            logistics: logY / 12,
+            payrollProd: prodY / 12,
+            payrollAdm: admY / 12,
+            marketing: markY / 12,
+            rent: rentY / 12,
+            itRdTraining: (itY + rdY + trainY) / 12,
+            da: daY / 12,
             profitTax: profitTax,
-            nds: ndsThisMonth,
+            nds: ndsThis,
             insurance: monthlyInsurance,
             ndfl: monthlyNDFL,
             propertyTax: monthlyPropertyTax,
-            totalTax: totalTaxThisMonth,
-            interest: monthlyInterest,
-            interestIncome: monthlyInterestIncome,
-            otherIncome: monthlyOtherInc,
-            otherExp: monthlyOtherExp,
-            penalties: monthlyPenalties,
-            newLoans: monthlyNewLoans,
-            loanRepayment: monthlyLoanRepayment,
-            capex: monthlyCapex,
-            dividends: monthlyDividends,
+            totalTax: taxThisMonth,
+            interest: intY / 12,
+            interestIncome: intIncY / 12,
+            otherIncome: othIncY / 12,
+            otherExp: othExpY / 12,
+            penalties: penY / 12,
+            loanRepayment: loanSch[p],
+            newLoans: newLoanSch[p],
+            capex: capexSch[p],
+            dividends: divY / 12,
             netFlow: netFlow,
             endCash: runningCash,
             isGap: runningCash < 0,
             isWarning: netFlow < 0 && runningCash >= 0
         });
 
-        totalRevenue += monthlyRevenue;
-        totalCosts += monthlyCosts;
-        totalTax += totalTaxThisMonth;
-        totalInterest += monthlyInterest;
-        totalPenalties += monthlyPenalties;
-        totalLoanRepayment += monthlyLoanRepayment;
-        totalNewLoans += monthlyNewLoans;
-        totalCapex += monthlyCapex;
-        totalDividends += monthlyDividends;
-        totalDA += monthlyDA;
+        totals.rev += revY / 12; totals.mat += matY / 12; totals.ener += enerY / 12;
+        totals.log += logY / 12; totals.prod += prodY / 12; totals.adm += admY / 12;
+        totals.mark += markY / 12; totals.rent += rentY / 12; totals.it += (itY + rdY + trainY) / 12;
+        totals.tax += taxThisMonth; totals.int += intY / 12; totals.pen += penY / 12;
+        totals.repay += loanSch[p]; totals.newLoan += newLoanSch[p];
+        totals.capex += capexSch[p]; totals.div += divY / 12;
     }
 
     return {
-        periods: calendar,
-        startMonth: startMonth,
-        totalRevenue: totalRevenue,
-        totalCosts: totalCosts,
-        totalTax: totalTax,
-        totalInterest: totalInterest,
-        totalPenalties: totalPenalties,
-        totalLoanRepayment: totalLoanRepayment,
-        totalNewLoans: totalNewLoans,
-        totalCapex: totalCapex,
-        totalDividends: totalDividends,
-        totalDA: totalDA,
-        endCash: runningCash,
-        gapCount: calendar.filter(function (p) { return p.isGap; }).length,
-        warningCount: calendar.filter(function (p) { return p.isWarning; }).length
+        periods: cal, startMonth: startMonth,
+        totals: totals, endCash: runningCash,
+        gapCount: cal.filter(function (p) { return p.isGap; }).length,
+        warningCount: cal.filter(function (p) { return p.isWarning; }).length
     };
+};
+
+// Вспомогательные методы
+Graph.prototype._val = function (id) {
+    var n = this.nodes[id];
+    return n && n.value !== null && n.value !== undefined ? Math.abs(n.value) : 0;
+};
+
+Graph.prototype._schedule = function (id, yearTotal, horizon) {
+    var n = this.nodes[id];
+    var sched = [];
+    if (n && n.schedule && n.schedule.length === horizon) {
+        sched = n.schedule;
+    } else {
+        var monthly = (yearTotal || 0) / horizon;
+        for (var i = 0; i < horizon; i++) sched.push(monthly);
+    }
+    return sched;
+};
+
+Graph.prototype._company = function (key, defaultVal) {
+    if (!this.company) this.company = {};
+    var val = this.company[key];
+    return val !== undefined ? val : defaultVal;
 };
 
 // ============================================================
