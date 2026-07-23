@@ -48,6 +48,7 @@ function Node(id, type, value, min, max, source, label, enabled, temporalType) {
     this.enabled = enabled !== undefined ? enabled : true;
     this.temporalType = temporalType || 'CONSTANT';
     this.values = [];
+    this.formula = null;
 }
 
 Node.prototype.toDict = function () {
@@ -59,6 +60,7 @@ Node.prototype.toDict = function () {
         enabled: this.enabled
     };
     if (this.temporalType !== 'CONSTANT') r.temporalType = this.temporalType;
+    if (this.formula) r.formula = this.formula;
     if (this.value !== null) r.value = this.value;
     if (this.min !== null) r.min = this.min;
     if (this.max !== null) r.max = this.max;
@@ -66,17 +68,12 @@ Node.prototype.toDict = function () {
 };
 
 Node.fromDict = function (data) {
-    return new Node(
-        data.id,
-        data.type,
-        data.value,
-        data.min,
-        data.max,
-        data.source,
-        data.label,
-        data.enabled,
-        data.temporalType
+    var n = new Node(
+        data.id, data.type, data.value, data.min, data.max,
+        data.source, data.label, data.enabled, data.temporalType
     );
+    if (data.formula) n.formula = data.formula;
+    return n;
 };
 
 function Edge(fromNode, toNode, type, coefficient, lagDays, threshold, above, below) {
@@ -151,12 +148,62 @@ Graph.prototype.compute = function (iterations) {
 
 Graph.prototype._computeOnce = function () {
     var self = this;
+
+    // Шаг 1: вычисляем узлы с формулами
     Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
-        if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
+        if (n.formula && n.enabled !== false) {
+            try {
+                n.value = self._evalFormula(n.formula);
+            } catch (e) {
+                n.value = 0;
+            }
+        }
+    });
+
+    // Шаг 2: сброс вычисляемых узлов (кроме тех, что уже по формулам)
+    Object.keys(self.nodes).forEach(function (key) {
+        var n = self.nodes[key];
+        if ((n.type === 'INTERMEDIATE' || n.type === 'TARGET') && !n.formula) {
             n.value = 0;
         }
     });
+
+    // Шаг 3: суммируем вклады по рёбрам
+    self.edges.forEach(function (edge) {
+        var fromNode = self.nodes[edge.from];
+        var toNode = self.nodes[edge.to];
+        if (!fromNode || !toNode) return;
+        if (fromNode.enabled === false || toNode.enabled === false) return;
+        if (fromNode.value === null || fromNode.value === undefined) return;
+        if (toNode.formula) return; // пропускаем узлы с формулами
+        if (toNode.type !== 'INTERMEDIATE' && toNode.type !== 'TARGET') return;
+
+        var coeff = edge.coefficient !== null ? edge.coefficient : 1.0;
+        var contrib = computeEdge(edge.type, coeff, fromNode.value, edge.threshold, edge.above, edge.below);
+        toNode.value = (toNode.value || 0) + contrib;
+    });
+};
+
+Graph.prototype._evalFormula = function (formula) {
+    var self = this;
+    // Заменяем ID узлов на их значения
+    var expr = formula;
+    Object.keys(self.nodes).forEach(function (key) {
+        var n = self.nodes[key];
+        var val = n.value !== null && n.value !== undefined ? n.value : 0;
+        var regex = new RegExp('\\b' + key + '\\b', 'g');
+        expr = expr.replace(regex, val);
+    });
+    // Поддерживаемые функции
+    expr = expr.replace(/\bMAX\b/gi, 'Math.max');
+    expr = expr.replace(/\bMIN\b/gi, 'Math.min');
+    expr = expr.replace(/\bABS\b/gi, 'Math.abs');
+    expr = expr.replace(/\bSQRT\b/gi, 'Math.sqrt');
+    // Вычисляем
+    var result = eval(expr);
+    return typeof result === 'number' ? result : 0;
+};
     self.edges.forEach(function (edge) {
         var fromNode = self.nodes[edge.from];
         var toNode = self.nodes[edge.to];
@@ -196,25 +243,55 @@ Graph.prototype.computePeriods = function (horizon, stepMonths) {
     });
 
     for (var p = 0; p < periods; p++) {
+        // Временно подставляем values[p] в value для формул
         Object.keys(self.nodes).forEach(function (key) {
             var n = self.nodes[key];
-            if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
-                n.values[p] = 0;
+            n._savedValue = n.value;
+            n.value = n.values[p];
+        });
+
+        // Вычисляем формулы
+        Object.keys(self.nodes).forEach(function (key) {
+            var n = self.nodes[key];
+            if (n.formula && n.enabled !== false) {
+                try {
+                    n.values[p] = self._evalFormula(n.formula);
+                    n.value = n.values[p];
+                } catch (e) {
+                    n.values[p] = 0;
+                }
             }
         });
 
+        // Сброс
+        Object.keys(self.nodes).forEach(function (key) {
+            var n = self.nodes[key];
+            if ((n.type === 'INTERMEDIATE' || n.type === 'TARGET') && !n.formula) {
+                n.values[p] = 0;
+                n.value = 0;
+            }
+        });
+
+        // Суммируем
         self.edges.forEach(function (edge) {
             var fromNode = self.nodes[edge.from];
             var toNode = self.nodes[edge.to];
             if (!fromNode || !toNode) return;
-            if (fromNode.enabled === false) return;
-            if (toNode.enabled === false) return;
-            if (fromNode.values[p] === null || fromNode.values[p] === undefined) return;
+            if (fromNode.enabled === false || toNode.enabled === false) return;
+            if (fromNode.value === null || fromNode.value === undefined) return;
+            if (toNode.formula) return;
             if (toNode.type !== 'INTERMEDIATE' && toNode.type !== 'TARGET') return;
 
             var coeff = edge.coefficient !== null ? edge.coefficient : 1.0;
-            var contrib = computeEdge(edge.type, coeff, fromNode.values[p], edge.threshold, edge.above, edge.below);
+            var contrib = computeEdge(edge.type, coeff, fromNode.value, edge.threshold, edge.above, edge.below);
             toNode.values[p] = (toNode.values[p] || 0) + contrib;
+            toNode.value = toNode.values[p];
+        });
+
+        // Восстанавливаем value
+        Object.keys(self.nodes).forEach(function (key) {
+            var n = self.nodes[key];
+            n.value = n._savedValue;
         });
     }
 
