@@ -2,6 +2,7 @@
  * SIGMAFLOW v2.0 — Ядро системы
  * Классы: Node, Edge, Constraint, Graph
  * Функции: computeEdge, parseYAML, toYAML, selfCheck
+ * Поддержка периодов планирования
  */
 
 // ============================================================
@@ -36,7 +37,7 @@ function computeEdge(edgeType, coefficient, inputValue, threshold, above, below)
 // КЛАССЫ МОДЕЛИ
 // ============================================================
 
-function Node(id, type, value, min, max, source, label, enabled) {
+function Node(id, type, value, min, max, source, label, enabled, temporalType) {
     this.id = id;
     this.type = type;
     this.value = value !== undefined && value !== null ? value : null;
@@ -45,10 +46,19 @@ function Node(id, type, value, min, max, source, label, enabled) {
     this.source = source || 'manual';
     this.label = label || id;
     this.enabled = enabled !== undefined ? enabled : true;
+    this.temporalType = temporalType || 'CONSTANT';
+    this.values = [];
 }
 
 Node.prototype.toDict = function() {
-    var r = { id: this.id, type: this.type, source: this.source, label: this.label, enabled: this.enabled };
+    var r = {
+        id: this.id,
+        type: this.type,
+        source: this.source,
+        label: this.label,
+        enabled: this.enabled
+    };
+    if (this.temporalType !== 'CONSTANT') r.temporalType = this.temporalType;
     if (this.value !== null) r.value = this.value;
     if (this.min !== null) r.min = this.min;
     if (this.max !== null) r.max = this.max;
@@ -56,7 +66,17 @@ Node.prototype.toDict = function() {
 };
 
 Node.fromDict = function(data) {
-    return new Node(data.id, data.type, data.value, data.min, data.max, data.source, data.label, data.enabled);
+    return new Node(
+        data.id,
+        data.type,
+        data.value,
+        data.min,
+        data.max,
+        data.source,
+        data.label,
+        data.enabled,
+        data.temporalType
+    );
 };
 
 function Edge(fromNode, toNode, type, coefficient, lagDays, threshold, above, below) {
@@ -81,7 +101,16 @@ Edge.prototype.toDict = function() {
 };
 
 Edge.fromDict = function(data) {
-    return new Edge(data.from, data.to, data.type, data.coefficient, data.lag_days, data.threshold, data.above, data.below);
+    return new Edge(
+        data.from,
+        data.to,
+        data.type,
+        data.coefficient,
+        data.lag_days,
+        data.threshold,
+        data.above,
+        data.below
+    );
 };
 
 function Constraint(node, operator, value) {
@@ -96,6 +125,9 @@ function Graph(name) {
     this.edges = [];
     this.constraints = [];
     this.diagnostics = [];
+    this.horizon = 12;
+    this.stepMonths = 1;
+    this.currentPeriod = 0;
 }
 
 Graph.prototype.addNode = function(node) {
@@ -119,14 +151,12 @@ Graph.prototype.compute = function(iterations) {
 
 Graph.prototype._computeOnce = function() {
     var self = this;
-    // Сброс вычисляемых узлов
     Object.keys(self.nodes).forEach(function(key) {
         var n = self.nodes[key];
         if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
             n.value = 0;
         }
     });
-    // Суммируем вклады
     self.edges.forEach(function(edge) {
         var fromNode = self.nodes[edge.from];
         var toNode = self.nodes[edge.to];
@@ -141,11 +171,172 @@ Graph.prototype._computeOnce = function() {
     });
 };
 
+// ============================================================
+// ПЕРИОДЫ ПЛАНИРОВАНИЯ
+// ============================================================
+
+Graph.prototype.computePeriods = function(horizon, stepMonths) {
+    horizon = horizon || this.horizon || 12;
+    stepMonths = stepMonths || this.stepMonths || 1;
+    var periods = Math.floor(horizon / stepMonths);
+    var self = this;
+    this.horizon = horizon;
+    this.stepMonths = stepMonths;
+
+    Object.keys(self.nodes).forEach(function(key) {
+        var n = self.nodes[key];
+        n.values = [];
+        for (var i = 0; i < periods; i++) {
+            if (n.type === 'INPUT' || n.type === 'EXTERNAL') {
+                n.values.push(n.value);
+            } else {
+                n.values.push(0);
+            }
+        }
+    });
+
+    for (var p = 0; p < periods; p++) {
+        Object.keys(self.nodes).forEach(function(key) {
+            var n = self.nodes[key];
+            if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
+                n.values[p] = 0;
+            }
+        });
+
+        self.edges.forEach(function(edge) {
+            var fromNode = self.nodes[edge.from];
+            var toNode = self.nodes[edge.to];
+            if (!fromNode || !toNode) return;
+            if (fromNode.enabled === false) return;
+            if (toNode.enabled === false) return;
+            if (fromNode.values[p] === null || fromNode.values[p] === undefined) return;
+            if (toNode.type !== 'INTERMEDIATE' && toNode.type !== 'TARGET') return;
+
+            var coeff = edge.coefficient !== null ? edge.coefficient : 1.0;
+            var contrib = computeEdge(edge.type, coeff, fromNode.values[p], edge.threshold, edge.above, edge.below);
+            toNode.values[p] = (toNode.values[p] || 0) + contrib;
+        });
+    }
+
+    return periods;
+};
+
+Graph.prototype.getPeriodValue = function(nodeId, periodIndex) {
+    var n = this.nodes[nodeId];
+    if (!n) return null;
+    if (n.values && n.values.length > 0 && periodIndex !== undefined && periodIndex < n.values.length) {
+        return n.values[periodIndex];
+    }
+    if (n.values && n.values.length > 0) {
+        var sum = 0;
+        for (var i = 0; i < n.values.length; i++) {
+            sum += (n.values[i] || 0);
+        }
+        return sum;
+    }
+    return n.value;
+};
+
+Graph.prototype.getCashFlowCalendar = function() {
+    var self = this;
+    var periods = this.computePeriods();
+    var calendar = [];
+
+    var cashNode = self.nodes['CASH'];
+    var cashStart = self.nodes['CASH_START'];
+    var startValue = cashStart ? (cashStart.value || 0) : (cashNode ? (cashNode.value || 0) : 0);
+
+    var revenueNode = self.nodes['REVENUE'];
+    var cogsNode = self.nodes['COGS'];
+    var opexNode = self.nodes['ADMIN_EXP'];
+    var sellingNode = self.nodes['SELLING_EXP'];
+    var taxNode = self.nodes['TAX'];
+    var interestNode = self.nodes['INTEREST'];
+    var penaltiesNode = self.nodes['PENALTIES'];
+    var loanRepaymentNode = self.nodes['LOAN_REPAYMENT'];
+    var newLoansNode = self.nodes['NEW_LOANS'];
+    var capexNode = self.nodes['CAPEX'];
+
+    var runningCash = startValue;
+    var totalRevenue = 0;
+    var totalCosts = 0;
+    var totalTax = 0;
+    var totalInterest = 0;
+    var totalPenalties = 0;
+    var totalLoanRepayment = 0;
+    var totalNewLoans = 0;
+    var totalCapex = 0;
+
+    for (var p = 0; p < periods; p++) {
+        var revenue = revenueNode && revenueNode.values ? (revenueNode.values[p] || 0) : 0;
+        var cogs = cogsNode && cogsNode.values ? (cogsNode.values[p] || 0) : 0;
+        var opex = opexNode && opexNode.values ? (opexNode.values[p] || 0) : 0;
+        var selling = sellingNode && sellingNode.values ? (sellingNode.values[p] || 0) : 0;
+        var tax = taxNode && taxNode.values ? (taxNode.values[p] || 0) : 0;
+        var interest = interestNode && interestNode.values ? (interestNode.values[p] || 0) : 0;
+        var penalties = penaltiesNode && penaltiesNode.values ? (penaltiesNode.values[p] || 0) : 0;
+        var loanRepayment = loanRepaymentNode && loanRepaymentNode.values ? (loanRepaymentNode.values[p] || 0) : 0;
+        var newLoans = newLoansNode && newLoansNode.values ? (newLoansNode.values[p] || 0) : 0;
+        var capex = capexNode && capexNode.values ? (capexNode.values[p] || 0) : 0;
+
+        var periodCosts = cogs + opex + selling;
+        var periodNet = revenue - periodCosts - tax - interest - penalties + newLoans - loanRepayment - capex;
+
+        var startCash = runningCash;
+        runningCash += periodNet;
+
+        calendar.push({
+            period: p,
+            label: 'Период ' + (p + 1),
+            startCash: startCash,
+            revenue: revenue,
+            costs: periodCosts,
+            tax: tax,
+            interest: interest,
+            penalties: penalties,
+            loanRepayment: loanRepayment,
+            newLoans: newLoans,
+            capex: capex,
+            netFlow: periodNet,
+            endCash: runningCash,
+            isGap: runningCash < 0,
+            isWarning: periodNet < 0 && runningCash >= 0
+        });
+
+        totalRevenue += revenue;
+        totalCosts += periodCosts;
+        totalTax += tax;
+        totalInterest += interest;
+        totalPenalties += penalties;
+        totalLoanRepayment += loanRepayment;
+        totalNewLoans += newLoans;
+        totalCapex += capex;
+    }
+
+    return {
+        periods: calendar,
+        totalRevenue: totalRevenue,
+        totalCosts: totalCosts,
+        totalTax: totalTax,
+        totalInterest: totalInterest,
+        totalPenalties: totalPenalties,
+        totalLoanRepayment: totalLoanRepayment,
+        totalNewLoans: totalNewLoans,
+        totalCapex: totalCapex,
+        endCash: runningCash,
+        gapCount: calendar.filter(function(p) { return p.isGap; }).length,
+        warningCount: calendar.filter(function(p) { return p.isWarning; }).length
+    };
+};
+
+// ============================================================
+// САМОДИАГНОСТИКА
+// ============================================================
+
 Graph.prototype.selfCheck = function() {
     var self = this;
     self.diagnostics = [];
 
-    // S01: INTERMEDIATE/TARGET без входящих связей
     Object.keys(self.nodes).forEach(function(key) {
         var n = self.nodes[key];
         if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
@@ -161,7 +352,6 @@ Graph.prototype.selfCheck = function() {
         }
     });
 
-    // S02: INPUT/INTERMEDIATE без исходящих связей
     Object.keys(self.nodes).forEach(function(key) {
         var n = self.nodes[key];
         if (n.type === 'INPUT' || n.type === 'INTERMEDIATE' || n.type === 'EXTERNAL') {
@@ -177,7 +367,6 @@ Graph.prototype.selfCheck = function() {
         }
     });
 
-    // S06: Пропущенные коэффициенты
     self.edges.forEach(function(e) {
         if (e.type !== 'THR' && e.coefficient === null) {
             self.diagnostics.push({
@@ -197,10 +386,10 @@ Graph.prototype.selfCheck = function() {
         }
     });
 
-    // E01: Знаки коэффициентов
     var expectedSigns = {
         'PRICE->VOLUME': 'negative',
         'COGS->NET_PROFIT': 'negative',
+        'COGS->GROSS_PROFIT': 'negative',
         'OPEX->NET_PROFIT': 'negative',
         'INTEREST->EBT': 'negative',
         'TAX->NET_PROFIT': 'negative',
@@ -227,7 +416,6 @@ Graph.prototype.selfCheck = function() {
         }
     });
 
-    // E05: Отрицательные запасы и активы
     var nonNegativeNodes = ['INVENTORY', 'CASH', 'FIXED_ASSETS', 'RECEIVABLES', 'HEADCOUNT', 'ADMIN_HEADCOUNT', 'PROD_HEADCOUNT'];
     nonNegativeNodes.forEach(function(nid) {
         var n = self.nodes[nid];
@@ -241,7 +429,6 @@ Graph.prototype.selfCheck = function() {
         }
     });
 
-    // C01: Дней до кассового разрыва (если есть CASH и FCF)
     var cashNode = self.nodes['CASH'];
     var fcfNode = self.nodes['FCF'];
     if (cashNode && fcfNode && cashNode.value !== null && fcfNode.value !== null) {
@@ -261,12 +448,11 @@ Graph.prototype.selfCheck = function() {
         }
     }
 
-    // C04: Текущая ликвидность
     var caNode = self.nodes['CURRENT_ASSETS'];
     var stdNode = self.nodes['STD'];
     var payNode = self.nodes['PAYABLES'];
-    if (caNode && stdNode && payNode && caNode.value !== null && stdNode.value !== null && payNode.value !== null) {
-        var shortLiab = (stdNode.value || 0) + (payNode.value || 0);
+    if (caNode && payNode && caNode.value !== null && payNode.value !== null) {
+        var shortLiab = (stdNode && stdNode.value ? stdNode.value : 0) + (payNode.value || 0);
         if (shortLiab > 0) {
             var cr = caNode.value / shortLiab;
             if (cr < 1.0) {
@@ -280,7 +466,6 @@ Graph.prototype.selfCheck = function() {
         }
     }
 
-    // C02: Debt/EBITDA
     var loansNode = self.nodes['LOANS'];
     var ebitdaNode = self.nodes['EBITDA'];
     if (loansNode && ebitdaNode && loansNode.value !== null && ebitdaNode.value !== null && ebitdaNode.value > 0) {
@@ -295,7 +480,6 @@ Graph.prototype.selfCheck = function() {
         }
     }
 
-    // C03: Покрытие процентов
     var ebitNode = self.nodes['EBIT'];
     var intNode = self.nodes['INTEREST'];
     if (ebitNode && intNode && ebitNode.value !== null && intNode.value !== null && intNode.value > 0) {
@@ -324,7 +508,7 @@ Graph.prototype.toDict = function() {
         return { node: c.node, operator: c.operator, value: c.value };
     });
     return {
-        project: { name: self.name, version: 1 },
+        project: { name: self.name, version: 2 },
         nodes: nodeList,
         edges: edgeList,
         constraints: constrList
@@ -417,11 +601,12 @@ function parseYAML(text) {
 
 function toYAML(graph) {
     var dict = graph.toDict();
-    var y = 'project:\n  name: "' + dict.project.name + '"\n  version: 1\n\nnodes:\n';
+    var y = 'project:\n  name: "' + dict.project.name + '"\n  version: 2\n\nnodes:\n';
     dict.nodes.forEach(function(n) {
         y += '  - id: ' + n.id + '\n';
         y += '    type: ' + n.type + '\n';
         y += '    label: "' + n.label + '"\n';
+        if (n.temporalType && n.temporalType !== 'CONSTANT') y += '    temporalType: ' + n.temporalType + '\n';
         if (n.value !== undefined && n.value !== null) y += '    value: ' + n.value + '\n';
         if (n.min !== undefined && n.min !== null) y += '    min: ' + n.min + '\n';
         if (n.max !== undefined && n.max !== null) y += '    max: ' + n.max + '\n';
