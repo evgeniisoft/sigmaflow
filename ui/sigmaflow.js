@@ -1,7 +1,7 @@
 /**
- * SIGMAFLOW — Ядро системы на JavaScript
+ * SIGMAFLOW v2.0 — Ядро системы
  * Классы: Node, Edge, Constraint, Graph
- * Функции: computeEdge, parseYAML, toYAML
+ * Функции: computeEdge, parseYAML, toYAML, selfCheck
  */
 
 // ============================================================
@@ -12,26 +12,21 @@ function computeEdge(edgeType, coefficient, inputValue, threshold, above, below)
     switch (edgeType) {
         case 'LIN':
             return coefficient * inputValue;
-
         case 'LOG':
             if (inputValue <= 0) return 0;
             return coefficient * Math.log(inputValue);
-
         case 'EXP':
             if (inputValue > 50) inputValue = 50;
             return coefficient * Math.exp(inputValue);
-
         case 'DIM':
             if (inputValue < 0) return 0;
             return coefficient * Math.sqrt(inputValue);
-
         case 'THR':
             if (inputValue >= threshold) {
-                return above !== undefined ? above : inputValue;
+                return above !== undefined && above !== null ? above : inputValue;
             } else {
-                return below !== undefined ? below : 0;
+                return below !== undefined && below !== null ? below : 0;
             }
-
         default:
             throw new Error('Неизвестный тип связи: ' + edgeType);
     }
@@ -41,190 +36,316 @@ function computeEdge(edgeType, coefficient, inputValue, threshold, above, below)
 // КЛАССЫ МОДЕЛИ
 // ============================================================
 
-class Node {
-    constructor(id, type, value, min, max, source) {
-        this.id = id;
-        this.type = type;
-        this.value = value !== undefined ? value : null;
-        this.min = min !== undefined ? min : null;
-        this.max = max !== undefined ? max : null;
-        this.source = source || 'manual';
-    }
-
-    static fromDict(data) {
-        return new Node(
-            data.id,
-            data.type,
-            data.value,
-            data.min,
-            data.max,
-            data.source
-        );
-    }
-
-    toDict() {
-        var result = {
-            id: this.id,
-            type: this.type,
-            source: this.source
-        };
-        if (this.value !== null) result.value = this.value;
-        if (this.min !== null) result.min = this.min;
-        if (this.max !== null) result.max = this.max;
-        return result;
-    }
+function Node(id, type, value, min, max, source, label, enabled) {
+    this.id = id;
+    this.type = type;
+    this.value = value !== undefined && value !== null ? value : null;
+    this.min = min !== undefined && min !== null ? min : null;
+    this.max = max !== undefined && max !== null ? max : null;
+    this.source = source || 'manual';
+    this.label = label || id;
+    this.enabled = enabled !== undefined ? enabled : true;
 }
 
-class Edge {
-    constructor(fromNode, toNode, type, coefficient, lagDays, threshold, above, below) {
-        this.from = fromNode;
-        this.to = toNode;
-        this.type = type || 'LIN';
-        this.coefficient = coefficient !== undefined ? coefficient : null;
-        this.lag_days = lagDays || 0;
-        this.threshold = threshold !== undefined ? threshold : null;
-        this.above = above !== undefined ? above : null;
-        this.below = below !== undefined ? below : null;
-    }
+Node.prototype.toDict = function() {
+    var r = { id: this.id, type: this.type, source: this.source, label: this.label, enabled: this.enabled };
+    if (this.value !== null) r.value = this.value;
+    if (this.min !== null) r.min = this.min;
+    if (this.max !== null) r.max = this.max;
+    return r;
+};
 
-    static fromDict(data) {
-        return new Edge(
-            data.from,
-            data.to,
-            data.type,
-            data.coefficient,
-            data.lag_days,
-            data.threshold,
-            data.above,
-            data.below
-        );
-    }
+Node.fromDict = function(data) {
+    return new Node(data.id, data.type, data.value, data.min, data.max, data.source, data.label, data.enabled);
+};
 
-    toDict() {
-        var result = { from: this.from, to: this.to, type: this.type };
-        if (this.coefficient !== null) result.coefficient = this.coefficient;
-        if (this.lag_days) result.lag_days = this.lag_days;
-        if (this.threshold !== null) result.threshold = this.threshold;
-        if (this.above !== null) result.above = this.above;
-        if (this.below !== null) result.below = this.below;
-        return result;
-    }
+function Edge(fromNode, toNode, type, coefficient, lagDays, threshold, above, below) {
+    this.from = fromNode;
+    this.to = toNode;
+    this.type = type || 'LIN';
+    this.coefficient = coefficient !== undefined ? coefficient : null;
+    this.lag_days = lagDays || 0;
+    this.threshold = threshold !== undefined ? threshold : null;
+    this.above = above !== undefined ? above : null;
+    this.below = below !== undefined ? below : null;
 }
 
-class Constraint {
-    constructor(node, operator, value) {
-        this.node = node;
-        this.operator = operator;
-        this.value = value;
-    }
+Edge.prototype.toDict = function() {
+    var r = { from: this.from, to: this.to, type: this.type };
+    if (this.coefficient !== null) r.coefficient = this.coefficient;
+    if (this.lag_days) r.lag_days = this.lag_days;
+    if (this.threshold !== null) r.threshold = this.threshold;
+    if (this.above !== null) r.above = this.above;
+    if (this.below !== null) r.below = this.below;
+    return r;
+};
+
+Edge.fromDict = function(data) {
+    return new Edge(data.from, data.to, data.type, data.coefficient, data.lag_days, data.threshold, data.above, data.below);
+};
+
+function Constraint(node, operator, value) {
+    this.node = node;
+    this.operator = operator;
+    this.value = value;
 }
 
-class Graph {
-    constructor(name) {
-        this.name = name || '';
-        this.nodes = {};
-        this.edges = [];
-        this.constraints = [];
-    }
+function Graph(name) {
+    this.name = name || '';
+    this.nodes = {};
+    this.edges = [];
+    this.constraints = [];
+    this.diagnostics = [];
+}
 
-    addNode(node) {
-        this.nodes[node.id] = node;
-    }
+Graph.prototype.addNode = function(node) {
+    this.nodes[node.id] = node;
+};
 
-    addEdge(edge) {
-        this.edges.push(edge);
-    }
+Graph.prototype.addEdge = function(edge) {
+    this.edges.push(edge);
+};
 
-    addConstraint(constraint) {
-        this.constraints.push(constraint);
-    }
+Graph.prototype.addConstraint = function(c) {
+    this.constraints.push(c);
+};
 
-    compute() {
-        // Сброс вычисляемых узлов
-        var self = this;
-        Object.keys(self.nodes).forEach(function(key) {
-            var node = self.nodes[key];
-            if (node.type === 'INTERMEDIATE' || node.type === 'TARGET') {
-                node.value = 0;
+Graph.prototype.compute = function(iterations) {
+    iterations = iterations || 1;
+    for (var iter = 0; iter < iterations; iter++) {
+        this._computeOnce();
+    }
+};
+
+Graph.prototype._computeOnce = function() {
+    var self = this;
+    // Сброс вычисляемых узлов
+    Object.keys(self.nodes).forEach(function(key) {
+        var n = self.nodes[key];
+        if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
+            n.value = 0;
+        }
+    });
+    // Суммируем вклады
+    self.edges.forEach(function(edge) {
+        var fromNode = self.nodes[edge.from];
+        var toNode = self.nodes[edge.to];
+        if (!fromNode || !toNode) return;
+        if (fromNode.enabled === false) return;
+        if (toNode.enabled === false) return;
+        if (fromNode.value === null || fromNode.value === undefined) return;
+        if (toNode.type !== 'INTERMEDIATE' && toNode.type !== 'TARGET') return;
+        var coeff = edge.coefficient !== null ? edge.coefficient : 1.0;
+        var contrib = computeEdge(edge.type, coeff, fromNode.value, edge.threshold, edge.above, edge.below);
+        toNode.value = (toNode.value || 0) + contrib;
+    });
+};
+
+Graph.prototype.selfCheck = function() {
+    var self = this;
+    self.diagnostics = [];
+
+    // S01: INTERMEDIATE/TARGET без входящих связей
+    Object.keys(self.nodes).forEach(function(key) {
+        var n = self.nodes[key];
+        if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
+            var hasIncoming = self.edges.some(function(e) { return e.to === n.id; });
+            if (!hasIncoming) {
+                self.diagnostics.push({
+                    code: 'S01',
+                    level: 'warning',
+                    message: 'Узел "' + n.label + '" (' + n.id + ') не имеет входящих связей. Его значение всегда будет равно нулю.',
+                    node: n.id
+                });
             }
-        });
+        }
+    });
 
-        // Суммируем вклады по рёбрам
-        self.edges.forEach(function(edge) {
-            var fromNode = self.nodes[edge.from];
-            var toNode = self.nodes[edge.to];
+    // S02: INPUT/INTERMEDIATE без исходящих связей
+    Object.keys(self.nodes).forEach(function(key) {
+        var n = self.nodes[key];
+        if (n.type === 'INPUT' || n.type === 'INTERMEDIATE' || n.type === 'EXTERNAL') {
+            var hasOutgoing = self.edges.some(function(e) { return e.from === n.id; });
+            if (!hasOutgoing) {
+                self.diagnostics.push({
+                    code: 'S02',
+                    level: 'info',
+                    message: 'Узел "' + n.label + '" (' + n.id + ') не имеет исходящих связей. Он не влияет на результат.',
+                    node: n.id
+                });
+            }
+        }
+    });
 
-            if (!fromNode || !toNode) return;
-            if (fromNode.value === null || fromNode.value === undefined) return;
-            if (toNode.type !== 'INTERMEDIATE' && toNode.type !== 'TARGET') return;
+    // S06: Пропущенные коэффициенты
+    self.edges.forEach(function(e) {
+        if (e.type !== 'THR' && e.coefficient === null) {
+            self.diagnostics.push({
+                code: 'S06',
+                level: 'warning',
+                message: 'Ребро ' + e.from + ' \u2192 ' + e.to + ' (тип ' + e.type + ') не имеет коэффициента.',
+                edge: e.from + '->' + e.to
+            });
+        }
+        if (e.type === 'THR' && e.threshold === null) {
+            self.diagnostics.push({
+                code: 'S07',
+                level: 'warning',
+                message: 'Ребро ' + e.from + ' \u2192 ' + e.to + ' (тип THR): не задан порог (threshold).',
+                edge: e.from + '->' + e.to
+            });
+        }
+    });
 
-            var coeff = edge.coefficient !== null ? edge.coefficient : 1.0;
-            var contribution = computeEdge(
-                edge.type,
-                coeff,
-                fromNode.value,
-                edge.threshold,
-                edge.above,
-                edge.below
-            );
+    // E01: Знаки коэффициентов
+    var expectedSigns = {
+        'PRICE->VOLUME': 'negative',
+        'COGS->NET_PROFIT': 'negative',
+        'OPEX->NET_PROFIT': 'negative',
+        'INTEREST->EBT': 'negative',
+        'TAX->NET_PROFIT': 'negative',
+        'ATTRITION->HEADCOUNT': 'negative',
+        'MARKETING->VOLUME': 'positive',
+        'REVENUE->NET_PROFIT': 'positive',
+        'REVENUE->GROSS_PROFIT': 'positive'
+    };
+    self.edges.forEach(function(e) {
+        var key = e.from + '->' + e.to;
+        var expected = expectedSigns[key];
+        if (expected && e.coefficient !== null) {
+            var actualSign = e.coefficient > 0 ? 'positive' : (e.coefficient < 0 ? 'negative' : 'zero');
+            if (actualSign !== 'zero' && actualSign !== expected) {
+                self.diagnostics.push({
+                    code: 'E01',
+                    level: 'warning',
+                    message: 'Ребро ' + key + ' имеет ' + (e.coefficient > 0 ? 'положительный' : 'отрицательный') +
+                        ' коэффициент (' + e.coefficient.toFixed(2) + '). Обычно ожидается ' +
+                        (expected === 'positive' ? 'положительный' : 'отрицательный') + '. Проверьте.',
+                    edge: key
+                });
+            }
+        }
+    });
 
-            toNode.value = (toNode.value || 0) + contribution;
-        });
+    // E05: Отрицательные запасы и активы
+    var nonNegativeNodes = ['INVENTORY', 'CASH', 'FIXED_ASSETS', 'RECEIVABLES', 'HEADCOUNT', 'ADMIN_HEADCOUNT', 'PROD_HEADCOUNT'];
+    nonNegativeNodes.forEach(function(nid) {
+        var n = self.nodes[nid];
+        if (n && n.value !== null && n.value < 0) {
+            self.diagnostics.push({
+                code: 'E05',
+                level: 'warning',
+                message: 'Узел "' + n.label + '" (' + n.id + ') принял отрицательное значение: ' + formatValue(n.value) + '. Это экономически некорректно.',
+                node: n.id
+            });
+        }
+    });
+
+    // C01: Дней до кассового разрыва (если есть CASH и FCF)
+    var cashNode = self.nodes['CASH'];
+    var fcfNode = self.nodes['FCF'];
+    if (cashNode && fcfNode && cashNode.value !== null && fcfNode.value !== null) {
+        if (fcfNode.value < 0 && cashNode.value > 0) {
+            var dailyBurn = Math.abs(fcfNode.value) / 365;
+            if (dailyBurn > 0) {
+                var daysLeft = Math.floor(cashNode.value / dailyBurn);
+                if (daysLeft < 30) {
+                    self.diagnostics.push({
+                        code: 'C01',
+                        level: 'critical',
+                        message: 'Дней до кассового разрыва: ' + daysLeft + '. При текущем темпе расходов денежные средства закончатся через ' + daysLeft + ' дн.',
+                        node: 'CASH'
+                    });
+                }
+            }
+        }
     }
 
-    static fromDict(data) {
-        var g = new Graph(data.project.name);
-
-        (data.nodes || []).forEach(function(n) {
-            g.addNode(Node.fromDict(n));
-        });
-
-        (data.edges || []).forEach(function(e) {
-            g.addEdge(Edge.fromDict(e));
-        });
-
-        (data.constraints || []).forEach(function(c) {
-            g.addConstraint(new Constraint(c.node, c.operator, c.value));
-        });
-
-        return g;
+    // C04: Текущая ликвидность
+    var caNode = self.nodes['CURRENT_ASSETS'];
+    var stdNode = self.nodes['STD'];
+    var payNode = self.nodes['PAYABLES'];
+    if (caNode && stdNode && payNode && caNode.value !== null && stdNode.value !== null && payNode.value !== null) {
+        var shortLiab = (stdNode.value || 0) + (payNode.value || 0);
+        if (shortLiab > 0) {
+            var cr = caNode.value / shortLiab;
+            if (cr < 1.0) {
+                self.diagnostics.push({
+                    code: 'C04',
+                    level: 'critical',
+                    message: 'Текущая ликвидность = ' + cr.toFixed(2) + '. Оборотных активов недостаточно для покрытия краткосрочных обязательств.',
+                    node: 'CURRENT_ASSETS'
+                });
+            }
+        }
     }
 
-    toDict() {
-        var nodeList = [];
-        var self = this;
-        Object.keys(self.nodes).forEach(function(key) {
-            nodeList.push(self.nodes[key].toDict());
-        });
-
-        var edgeList = self.edges.map(function(e) { return e.toDict(); });
-
-        var constraintList = self.constraints.map(function(c) {
-            return { node: c.node, operator: c.operator, value: c.value };
-        });
-
-        return {
-            project: { name: self.name, version: 1 },
-            nodes: nodeList,
-            edges: edgeList,
-            constraints: constraintList
-        };
+    // C02: Debt/EBITDA
+    var loansNode = self.nodes['LOANS'];
+    var ebitdaNode = self.nodes['EBITDA'];
+    if (loansNode && ebitdaNode && loansNode.value !== null && ebitdaNode.value !== null && ebitdaNode.value > 0) {
+        var de = loansNode.value / ebitdaNode.value;
+        if (de > 3.0) {
+            self.diagnostics.push({
+                code: 'C02',
+                level: 'critical',
+                message: 'Debt/EBITDA = ' + de.toFixed(1) + '. Превышен порог 3.0. Возможно нарушение ковенантов.',
+                node: 'LOANS'
+            });
+        }
     }
-}
+
+    // C03: Покрытие процентов
+    var ebitNode = self.nodes['EBIT'];
+    var intNode = self.nodes['INTEREST'];
+    if (ebitNode && intNode && ebitNode.value !== null && intNode.value !== null && intNode.value > 0) {
+        var ic = ebitNode.value / intNode.value;
+        if (ic < 2.0) {
+            self.diagnostics.push({
+                code: 'C03',
+                level: 'critical',
+                message: 'Покрытие процентов = ' + ic.toFixed(1) + '. Ниже порога 2.0. Риск дефолта по процентам.',
+                node: 'INTEREST'
+            });
+        }
+    }
+
+    return self.diagnostics;
+};
+
+Graph.prototype.toDict = function() {
+    var nodeList = [];
+    var self = this;
+    Object.keys(self.nodes).forEach(function(key) {
+        nodeList.push(self.nodes[key].toDict());
+    });
+    var edgeList = self.edges.map(function(e) { return e.toDict(); });
+    var constrList = self.constraints.map(function(c) {
+        return { node: c.node, operator: c.operator, value: c.value };
+    });
+    return {
+        project: { name: self.name, version: 1 },
+        nodes: nodeList,
+        edges: edgeList,
+        constraints: constrList
+    };
+};
+
+Graph.fromDict = function(data) {
+    var g = new Graph(data.project.name);
+    (data.nodes || []).forEach(function(n) { g.addNode(Node.fromDict(n)); });
+    (data.edges || []).forEach(function(e) { g.addEdge(Edge.fromDict(e)); });
+    (data.constraints || []).forEach(function(c) { g.addConstraint(new Constraint(c.node, c.operator, c.value)); });
+    return g;
+};
 
 // ============================================================
-// ПРОСТОЙ ПАРСЕР YAML (для демо-файла)
+// ПАРСЕР YAML
 // ============================================================
 
 function parseYAML(text) {
     var lines = text.split('\n');
-    var result = {
-        project: { name: '', version: 1 },
-        nodes: [],
-        edges: [],
-        constraints: []
-    };
-
+    var result = { project: { name: '', version: 1 }, nodes: [], edges: [], constraints: [] };
     var currentSection = null;
     var currentNode = null;
     var currentEdge = null;
@@ -232,27 +353,11 @@ function parseYAML(text) {
 
     for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
-
-        // Пропуск пустых строк и комментариев
         if (line.trim() === '' || line.trim().indexOf('#') === 0) continue;
-
-        // Секции
-        if (line.indexOf('project:') === 0) {
-            currentSection = 'project';
-            continue;
-        }
-        if (line.indexOf('nodes:') === 0) {
-            currentSection = 'nodes';
-            continue;
-        }
-        if (line.indexOf('edges:') === 0) {
-            currentSection = 'edges';
-            continue;
-        }
-        if (line.indexOf('constraints:') === 0) {
-            currentSection = 'constraints';
-            continue;
-        }
+        if (line.indexOf('project:') === 0) { currentSection = 'project'; continue; }
+        if (line.indexOf('nodes:') === 0) { currentSection = 'nodes'; continue; }
+        if (line.indexOf('edges:') === 0) { currentSection = 'edges'; continue; }
+        if (line.indexOf('constraints:') === 0) { currentSection = 'constraints'; continue; }
 
         var indent = line.search(/\S/);
 
@@ -270,13 +375,11 @@ function parseYAML(text) {
                 var kv = line.split(':');
                 var key = kv[0].trim();
                 var val = kv.slice(1).join(':').trim();
-
-                if (key === 'value') {
+                if (key === 'value' || key === 'min' || key === 'max') {
                     var num = parseFloat(val);
                     currentNode[key] = isNaN(num) ? val : num;
-                } else if (key === 'min' || key === 'max') {
-                    var n = parseFloat(val);
-                    currentNode[key] = isNaN(n) ? null : n;
+                } else if (key === 'enabled') {
+                    currentNode[key] = val === 'true' || val === 'True';
                 } else {
                     currentNode[key] = val;
                 }
@@ -309,55 +412,36 @@ function parseYAML(text) {
             }
         }
     }
-
     return result;
 }
 
 function toYAML(graph) {
     var dict = graph.toDict();
-    var yaml = 'project:\n';
-    yaml += '  name: "' + dict.project.name + '"\n';
-    yaml += '  version: 1\n\n';
-
-    yaml += 'nodes:\n';
+    var y = 'project:\n  name: "' + dict.project.name + '"\n  version: 1\n\nnodes:\n';
     dict.nodes.forEach(function(n) {
-        yaml += '  - id: ' + n.id + '\n';
-        yaml += '    type: ' + n.type + '\n';
-        if (n.value !== undefined && n.value !== null) {
-            yaml += '    value: ' + n.value + '\n';
-        }
-        if (n.min !== undefined && n.min !== null) {
-            yaml += '    min: ' + n.min + '\n';
-        }
-        if (n.max !== undefined && n.max !== null) {
-            yaml += '    max: ' + n.max + '\n';
-        }
-        yaml += '    source: ' + n.source + '\n';
+        y += '  - id: ' + n.id + '\n';
+        y += '    type: ' + n.type + '\n';
+        y += '    label: "' + n.label + '"\n';
+        if (n.value !== undefined && n.value !== null) y += '    value: ' + n.value + '\n';
+        if (n.min !== undefined && n.min !== null) y += '    min: ' + n.min + '\n';
+        if (n.max !== undefined && n.max !== null) y += '    max: ' + n.max + '\n';
+        y += '    source: ' + n.source + '\n';
+        y += '    enabled: ' + n.enabled + '\n';
     });
-
-    yaml += '\nedges:\n';
+    y += '\nedges:\n';
     dict.edges.forEach(function(e) {
-        yaml += '  - from: ' + e.from + '\n';
-        yaml += '    to: ' + e.to + '\n';
-        yaml += '    type: ' + e.type + '\n';
-        if (e.coefficient !== undefined && e.coefficient !== null) {
-            yaml += '    coefficient: ' + e.coefficient + '\n';
-        }
-        if (e.lag_days) {
-            yaml += '    lag_days: ' + e.lag_days + '\n';
-        }
+        y += '  - from: ' + e.from + '\n    to: ' + e.to + '\n    type: ' + e.type + '\n';
+        if (e.coefficient !== undefined && e.coefficient !== null) y += '    coefficient: ' + e.coefficient + '\n';
+        if (e.lag_days) y += '    lag_days: ' + e.lag_days + '\n';
+        if (e.threshold !== undefined && e.threshold !== null) y += '    threshold: ' + e.threshold + '\n';
     });
-
     if (dict.constraints && dict.constraints.length > 0) {
-        yaml += '\nconstraints:\n';
+        y += '\nconstraints:\n';
         dict.constraints.forEach(function(c) {
-            yaml += '  - node: ' + c.node + '\n';
-            yaml += '    operator: "' + c.operator + '"\n';
-            yaml += '    value: ' + c.value + '\n';
+            y += '  - node: ' + c.node + '\n    operator: "' + c.operator + '"\n    value: ' + c.value + '\n';
         });
     }
-
-    return yaml;
+    return y;
 }
 
 // ============================================================
@@ -378,9 +462,7 @@ function checkConstraint(constraint, node) {
     var op = constraint.operator;
     var target = constraint.value;
     var actual = node.value;
-
     if (actual === null || actual === undefined) return null;
-
     switch (op) {
         case '>=': return actual >= target;
         case '<=': return actual <= target;
