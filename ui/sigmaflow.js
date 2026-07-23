@@ -363,7 +363,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var quarterlyTax = annualProfitTax / 4;
 
     // ФОТ для страховых и НДФЛ
-    var monthlyPayroll = (prodY + admY) / 12;
+    var monthlyPayroll = prodY + admY;
     var insRate = self._company('insurance_rate', 0.30);
     var monthlyInsurance = monthlyPayroll * insRate;
     var monthlyNDFL = monthlyPayroll * 0.13;
@@ -372,7 +372,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var ndsRate = self._company('nds_rate', 0.20);
     var ndsExempt = self._company('nds_exempt', false);
     var hasNDS = !ndsExempt && ndsRate > 0;
-    var monthlyRevenueForNDS = (revY / 12);
+    var monthlyRevenueForNDS = revY;
     var monthlyNDSaccrued = monthlyRevenueForNDS * ndsRate / (1 + ndsRate);
     var quarterlyNDS = monthlyNDSaccrued * 3;
     var ndsMonthlyPayment = quarterlyNDS / 3;
@@ -413,13 +413,13 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
         var taxThisMonth = profitTax + monthlyInsurance + monthlyNDFL + ndsThis + monthlyPropertyTax;
 
         // Приходы
-        var inflow = (revY / 12) + (intIncY / 12) + (othIncY / 12) + newLoanSch[p];
+        var inflow = (revY ) + (intIncY ) + (othIncY) + newLoanSch[p];
 
         // Расходы
-        var outflow = (matY / 12) + (enerY / 12) + (logY / 12) + (prodY / 12) + (admY / 12)
-            + (markY / 12) + (rentY / 12) + ((itY + rdY + trainY) / 12)
-            + taxThisMonth + (intY / 12) + (othExpY / 12) + (penY / 12)
-            + loanSch[p] + capexSch[p] + (divY / 12);
+        var outflow = (matY) + (enerY) + (logY) + (prodY) + (admY)
+            + (markY) + (rentY) + ((itY + rdY + trainY) / 12)
+            + taxThisMonth + (intY) + (othExpY) + (penY)
+            + loanSch[p] + capexSch[p] + (divY);
 
         var netFlow = inflow - outflow;
         var startCashPeriod = runningCash;
@@ -428,14 +428,14 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
         cal.push({
             period: p, label: label, month: mo,
             startCash: startCashPeriod,
-            revenue: revY / 12,
-            material: matY / 12,
-            energy: enerY / 12,
-            logistics: logY / 12,
-            payrollProd: prodY / 12,
-            payrollAdm: admY / 12,
-            marketing: markY / 12,
-            rent: rentY / 12,
+            revenue: revY ,
+            material: matY,
+            energy: enerY,
+            logistics: logY,
+            payrollProd: prodY,
+            payrollAdm: admY,
+            marketing: markY,
+            rent: rentY,
             itRdTraining: (itY + rdY + trainY) / 12,
             da: daY / 12,
             profitTax: profitTax,
@@ -444,27 +444,27 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             ndfl: monthlyNDFL,
             propertyTax: monthlyPropertyTax,
             totalTax: taxThisMonth,
-            interest: intY / 12,
-            interestIncome: intIncY / 12,
-            otherIncome: othIncY / 12,
-            otherExp: othExpY / 12,
-            penalties: penY / 12,
+            interest: intY,
+            interestIncome: intIncY ,
+            otherIncome: othIncY,
+            otherExp: othExpY,
+            penalties: penY,
             loanRepayment: loanSch[p],
             newLoans: newLoanSch[p],
             capex: capexSch[p],
-            dividends: divY / 12,
+            dividends: divY,
             netFlow: netFlow,
             endCash: runningCash,
             isGap: runningCash < 0,
             isWarning: netFlow < 0 && runningCash >= 0
         });
 
-        totals.rev += revY / 12; totals.mat += matY / 12; totals.ener += enerY / 12;
-        totals.log += logY / 12; totals.prod += prodY / 12; totals.adm += admY / 12;
-        totals.mark += markY / 12; totals.rent += rentY / 12; totals.it += (itY + rdY + trainY) / 12;
-        totals.tax += taxThisMonth; totals.int += intY / 12; totals.pen += penY / 12;
+        totals.rev += revY ; totals.mat += matY; totals.ener += enerY;
+        totals.log += logY; totals.prod += prodY; totals.adm += admY;
+        totals.mark += markY; totals.rent += rentY; totals.it += (itY + rdY + trainY) / 12;
+        totals.tax += taxThisMonth; totals.int += intY; totals.pen += penY;
         totals.repay += loanSch[p]; totals.newLoan += newLoanSch[p];
-        totals.capex += capexSch[p]; totals.div += divY / 12;
+        totals.capex += capexSch[p]; totals.div += divY;
     }
 
     return {
