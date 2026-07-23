@@ -118,83 +118,109 @@
             </div>
         </div>
 
-        <!-- ПАНЕЛЬ КОМПАНИЯ -->
-        <div id="panel-company" class="panel">
-            <div style="padding:16px;overflow-y:auto;flex:1;">
-                <h3 style="margin:0 0 16px 0;">ПАРАМЕТРЫ КОМПАНИИ</h3>
-        
-                <div class="form-group">
-                    <label>НАЛОГОВЫЙ РЕЖИМ</label>
-                    <select id="company-tax-system">
-                        <option value="OSNO">ОСНО (общая система)</option>
-                        <option value="USN_INCOME">УСН «Доходы» (6%)</option>
-                        <option value="USN_INCOME_MINUS">УСН «Доходы минус расходы» (15%)</option>
-                        <option value="PATENT">Патент</option>
-                    </select>
+                <!-- ПАНЕЛЬ КОМПАНИЯ -->
+                <div id="panel-company" class="panel">
+                    <div style="display:flex;height:100%;">
+                        <div style="flex:1;padding:16px;overflow-y:auto;">
+                            <h3 style="margin:0 0 16px 0;">ПАРАМЕТРЫ КОМПАНИИ</h3>
+                            <div id="company-status" style="margin-bottom:12px;font-size:12px;color:var(--text-hint);"></div>
+                
+                            <div class="form-group">
+                                <label>НАЛОГОВЫЙ РЕЖИМ</label>
+                                <select id="company-tax-system" style="width:100%;">
+                                    <option value="OSNO">ОСНО (общая система)</option>
+                                    <option value="USN_INCOME">УСН «Доходы»</option>
+                                    <option value="USN_INCOME_MINUS">УСН «Доходы минус расходы»</option>
+                                    <option value="PATENT">Патент</option>
+                                </select>
+                            </div>
+                
+                            <div id="osno-settings">
+                                <div class="form-group">
+                                    <label>СТАВКА НДС (с 2026 г. — 22% базовая)</label>
+                                    <select id="company-nds-rate" style="width:100%;">
+                                        <option value="0.22">22% (общая)</option>
+                                        <option value="0.10">10% (пониженная)</option>
+                                        <option value="0">0%</option>
+                                    </select>
+                                </div>
+                
+                                <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+                                    <input type="checkbox" id="company-nds-exempt"
+                                        style="accent-color:var(--critical);width:16px;height:16px;">
+                                    <label for="company-nds-exempt" style="margin:0;color:var(--warning);">Освобождение от НДС (ст. 145
+                                        НК РФ)</label>
+                                </div>
+                            </div>
+                
+                            <div id="usn-nds-settings" style="display:none;">
+                                <div class="form-group">
+                                    <label>СТАВКА НДС ПРИ ПРЕВЫШЕНИИ ЛИМИТА 20 млн</label>
+                                    <select id="company-usn-nds-rate" style="width:100%;">
+                                        <option value="0.22">22% (общая)</option>
+                                        <option value="0.05">5% (доход до 250 млн, без вычета)</option>
+                                        <option value="0.07">7% (доход 250-450 млн, без вычета)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+                                    <input type="checkbox" id="company-usn-nds-active"
+                                        style="accent-color:var(--warning);width:16px;height:16px;">
+                                    <label for="company-usn-nds-active" style="margin:0;color:var(--warning);">Превышен лимит —
+                                        обязанность платить НДС</label>
+                                </div>
+                            </div>
+                
+                            <div class="form-group">
+                                <label>СТАВКА НАЛОГА НА ПРИБЫЛЬ / УСН</label>
+                                <select id="company-profit-tax-rate" style="width:100%;">
+                                    <option value="0.20">20% (ОСНО, стандарт)</option>
+                                    <option value="0.06">6% (УСН «Доходы»)</option>
+                                    <option value="0.15">15% (УСН «Доходы минус расходы»)</option>
+                                    <option value="0.03">3% (IT / ОЭЗ)</option>
+                                    <option value="0">0% (льготная)</option>
+                                </select>
+                            </div>
+                
+                            <div class="form-group">
+                                <label>СТРАХОВЫЕ ВЗНОСЫ</label>
+                                <select id="company-insurance-rate" style="width:100%;">
+                                    <option value="0.30">30% (общий тариф)</option>
+                                    <option value="0.15">15% (МСП с превышения МРОТ)</option>
+                                    <option value="0.076">7.6% (IT-компания)</option>
+                                </select>
+                            </div>
+                
+                            <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+                                <input type="checkbox" id="company-has-property-tax" checked
+                                    style="accent-color:var(--accent);width:16px;height:16px;">
+                                <label for="company-has-property-tax" style="margin:0;">Налог на имущество</label>
+                            </div>
+                
+                            <div class="form-group" id="property-tax-rate-group">
+                                <label>СТАВКА НАЛОГА НА ИМУЩЕСТВО (%)</label>
+                                <input type="number" id="company-property-tax-rate" value="2.2" step="0.1" min="0" max="5"
+                                    style="width:100%;">
+                            </div>
+                
+                            <button id="btn-apply-company" class="primary" style="width:100%;margin-top:16px;">ПРИМЕНИТЬ
+                                НАСТРОЙКИ</button>
+                        </div>
+                
+                        <div
+                            style="width:340px;padding:16px;background:var(--bg-panel);border-left:1px solid var(--border);overflow-y:auto;flex-shrink:0;">
+                            <h4 style="margin:0 0 12px 0;font-size:12px;color:var(--text-hint);">СПРАВКА ПО НАЛОГАМ 2026</h4>
+                            <div style="font-size:11px;color:var(--text-hint);line-height:1.6;">
+                                <p><b>НДС с 2026:</b> базовая ставка 22% (ранее 20%). Ставка определяется на дату отгрузки.</p>
+                                <p><b>УСН + НДС:</b> при доходе > 20 млн — обязанность платить НДС. На выбор: 22% общая, 5% (доход до
+                                    250 млн) или 7% (250-450 млн). Ставки 5% и 7% — без права на вычет входного НДС.</p>
+                                <p><b>Налог на прибыль:</b> 20% (ОСНО), 3% для IT и резидентов ОЭЗ.</p>
+                                <p><b>Страховые взносы:</b> 30% общий, 15% для МСП, 7.6% для IT.</p>
+                                <p><b>НДС уплата:</b> ежеквартально, по 1/3 в каждом месяце следующего квартала.</p>
+                                <p><b>Налог на прибыль:</b> квартальные авансы (апрель, июль, октябрь, март).</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-        
-                <div class="form-group">
-                    <label>СТАВКА НДС</label>
-                    <select id="company-nds-rate">
-                        <option value="0.20">20%</option>
-                        <option value="0.10">10%</option>
-                        <option value="0">0%</option>
-                    </select>
-                </div>
-        
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="company-nds-exempt">
-                        Освобождение от НДС (ст. 145 НК РФ)
-                    </label>
-                </div>
-        
-                <div class="form-group">
-                    <label>СТАВКА НАЛОГА НА ПРИБЫЛЬ</label>
-                    <select id="company-profit-tax-rate">
-                        <option value="0.20">20% (стандартная)</option>
-                        <option value="0.03">3% (IT-компания, резиденты ОЭЗ)</option>
-                        <option value="0">0% (льготная)</option>
-                    </select>
-                </div>
-        
-                <div class="form-group">
-                    <label>СТРАХОВЫЕ ВЗНОСЫ</label>
-                    <select id="company-insurance-rate">
-                        <option value="0.30">30% (общий тариф)</option>
-                        <option value="0.15">15% (МСП с превышения МРОТ)</option>
-                        <option value="0.076">7.6% (IT-компания)</option>
-                    </select>
-                </div>
-        
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="company-has-property-tax" checked>
-                        Налог на имущество
-                    </label>
-                </div>
-        
-                <div class="form-group">
-                    <label>СТАВКА НАЛОГА НА ИМУЩЕСТВО (%)</label>
-                    <input type="number" id="company-property-tax-rate" value="2.2" step="0.1" min="0" max="5">
-                </div>
-        
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="company-has-transport-tax">
-                        Транспортный налог
-                    </label>
-                </div>
-        
-                <div class="form-group">
-                    <label>ТРАНСПОРТНЫЙ НАЛОГ (годовая сумма)</label>
-                    <input type="number" id="company-transport-tax" value="0" step="1000" min="0">
-                </div>
-        
-                <button id="btn-apply-company" class="primary" style="margin-top:16px;">ПРИМЕНИТЬ НАСТРОЙКИ</button>
-                <div id="company-status" style="margin-top:8px;font-size:12px;color:var(--ok);"></div>
-            </div>
-        </div>
 
                     <!-- ПАНЕЛЬ КАЛЕНДАРЬ -->
                     <div id="panel-calendar" class="panel">
@@ -1259,33 +1285,46 @@
                 }
                 buildCalendar();
             });
-                // Применить настройки компании
+                    // Переключение налогового режима — показ/скрытие настроек НДС
+            document.getElementById('company-tax-system').addEventListener('change', function () {
+                var v = this.value;
+                document.getElementById('osno-settings').style.display = (v === 'OSNO') ? 'block' : 'none';
+                document.getElementById('usn-nds-settings').style.display = (v === 'USN_INCOME' || v === 'USN_INCOME_MINUS') ? 'block' : 'none';
+            });
+
+            document.getElementById('company-has-property-tax').addEventListener('change', function () {
+                document.getElementById('property-tax-rate-group').style.display = this.checked ? 'block' : 'none';
+            });
+
+            // Применить настройки компании
             document.getElementById('btn-apply-company').addEventListener('click', function () {
                 if (!graph) { notify('Сначала загрузите модель', true); return; }
                 if (!graph.company) graph.company = {};
 
                 var taxSystem = document.getElementById('company-tax-system').value;
                 graph.company.tax_system = taxSystem;
-                graph.company.nds_rate = parseFloat(document.getElementById('company-nds-rate').value);
-                graph.company.nds_exempt = document.getElementById('company-nds-exempt').checked;
+
+                if (taxSystem === 'OSNO') {
+                    graph.company.nds_rate = parseFloat(document.getElementById('company-nds-rate').value);
+                    graph.company.nds_exempt = document.getElementById('company-nds-exempt').checked;
+                } else {
+                    graph.company.nds_rate = document.getElementById('company-usn-nds-active').checked
+                        ? parseFloat(document.getElementById('company-usn-nds-rate').value) : 0;
+                    graph.company.nds_exempt = !document.getElementById('company-usn-nds-active').checked;
+                }
+
                 graph.company.profit_tax_rate = parseFloat(document.getElementById('company-profit-tax-rate').value);
                 graph.company.insurance_rate = parseFloat(document.getElementById('company-insurance-rate').value);
                 graph.company.has_property_tax = document.getElementById('company-has-property-tax').checked;
-                graph.company.property_tax_rate = parseFloat(document.getElementById('company-property-tax-rate').value) / 100;
-                graph.company.has_transport_tax = document.getElementById('company-has-transport-tax').checked;
-                graph.company.transport_tax = parseFloat(document.getElementById('company-transport-tax').value) || 0;
+                graph.company.property_tax_rate = document.getElementById('company-has-property-tax').checked
+                    ? parseFloat(document.getElementById('company-property-tax-rate').value) / 100 : 0;
 
-                // Обновляем налоговую ставку в модели
-                if (taxSystem === 'USN_INCOME' || taxSystem === 'USN_INCOME_MINUS' || taxSystem === 'PATENT') {
-                    graph.company.nds_rate = 0;
-                    graph.company.nds_exempt = true;
-                }
-
+                // Обновляем ставку налога на прибыль в модели
                 if (graph.nodes['TAX_RATE']) {
                     graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
                 }
 
-                document.getElementById('company-status').textContent = 'Настройки применены. Налоговый календарь обновлён.';
+                document.getElementById('company-status').textContent = 'Настройки применены. Перейдите на вкладку КАЛЕНДАРЬ для просмотра.';
                 updateStatusBar('Настройки компании обновлены');
                 notify('Параметры компании сохранены');
             });
