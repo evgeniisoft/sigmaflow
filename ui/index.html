@@ -117,38 +117,51 @@
             </div>
         </div>
 
-        <!-- ПАНЕЛЬ КАЛЕНДАРЬ -->
-        <div id="panel-calendar" class="panel">
-            <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
-                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
-                    <h3 style="margin:0;">КАЛЕНДАРЬ ДВИЖЕНИЯ ДЕНЕГ</h3>
-                    <button id="btn-run-calendar" class="primary" style="margin-left:auto;">ПОСТРОИТЬ КАЛЕНДАРЬ</button>
+                <!-- ПАНЕЛЬ КАЛЕНДАРЬ -->
+                <div id="panel-calendar" class="panel">
+                    <div style="padding:16px;overflow:auto;flex:1;display:flex;flex-direction:column;">
+                        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
+                            <h3 style="margin:0;">КАЛЕНДАРЬ ДВИЖЕНИЯ ДЕНЕГ</h3>
+                            <button id="btn-run-calendar" class="primary" style="margin-left:auto;">ПОСТРОИТЬ КАЛЕНДАРЬ</button>
+                        </div>
+                        <div id="calendar-summary" style="margin-bottom:12px;font-size:12px;color:var(--text-hint);"></div>
+                        <div style="overflow-x:auto;flex:1;">
+                            <table id="calendar-table" style="min-width:1800px;">
+                                <thead>
+                                    <tr>
+                                        <th>ПЕРИОД</th>
+                                        <th>ОСТАТОК НА НАЧАЛО</th>
+                                        <th>ВЫРУЧКА</th>
+                                        <th>ФОТ ПРОИЗВ.</th>
+                                        <th>ФОТ АУП</th>
+                                        <th>МАТЕРИАЛЫ</th>
+                                        <th>ЭНЕРГИЯ</th>
+                                        <th>ЛОГИСТИКА</th>
+                                        <th>МАРКЕТИНГ</th>
+                                        <th>АРЕНДА</th>
+                                        <th>IT/R&D/ОБУЧ</th>
+                                        <th>НДС</th>
+                                        <th>НАЛОГ НА ПРИБ.</th>
+                                        <th>СТРАХ. ВЗНОСЫ</th>
+                                        <th>НДФЛ</th>
+                                        <th>ПРОЦЕНТЫ</th>
+                                        <th>ПОГАШ. КРЕДИТА</th>
+                                        <th>НОВЫЕ КРЕДИТЫ</th>
+                                        <th>CAPEX</th>
+                                        <th>ДИВИДЕНДЫ</th>
+                                        <th>ШТРАФЫ</th>
+                                        <th>ПРОЧИЕ</th>
+                                        <th>ИТОГО</th>
+                                        <th>ОСТАТОК НА КОНЕЦ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="calendar-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="calendar-gaps" style="margin-top:12px;flex-shrink:0;"></div>
+                    </div>
                 </div>
-                <div id="calendar-summary" style="margin-bottom:12px;font-size:12px;color:var(--text-hint);"></div>
-                <div style="overflow-x:auto;flex:1;">
-                    <table id="calendar-table">
-                        <thead>
-                            <tr>
-                                <th>ПЕРИОД</th>
-                                <th>ОСТАТОК НА НАЧАЛО</th>
-                                <th>ВЫРУЧКА</th>
-                                <th>РАСХОДЫ</th>
-                                <th>НАЛОГИ</th>
-                                <th>ПРОЦЕНТЫ</th>
-                                <th>ШТРАФЫ</th>
-                                <th>КРЕДИТЫ (+/-)</th>
-                                <th>CAPEX</th>
-                                <th>ИТОГО</th>
-                                <th>ОСТАТОК НА КОНЕЦ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="calendar-table-body">
-                        </tbody>
-                    </table>
-                </div>
-                <div id="calendar-gaps" style="margin-top:12px;flex-shrink:0;"></div>
-            </div>
-        </div>
 
         <!-- ПАНЕЛЬ ДИАГНОСТИКА -->
         <div id="panel-diagnostics" class="panel">
@@ -938,13 +951,10 @@
         }
         function buildCalendar() {
                 if (!graph) return;
-
                 graph.compute();
 
-                // Определяем текущий месяц как стартовый
                 var now = new Date();
                 var startMonth = now.getMonth();
-
                 var cal = graph.getCashFlowCalendar(startMonth, 12);
 
                 var summary = document.getElementById('calendar-summary');
@@ -961,52 +971,75 @@
 
                 var tbody = document.getElementById('calendar-table-body');
                 var html = '';
+                var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
 
                 cal.periods.forEach(function (p) {
-                    var rowClass = '';
-                    if (p.isGap) {
-                        rowClass = 'style="background:rgba(212,75,60,0.15);cursor:pointer;"';
-                    } else if (p.isWarning) {
-                        rowClass = 'style="background:rgba(212,168,67,0.1);cursor:pointer;"';
-                    } else {
-                        rowClass = 'style="cursor:pointer;"';
-                    }
+                    var rowClass = p.isGap ? 'style="background:rgba(212,75,60,0.15);cursor:pointer;"' :
+                        (p.isWarning ? 'style="background:rgba(212,168,67,0.1);cursor:pointer;"' : 'style="cursor:pointer;"');
+
+                    var other = p.interestIncome + p.otherIncome - p.otherExp - p.penalties;
 
                     html += '<tr ' + rowClass + ' onclick="showMonthDetail(' + p.period + ')">';
                     html += '<td>' + p.label + '</td>';
                     html += '<td class="value-cell">' + formatValue(p.startCash) + '</td>';
                     html += '<td class="value-cell">' + formatValue(p.revenue) + '</td>';
-                    html += '<td class="value-cell">' + formatValue(p.costs) + '</td>';
-                    html += '<td class="value-cell">' + formatValue(p.totalTax) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.payrollProd) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.payrollAdm) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.material) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.energy) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.logistics) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.marketing) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.rent) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.itRdTraining) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.nds) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.profitTax) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.insurance) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.ndfl) + '</td>';
                     html += '<td class="value-cell">' + formatValue(p.interest) + '</td>';
-                    html += '<td class="value-cell">' + formatValue(p.penalties) + '</td>';
-                    html += '<td class="value-cell">' + formatValue(p.newLoans - p.loanRepayment) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.loanRepayment) + '</td>';
+                    html += '<td class="value-cell" style="color:' + (p.newLoans > 0 ? 'var(--ok)' : 'var(--text-hint)') + ';">' + formatValue(p.newLoans) + '</td>';
                     html += '<td class="value-cell">' + formatValue(p.capex) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.dividends) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(p.penalties) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(other) + '</td>';
                     html += '<td class="value-cell" style="font-weight:500;color:' + (p.netFlow >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(p.netFlow) + '</td>';
                     html += '<td class="value-cell" style="font-weight:500;color:' + (p.endCash >= 0 ? 'var(--text-heading)' : 'var(--critical)') + ';">' + formatValue(p.endCash) + '</td>';
                     html += '</tr>';
                 });
 
                 // Итого
+                var t = cal.totals;
                 html += '<tr style="border-top:2px solid var(--border);font-weight:500;">';
                 html += '<td>ИТОГО</td>';
                 html += '<td class="value-cell">' + formatValue(cal.periods[0].startCash) + '</td>';
-                html += '<td class="value-cell">' + formatValue(cal.totalRevenue) + '</td>';
-                html += '<td class="value-cell">' + formatValue(cal.totalCosts) + '</td>';
-                html += '<td class="value-cell">' + formatValue(cal.totalTax) + '</td>';
-                html += '<td class="value-cell">' + formatValue(cal.totalInterest) + '</td>';
-                html += '<td class="value-cell">' + formatValue(cal.totalPenalties) + '</td>';
-                html += '<td class="value-cell">' + formatValue(cal.totalNewLoans - cal.totalLoanRepayment) + '</td>';
-                html += '<td class="value-cell">' + formatValue(cal.totalCapex) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.rev) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.prod) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.adm) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.mat) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.ener) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.log) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.mark) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.rent) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.it) + '</td>';
+                html += '<td class="value-cell">—</td>';
+                html += '<td class="value-cell">—</td>';
+                html += '<td class="value-cell">—</td>';
+                html += '<td class="value-cell">—</td>';
+                html += '<td class="value-cell">' + formatValue(t.int) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.repay) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.newLoan) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.capex) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.div) + '</td>';
+                html += '<td class="value-cell">' + formatValue(t.pen) + '</td>';
+                html += '<td class="value-cell">—</td>';
                 html += '<td class="value-cell">—</td>';
                 html += '<td class="value-cell">' + formatValue(cal.endCash) + '</td>';
                 html += '</tr>';
 
                 tbody.innerHTML = html;
-
-                // Сохраняем данные календаря для детализации
                 window._calendarData = cal;
 
+                // Разрывы
                 var gapsDiv = document.getElementById('calendar-gaps');
                 if (gapCount > 0) {
                     var gapsHtml = '<div style="margin-top:8px;">';
@@ -1014,9 +1047,7 @@
                         if (p.isGap) {
                             gapsHtml += '<div style="padding:8px;margin-bottom:4px;border:1px solid var(--critical);background:rgba(212,75,60,0.1);cursor:pointer;" onclick="showMonthDetail(' + p.period + ')">';
                             gapsHtml += '<span style="color:var(--critical);font-weight:500;">[!] КАССОВЫЙ РАЗРЫВ: ' + p.label + '</span><br>';
-                            gapsHtml += 'Остаток на начало: ' + formatValue(p.startCash) + ' | ';
-                            gapsHtml += 'Дефицит: ' + formatValue(Math.abs(p.endCash)) + ' | ';
-                            gapsHtml += 'Кликните для детализации';
+                            gapsHtml += 'Остаток на начало: ' + formatValue(p.startCash) + ' | Дефицит: ' + formatValue(Math.abs(p.endCash)) + ' | Кликните для детализации';
                             gapsHtml += '</div>';
                         }
                     });
@@ -1032,72 +1063,67 @@
 
             // Детализация месяца
             function showMonthDetail(periodIndex) {
-                var cal = window._calendarData;
-                if (!cal || !cal.periods || periodIndex >= cal.periods.length) return;
+                    var cal = window._calendarData;
+                    if (!cal || !cal.periods || periodIndex >= cal.periods.length) return;
+                    var p = cal.periods[periodIndex];
 
-                var p = cal.periods[periodIndex];
+                    var detailHtml = '<div style="padding:16px;background:var(--bg-panel);border:1px solid var(--border);margin-top:12px;">';
+                    detailHtml += '<h4 style="margin:0 0 12px 0;">' + p.label + (p.isGap ? ' — КАССОВЫЙ РАЗРЫВ' : '') + '</h4>';
 
-                var detailHtml = '<div style="padding:16px;background:var(--bg-panel);border:1px solid var(--border);margin-top:12px;">';
-                detailHtml += '<h4 style="margin:0 0 12px 0;">' + p.label + (p.isGap ? ' — КАССОВЫЙ РАЗРЫВ' : '') + '</h4>';
+                    detailHtml += '<table><thead><tr><th>СТАТЬЯ</th><th>СУММА</th></tr></thead><tbody>';
 
-                detailHtml += '<table><thead><tr><th>СТАТЬЯ</th><th>СУММА</th><th>ДОЛЯ</th></tr></thead><tbody>';
+                    var items = [
+                        ['Остаток на начало', p.startCash],
+                        ['Выручка', p.revenue],
+                        ['ФОТ производственного персонала', -p.payrollProd],
+                        ['ФОТ АУП', -p.payrollAdm],
+                        ['Материалы', -p.material],
+                        ['Энергия', -p.energy],
+                        ['Логистика', -p.logistics],
+                        ['Маркетинг', -p.marketing],
+                        ['Аренда', -p.rent],
+                        ['IT/R&D/Обучение', -p.itRdTraining],
+                        ['Амортизация (справочно)', -p.da],
+                        ['НДС', -p.nds],
+                        ['Налог на прибыль (аванс)', -p.profitTax],
+                        ['Страховые взносы', -p.insurance],
+                        ['НДФЛ', -p.ndfl],
+                        ['Проценты по кредитам', -p.interest],
+                        ['Погашение тела кредита', -p.loanRepayment],
+                        ['Новые кредиты', p.newLoans],
+                        ['CAPEX', -p.capex],
+                        ['Дивиденды', -p.dividends],
+                        ['Штрафы', -p.penalties],
+                        ['Проценты к получению', p.interestIncome],
+                        ['Прочие доходы', p.otherIncome],
+                        ['Прочие расходы', -p.otherExp]
+                    ];
 
-                var items = [
-                    { label: 'Выручка', value: p.revenue, type: 'inflow' },
-                    { label: 'Проценты к получению', value: p.interestIncome, type: 'inflow' },
-                    { label: 'Прочие доходы', value: p.otherIncome, type: 'inflow' },
-                    { label: 'Новые кредиты', value: p.newLoans, type: 'inflow' },
-                    { label: 'Себестоимость + OPEX', value: -p.costs, type: 'outflow' },
-                    { label: 'Налог на прибыль', value: -p.profitTax, type: 'outflow' },
-                    { label: 'НДС', value: -p.nds, type: 'outflow' },
-                    { label: 'Страховые взносы', value: -p.insurance, type: 'outflow' },
-                    { label: 'НДФЛ', value: -p.ndfl, type: 'outflow' },
-                    { label: 'Проценты к уплате', value: -p.interest, type: 'outflow' },
-                    { label: 'Прочие расходы', value: -p.otherExp, type: 'outflow' },
-                    { label: 'Штрафы', value: -p.penalties, type: 'outflow' },
-                    { label: 'Погашение кредитов', value: -p.loanRepayment, type: 'outflow' },
-                    { label: 'CAPEX', value: -p.capex, type: 'outflow' },
-                    { label: 'Дивиденды', value: -p.dividends, type: 'outflow' }
-                ];
+                    items.forEach(function (item) {
+                        if (Math.abs(item[1]) > 0.001) {
+                            var color = item[1] >= 0 ? 'var(--ok)' : 'var(--critical)';
+                            detailHtml += '<tr><td>' + item[0] + '</td><td class="value-cell" style="color:' + color + ';">' + formatValue(item[1]) + '</td></tr>';
+                        }
+                    });
 
-                var totalAbs = 0;
-                items.forEach(function (item) {
-                    if (Math.abs(item.value) > 0) totalAbs += Math.abs(item.value);
-                });
+                    detailHtml += '</tbody></table>';
 
-                items.forEach(function (item) {
-                    if (Math.abs(item.value) > 0) {
-                        var color = item.value >= 0 ? 'var(--ok)' : 'var(--critical)';
-                        var pct = totalAbs > 0 ? (Math.abs(item.value) / totalAbs * 100).toFixed(1) : '0';
-                        detailHtml += '<tr>';
-                        detailHtml += '<td>' + item.label + '</td>';
-                        detailHtml += '<td class="value-cell" style="color:' + color + ';">' + formatValue(item.value) + '</td>';
-                        detailHtml += '<td class="value-cell">' + pct + '%</td>';
-                        detailHtml += '</tr>';
-                    }
-                });
+                    detailHtml += '<div style="margin-top:8px;font-size:12px;">';
+                    detailHtml += 'Итого за период: <span style="color:' + (p.netFlow >= 0 ? 'var(--ok)' : 'var(--critical)') + ';font-weight:500;">' + formatValue(p.netFlow) + '</span> | ';
+                    detailHtml += 'Остаток на конец: <span style="color:' + (p.endCash >= 0 ? 'var(--text-heading)' : 'var(--critical)') + ';font-weight:500;">' + formatValue(p.endCash) + '</span>';
+                    detailHtml += '</div>';
 
-                detailHtml += '</tbody></table>';
+                    detailHtml += '<button onclick="document.getElementById(\'month-detail\').style.display=\'none\'" style="margin-top:8px;">ЗАКРЫТЬ</button>';
+                    detailHtml += '</div>';
 
-                detailHtml += '<div style="margin-top:8px;font-size:12px;">';
-                detailHtml += 'Остаток на начало: ' + formatValue(p.startCash) + ' | ';
-                detailHtml += 'Итого за период: <span style="color:' + (p.netFlow >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(p.netFlow) + '</span> | ';
-                detailHtml += 'Остаток на конец: <span style="color:' + (p.endCash >= 0 ? 'var(--text-heading)' : 'var(--critical)') + ';">' + formatValue(p.endCash) + '</span>';
-                detailHtml += '</div>';
-
-                detailHtml += '<button onclick="document.getElementById(\'month-detail\').style.display=\'none\'" style="margin-top:8px;">ЗАКРЫТЬ</button>';
-                detailHtml += '</div>';
-
-                var container = document.getElementById('calendar-gaps');
-                var existing = document.getElementById('month-detail');
-                if (existing) existing.remove();
-
-                var div = document.createElement('div');
-                div.id = 'month-detail';
-                div.innerHTML = detailHtml;
-                container.appendChild(div);
-            }
-
+                    var container = document.getElementById('calendar-gaps');
+                    var existing = document.getElementById('month-detail');
+                    if (existing) existing.remove();
+                    var div = document.createElement('div');
+                    div.id = 'month-detail';
+                    div.innerHTML = detailHtml;
+                    container.appendChild(div);
+                }
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
         // ============================================================
