@@ -52,46 +52,109 @@
             </div>
         </div>
 
-        <!-- ПАНЕЛЬ ДАННЫЕ -->
-        <div id="panel-data" class="panel">
-            <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
-                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
-                    <button id="btn-compute-data" class="primary">ВЫЧИСЛИТЬ</button>
-                    <button id="btn-apply-table" class="primary">ПРИМЕНИТЬ ИЗМЕНЕНИЯ</button>
-                    <span style="color:var(--text-hint);font-size:12px;margin-left:auto;">ФИЛЬТР:</span>
-                    <select id="table-filter"
-                        style="font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 8px;">
-                        <option value="ALL">ВСЕ</option>
-                        <option value="INPUT">INPUT</option>
-                        <option value="EXTERNAL">EXTERNAL</option>
-                        <option value="COMPUTED">INTERMEDIATE + TARGET</option>
-                    </select>
-                    <span style="color:var(--text-hint);font-size:12px;">ПОИСК:</span>
-                    <input type="text" id="table-search" placeholder="Название или ID"
-                        style="font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 8px;width:180px;">
-                </div>
-                <div style="overflow-x:auto;flex:1;">
-                    <table id="data-table">
-                        <thead>
-                            <tr>
-                                <th>НАЗВАНИЕ (ID)</th>
-                                <th>ТИП</th>
-                                <th>ЗНАЧЕНИЕ</th>
-                                <th>МИН</th>
-                                <th>МАКС</th>
-                                <th>ИСТ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="data-table-body">
-                        </tbody>
-                    </table>
-                </div>
-                <div id="compute-results" style="display:none;margin-top:12px;flex-shrink:0;">
-                    <h4>РЕЗУЛЬТАТЫ ВЫЧИСЛЕНИЙ</h4>
-                    <div id="compute-results-body"></div>
+            <!-- ПАНЕЛЬ ДАННЫЕ -->
+            <div id="panel-data" class="panel">
+                <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
+                    <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
+                        <button id="btn-compute-data" class="primary">ВЫЧИСЛИТЬ</button>
+                        <button id="btn-apply-table" class="primary">ПРИМЕНИТЬ ИЗМЕНЕНИЯ</button>
+                        <button id="btn-copy-table" style="margin-left:auto;">КОПИРОВАТЬ ТАБЛИЦУ</button>
+                    </div>
+            
+                    <!-- Управляемые параметры -->
+                    <div style="margin-bottom:16px;flex-shrink:0;">
+                        <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">УПРАВЛЯЕМЫЕ
+                            ПАРАМЕТРЫ</div>
+                        <table id="table-inputs-main">
+                            <thead>
+                                <tr>
+                                    <th>НАЗВАНИЕ</th>
+                                    <th>ЗНАЧЕНИЕ</th>
+                                    <th>+/-10%</th>
+                                    <th>МИН</th>
+                                    <th>МАКС</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-inputs-main-body"></tbody>
+                        </table>
+                        <div id="toggle-extended" style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">▶
+                            РАСШИРЕННЫЕ ПАРАМЕТРЫ</div>
+                        <table id="table-inputs-ext" style="display:none;">
+                            <thead>
+                                <tr>
+                                    <th>НАЗВАНИЕ</th>
+                                    <th>ЗНАЧЕНИЕ</th>
+                                    <th>+/-10%</th>
+                                    <th>МИН</th>
+                                    <th>МАКС</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-inputs-ext-body"></tbody>
+                        </table>
+                    </div>
+            
+                    <!-- Внешние факторы -->
+                    <div style="margin-bottom:16px;flex-shrink:0;">
+                        <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">ВНЕШНИЕ ФАКТОРЫ
+                        </div>
+                        <table id="table-external-main">
+                            <thead>
+                                <tr>
+                                    <th>НАЗВАНИЕ</th>
+                                    <th>ЗНАЧЕНИЕ</th>
+                                    <th>+/-10%</th>
+                                    <th>МИН</th>
+                                    <th>МАКС</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-external-main-body"></tbody>
+                        </table>
+                        <div id="toggle-ext-external" style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">▶
+                            РАСШИРЕННЫЕ ВНЕШНИЕ</div>
+                        <table id="table-external-ext" style="display:none;">
+                            <thead>
+                                <tr>
+                                    <th>НАЗВАНИЕ</th>
+                                    <th>ЗНАЧЕНИЕ</th>
+                                    <th>+/-10%</th>
+                                    <th>МИН</th>
+                                    <th>МАКС</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-external-ext-body"></tbody>
+                        </table>
+                    </div>
+            
+                    <!-- Ключевые результаты -->
+                    <div style="margin-bottom:16px;flex-shrink:0;">
+                        <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">КЛЮЧЕВЫЕ
+                            РЕЗУЛЬТАТЫ</div>
+                        <div id="key-results" style="padding:8px;background:var(--bg-input);border:1px solid var(--border);"></div>
+                        <div id="toggle-full-table" style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">▶
+                            ПОЛНАЯ ТАБЛИЦА</div>
+                    </div>
+            
+                    <!-- Полная таблица (скрыта) -->
+                    <div id="full-table-container" style="display:none;margin-bottom:16px;">
+                        <table id="data-table">
+                            <thead>
+                                <tr>
+                                    <th>НАЗВАНИЕ (ID)</th>
+                                    <th>ТИП</th>
+                                    <th>ЗНАЧЕНИЕ</th>
+                                    <th>МИН</th>
+                                    <th>МАКС</th>
+                                    <th>ИСТ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="data-table-body"></tbody>
+                        </table>
+                    </div>
+            
+                    <!-- Ограничения -->
+                    <div id="compute-results" style="flex-shrink:0;"></div>
                 </div>
             </div>
-        </div>
         <!-- ПАНЕЛЬ КАЛИБРОВКА -->
         <div id="panel-calibrate" class="panel">
             <h3>КАЛИБРОВКА МОДЕЛИ</h3>
@@ -746,229 +809,134 @@
         // ТАБЛИЦА ДАННЫХ
         // ============================================================
 
-        function renderDataTable() {
+        // Основные INPUT-узлы (всегда видны)
+            var mainInputs = ['PRICE', 'VOLUME', 'MARKETING', 'PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'CAPEX', 'LOANS'];
+            // Расширенные INPUT-узлы (скрыты)
+            var extInputs = ['SEASON', 'COMPETITION', 'BASE_MATERIAL_PRICE', 'ENERGY_RATE', 'LOGISTICS_RATE', 'DEFECT_RATE', 'RENT', 'IT_EXP', 'RD_EXP', 'TRAINING_EXP', 'BANK_SPREAD', 'RATE_TYPE', 'CREDIT_RATING', 'LOAN_REPAYMENT', 'NEW_LOANS', 'DIVIDENDS', 'PENALTIES', 'OTHER_INCOME', 'OTHER_EXP', 'INTEREST_INCOME', 'delta_RECEIVABLES', 'delta_PAYABLES', 'delta_INVENTORY', 'INVENTORY', 'RECEIVABLES', 'PAYABLES', 'EQUITY', 'RETAINED_START', 'CASH_START'];
+            // Основные EXTERNAL
+            var mainExternal = ['CB_RATE', 'INFLATION', 'FX_RATE'];
+            // Расширенные EXTERNAL
+            var extExternal = ['PMI', 'CCI', 'SANCTIONS', 'GEO_INDEX', 'HOUSEHOLD_INCOME', 'SUPPLIER_RISK', 'TARIFFS', 'LABOR_INDEX'];
+
+            function renderDataTable() {
                 if (!graph) return;
 
-                var filter = document.getElementById('table-filter');
-                var filterVal = filter ? filter.value : 'ALL';
-                var search = document.getElementById('table-search');
-                var searchVal = search ? search.value.toLowerCase() : '';
-
-                var sections = [
-                    {
-                        title: 'ФИНАНСОВЫЕ РЕЗУЛЬТАТЫ',
-                        nodes: ['NET_PROFIT', 'EBT', 'TAX', 'EBIT', 'EBITDA', 'GROSS_PROFIT', 'REVENUE', 'COGS']
-                    },
-                    {
-                        title: 'ОПЕРАЦИОННЫЕ ПОКАЗАТЕЛИ',
-                        nodes: ['VOLUME', 'PRICE', 'SEASON', 'MARKETING', 'COMPETITION', 'BUSINESS_ACTIVITY']
-                    },
-                    {
-                        title: 'СЕБЕСТОИМОСТЬ',
-                        nodes: ['BASE_MATERIAL_PRICE', 'UNIT_MATERIAL', 'MATERIAL_COST', 'ENERGY_RATE', 'ENERGY_COST', 'LOGISTICS_RATE', 'LOGISTICS_COST', 'DEFECT_RATE', 'SCALE_EFFECT']
-                    },
-                    {
-                        title: 'ПЕРСОНАЛ',
-                        nodes: ['PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'DIRECT_LABOR', 'ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'ADMIN_PAYROLL', 'EFFECTIVE_HEADCOUNT', 'ATTRITION', 'SPI', 'ENGAGEMENT', 'LABOR_INDEX']
-                    },
-                    {
-                        title: 'OPEX',
-                        nodes: ['RENT', 'IT_EXP', 'RD_EXP', 'TRAINING_EXP', 'SELLING_EXP', 'ADMIN_EXP']
-                    },
-                    {
-                        title: 'АМОРТИЗАЦИЯ И CAPEX',
-                        nodes: ['FIXED_ASSETS', 'INTANGIBLE_ASSETS', 'DA_RATE', 'DA', 'WEAR', 'CAPEX', 'CAPACITY_UTIL', 'TECH_OBSOLESCENCE']
-                    },
-                    {
-                        title: 'КРЕДИТЫ И ДОЛГ',
-                        nodes: ['LOANS', 'CB_RATE', 'BANK_SPREAD', 'LOAN_RATE', 'INTEREST', 'LOAN_REPAYMENT', 'NEW_LOANS', 'DEBT_EBITDA', 'CREDIT_RATING', 'RATE_TYPE']
-                    },
-                    {
-                        title: 'БАЛАНС',
-                        nodes: ['CASH', 'CASH_START', 'INVENTORY', 'RECEIVABLES', 'PAYABLES', 'CURRENT_ASSETS', 'ASSETS', 'EQUITY', 'RETAINED_START', 'RETAINED_EARNINGS', 'FCF']
-                    },
-                    {
-                        title: 'ВНЕШНИЕ ФАКТОРЫ',
-                        nodes: ['INFLATION', 'FX_RATE', 'GEO_INDEX', 'SANCTIONS', 'PMI', 'CCI', 'HOUSEHOLD_INCOME', 'SUPPLIER_RISK', 'TARIFFS']
-                    },
-                    {
-                        title: 'ДЕНЕЖНЫЙ ПОТОК',
-                        nodes: ['CFO', 'CFI', 'CFF', 'delta_RECEIVABLES', 'delta_PAYABLES', 'delta_INVENTORY', 'OTHER_INCOME', 'OTHER_EXP', 'PENALTIES', 'INTEREST_INCOME', 'DIVIDENDS']
-                    }
-                ];
-
+                // Основные INPUT
                 var html = '';
+                mainInputs.forEach(function (nid) { html += renderInputRow(nid); });
+                document.getElementById('table-inputs-main-body').innerHTML = html;
 
-                sections.forEach(function (section) {
-                    // Проверяем, есть ли узлы из этой секции после фильтрации
-                    var visibleNodes = section.nodes.filter(function (nid) {
-                        var n = graph.nodes[nid];
-                        if (!n) return false;
-                        if (filterVal === 'INPUT' && n.type !== 'INPUT') return false;
-                        if (filterVal === 'EXTERNAL' && n.type !== 'EXTERNAL') return false;
-                        if (filterVal === 'COMPUTED' && n.type !== 'INTERMEDIATE' && n.type !== 'TARGET') return false;
-                        if (searchVal) {
-                            var lm = (n.label || '').toLowerCase().indexOf(searchVal) >= 0;
-                            var im = n.id.toLowerCase().indexOf(searchVal) >= 0;
-                            if (!lm && !im) return false;
-                        }
-                        return true;
-                    });
+                // Расширенные INPUT
+                html = '';
+                extInputs.forEach(function (nid) { html += renderInputRow(nid); });
+                document.getElementById('table-inputs-ext-body').innerHTML = html;
 
-                    if (visibleNodes.length === 0) return;
+                // Основные EXTERNAL
+                html = '';
+                mainExternal.forEach(function (nid) { html += renderInputRow(nid); });
+                document.getElementById('table-external-main-body').innerHTML = html;
 
-                    html += '<tr class="section-header" onclick="toggleSection(this)" style="cursor:pointer;">';
-                    html += '<td colspan="6" style="color:var(--accent);font-size:11px;letter-spacing:2px;padding:12px 8px 4px 8px;">';
-                    html += '<span class="section-arrow" style="display:inline-block;width:12px;">▶</span> ' + section.title + ' (' + visibleNodes.length + ')';
-                    html += '</td></tr>';
+                // Расширенные EXTERNAL
+                html = '';
+                extExternal.forEach(function (nid) { html += renderInputRow(nid); });
+                document.getElementById('table-external-ext-body').innerHTML = html;
 
-                    visibleNodes.forEach(function (nid) {
-                        var n = graph.nodes[nid];
-                        var isEditable = (n.type === 'INPUT' || n.type === 'EXTERNAL');
-                        var rowStyle = 'display:none;';
-                        if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
-                            rowStyle = 'background:rgba(42,48,64,0.3);';
-                        } else if (n.type === 'EXTERNAL') {
-                            rowStyle = 'background:rgba(212,168,67,0.05);';
-                        }
-
-                        html += '<tr class="section-row" style="' + rowStyle + '">';
-                        html += '<td class="id-cell">' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
-                        html += '<td>' + n.type + '</td>';
-                        html += '<td class="value-cell">';
-                        if (isEditable) {
-                            html += '<input type="number" class="table-input" data-node-id="' + n.id + '" value="' + (n.value !== null ? n.value : '') + '" step="any" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;">';
-                        } else {
-                            html += '<span style="color:var(--text-hint);">' + formatValue(n.value) + '</span>';
-                        }
-                        html += '</td>';
-                        html += '<td class="value-cell">' + formatValue(n.min) + '</td>';
-                        html += '<td class="value-cell">' + formatValue(n.max) + '</td>';
-                        html += '<td>' + n.source + '</td>';
-                        html += '</tr>';
-                    });
+                // Ключевые результаты
+                var keyNodes = ['NET_PROFIT', 'REVENUE', 'EBITDA', 'FCF', 'ASSETS', 'DEBT_EBITDA'];
+                var resHtml = '';
+                keyNodes.forEach(function (nid) {
+                    var n = graph.nodes[nid];
+                    if (n && n.value !== null) {
+                        resHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;">';
+                        resHtml += '<span>' + (n.label || n.id) + '</span>';
+                        resHtml += '<span style="font-weight:500;">' + formatValue(n.value) + '</span>';
+                        resHtml += '</div>';
+                    }
                 });
+                document.getElementById('key-results').innerHTML = resHtml || 'Нажмите ВЫЧИСЛИТЬ';
 
+                // Полная таблица
+                renderFullTable();
+
+                // Ограничения
+                renderComputeResults();
+            }
+
+            function renderInputRow(nid) {
+                var n = graph.nodes[nid];
+                if (!n) return '';
+                var color = n.type === 'EXTERNAL' ? 'var(--warning)' : 'var(--ok)';
+                var row = '<tr>';
+                row += '<td><span style="color:' + color + ';margin-right:4px;">▌</span>' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
+                row += '<td class="value-cell"><input type="number" class="table-input" data-node-id="' + n.id + '" value="' + (n.value !== null ? n.value : '') + '" step="any" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;"></td>';
+                row += '<td style="text-align:center;">';
+                row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 1.1)" style="font-size:10px;padding:2px 6px;">+</button>';
+                row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 0.9)" style="font-size:10px;padding:2px 6px;margin-left:2px;">-</button>';
+                row += '</td>';
+                row += '<td class="value-cell">' + formatValue(n.min) + '</td>';
+                row += '<td class="value-cell">' + formatValue(n.max) + '</td>';
+                row += '</tr>';
+                return row;
+            }
+
+            function deltaNode(nid, factor) {
+                var n = graph.nodes[nid];
+                if (!n) return;
+                var newVal = (n.value || 0) * factor;
+                if (n.min !== null && newVal < n.min) newVal = n.min;
+                if (n.max !== null && newVal > n.max) newVal = n.max;
+                n.value = Math.round(newVal * 100) / 100;
+                renderDataTable();
+            }
+
+            function renderFullTable() {
+                if (!graph) return;
+                var blockOrder = [
+                    'NET_PROFIT', 'EBT', 'TAX', 'TAX_RATE', 'EBIT', 'EBITDA', 'GROSS_PROFIT', 'REVENUE', 'COGS',
+                    'VOLUME', 'PRICE', 'SEASON', 'MARKETING', 'COMPETITION', 'BUSINESS_ACTIVITY',
+                    'BASE_MATERIAL_PRICE', 'UNIT_MATERIAL', 'MATERIAL_COST', 'ENERGY_RATE', 'ENERGY_COST', 'LOGISTICS_RATE', 'LOGISTICS_COST', 'DEFECT_RATE', 'SCALE_EFFECT',
+                    'PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'DIRECT_LABOR', 'ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'ADMIN_PAYROLL', 'EFFECTIVE_HEADCOUNT', 'ATTRITION', 'SPI', 'ENGAGEMENT', 'LABOR_INDEX',
+                    'RENT', 'IT_EXP', 'RD_EXP', 'TRAINING_EXP', 'SELLING_EXP', 'ADMIN_EXP',
+                    'FIXED_ASSETS', 'INTANGIBLE_ASSETS', 'DA_RATE', 'DA', 'WEAR', 'CAPEX', 'CAPACITY_UTIL', 'TECH_OBSOLESCENCE',
+                    'LOANS', 'CB_RATE', 'BANK_SPREAD', 'LOAN_RATE', 'INTEREST', 'LOAN_REPAYMENT', 'NEW_LOANS', 'DEBT_EBITDA', 'CREDIT_RATING', 'RATE_TYPE',
+                    'CASH', 'CASH_START', 'INVENTORY', 'RECEIVABLES', 'PAYABLES', 'CURRENT_ASSETS', 'ASSETS', 'EQUITY', 'RETAINED_START', 'RETAINED_EARNINGS', 'FCF',
+                    'INFLATION', 'FX_RATE', 'GEO_INDEX', 'SANCTIONS', 'PMI', 'CCI', 'HOUSEHOLD_INCOME', 'SUPPLIER_RISK', 'TARIFFS',
+                    'CFO', 'CFI', 'CFF', 'delta_RECEIVABLES', 'delta_PAYABLES', 'delta_INVENTORY', 'OTHER_INCOME', 'OTHER_EXP', 'PENALTIES', 'INTEREST_INCOME', 'DIVIDENDS'
+                ];
+                var html = '';
+                blockOrder.forEach(function (nid) {
+                    var n = graph.nodes[nid];
+                    if (!n) return;
+                    html += '<tr>';
+                    html += '<td class="id-cell">' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
+                    html += '<td>' + n.type + '</td>';
+                    html += '<td class="value-cell">' + formatValue(n.value) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(n.min) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(n.max) + '</td>';
+                    html += '<td>' + n.source + '</td>';
+                    html += '</tr>';
+                });
                 elDataTable.innerHTML = html;
             }
 
-            // Сворачивание/разворачивание секций
-            function toggleSection(header) {
-                var arrow = header.querySelector('.section-arrow');
-                var next = header.nextElementSibling;
-                while (next && !next.classList.contains('section-header')) {
-                    if (next.classList.contains('section-row')) {
-                        next.style.display = next.style.display === 'none' ? '' : 'none';
-                    }
-                    next = next.nextElementSibling;
-                }
-                arrow.textContent = arrow.textContent === '▼' ? '▶' : '▼';
-            }
-
-        function renderComputeResults() {
-            if (!graph) return;
-
-            // Ключевые узлы для отображения в сводке
-            var keyNodes = ['NET_PROFIT', 'REVENUE', 'EBITDA', 'FCF', 'ASSETS', 'DEBT_EBITDA'];
-
-            // Группы для детализации
-            var detailGroups = [
-                {
-                    title: 'ПРИБЫЛЬ',
-                    nodes: ['GROSS_PROFIT', 'EBIT', 'EBT']
-                },
-                {
-                    title: 'РАСХОДЫ',
-                    nodes: ['COGS', 'SELLING_EXP', 'ADMIN_EXP', 'DA', 'INTEREST']
-                },
-                {
-                    title: 'ДЕНЕЖНЫЙ ПОТОК',
-                    nodes: ['CFO', 'CFI', 'CFF', 'CASH']
-                }
-            ];
-
-            var html = '';
-
-            // Основные показатели
-            html += '<div style="margin-bottom:8px;color:var(--text-hint);font-size:11px;">ОСНОВНЫЕ ПОКАЗАТЕЛИ</div>';
-            keyNodes.forEach(function (nodeId) {
-                var n = graph.nodes[nodeId];
-                if (n && n.value !== null && n.value !== undefined) {
-                    var val = formatValue(n.value);
-                    var label = (n.label || n.id);
-                    html += '<div class="result-row" style="padding:4px 0;">';
-                    html += '<span class="label">' + label + ' (' + n.id + ')</span>';
-                    html += '<span class="value" style="font-weight:500;">' + val + '</span>';
-                    html += '</div>';
-                }
-            });
-
-            // Детализация (скрыта по умолчанию)
-            html += '<div style="margin-top:12px;">';
-            html += '<div id="detail-toggle" style="cursor:pointer;color:var(--accent);font-size:12px;user-select:none;">';
-            html += '\u25B6 ДЕТАЛИЗАЦИЯ';
-            html += '</div>';
-            html += '<div id="detail-content" style="display:none;margin-top:8px;">';
-
-            detailGroups.forEach(function (group) {
-                html += '<div style="margin-bottom:8px;color:var(--text-hint);font-size:10px;letter-spacing:1px;">' + group.title + '</div>';
-                var hasContent = false;
-                group.nodes.forEach(function (nodeId) {
-                    var n = graph.nodes[nodeId];
-                    if (n && n.value !== null && n.value !== undefined) {
-                        hasContent = true;
-                        html += '<div class="result-row" style="padding:2px 0;">';
-                        html += '<span class="label" style="font-size:12px;">' + (n.label || n.id) + '</span>';
-                        html += '<span class="value" style="font-size:12px;">' + formatValue(n.value) + '</span>';
+            function renderComputeResults() {
+                if (!graph) return;
+                var html = '';
+                if (graph.constraints.length > 0) {
+                    html += '<div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">ОГРАНИЧЕНИЯ</div>';
+                    graph.constraints.forEach(function (c) {
+                        var node = graph.nodes[c.node];
+                        var ok = node ? checkConstraint(c, node) : null;
+                        html += '<div style="display:flex;justify-content:space-between;padding:3px 0;">';
+                        html += '<span>' + (node ? (node.label || node.id) : c.node) + ' ' + c.operator + ' ' + formatValue(c.value) + '</span>';
+                        if (ok === true) html += '<span style="color:var(--ok);">OK</span>';
+                        else if (ok === false) html += '<span style="color:var(--critical);">НАРУШЕНО</span>';
+                        else html += '<span style="color:var(--text-hint);">—</span>';
                         html += '</div>';
-                    }
-                });
-                if (!hasContent) {
-                    html += '<div style="font-size:11px;color:var(--text-hint);padding:2px 0;">Нет данных</div>';
+                    });
                 }
-            });
-
-            html += '</div></div>';
-
-            // Ограничения
-            if (graph.constraints.length > 0) {
-                html += '<div style="margin-top:12px;margin-bottom:8px;color:var(--text-hint);font-size:11px;">ОГРАНИЧЕНИЯ</div>';
-                graph.constraints.forEach(function (c) {
-                    var node = graph.nodes[c.node];
-                    var ok = node ? checkConstraint(c, node) : null;
-                    var cls = 'result-row';
-                    if (ok === true) cls += ' constraint-ok';
-                    if (ok === false) cls += ' constraint-fail';
-
-                    html += '<div class="' + cls + '" style="padding:2px 0;">';
-                    html += '<span class="label">' + (node ? (node.label || node.id) : c.node) + ' ' + c.operator + ' ' + formatValue(c.value) + '</span>';
-                    html += '<span class="value">';
-                    if (ok === true) html += 'OK';
-                    else if (ok === false) html += 'НАРУШЕНО';
-                    else html += '\u2014';
-                    html += '</span>';
-                    html += '</div>';
-                });
+                elComputeResults.innerHTML = html;
             }
-
-            elComputeBody.innerHTML = html;
-            elComputeResults.style.display = 'block';
-
-            // Добавляем обработчик клика для раскрытия детализации
-            var toggle = document.getElementById('detail-toggle');
-            var content = document.getElementById('detail-content');
-            if (toggle && content) {
-                toggle.addEventListener('click', function () {
-                    if (content.style.display === 'none') {
-                        content.style.display = 'block';
-                        toggle.innerHTML = '\u25BC ДЕТАЛИЗАЦИЯ';
-                    } else {
-                        content.style.display = 'none';
-                        toggle.innerHTML = '\u25B6 ДЕТАЛИЗАЦИЯ';
-                    }
-                });
-            }
-        }
 
         // ============================================================
         // ПОЛНАЯ ПЕРЕРИСОВКА
@@ -1393,6 +1361,41 @@
                 document.getElementById('company-status').textContent = 'Настройки применены. Перейдите на вкладку КАЛЕНДАРЬ для просмотра.';
                 updateStatusBar('Настройки компании обновлены');
                 notify('Параметры компании сохранены');
+            });
+                // Сворачивание расширенных параметров
+            document.getElementById('toggle-extended').addEventListener('click', function () {
+                var el = document.getElementById('table-inputs-ext');
+                var tog = document.getElementById('toggle-extended');
+                if (el.style.display === 'none') { el.style.display = ''; tog.textContent = '▼ РАСШИРЕННЫЕ ПАРАМЕТРЫ'; }
+                else { el.style.display = 'none'; tog.textContent = '▶ РАСШИРЕННЫЕ ПАРАМЕТРЫ'; }
+            });
+            document.getElementById('toggle-ext-external').addEventListener('click', function () {
+                var el = document.getElementById('table-external-ext');
+                var tog = document.getElementById('toggle-ext-external');
+                if (el.style.display === 'none') { el.style.display = ''; tog.textContent = '▼ РАСШИРЕННЫЕ ВНЕШНИЕ'; }
+                else { el.style.display = 'none'; tog.textContent = '▶ РАСШИРЕННЫЕ ВНЕШНИЕ'; }
+            });
+            document.getElementById('toggle-full-table').addEventListener('click', function () {
+                var el = document.getElementById('full-table-container');
+                var tog = document.getElementById('toggle-full-table');
+                if (el.style.display === 'none') { el.style.display = ''; tog.textContent = '▼ ПОЛНАЯ ТАБЛИЦА'; }
+                else { el.style.display = 'none'; tog.textContent = '▶ ПОЛНАЯ ТАБЛИЦА'; }
+            });
+
+            // Копировать таблицу
+            document.getElementById('btn-copy-table').addEventListener('click', function () {
+                var text = '';
+                document.querySelectorAll('#panel-data table').forEach(function (t) {
+                    t.querySelectorAll('tr').forEach(function (tr) {
+                        var row = [];
+                        tr.querySelectorAll('th,td').forEach(function (td) { row.push(td.textContent.trim()); });
+                        text += row.join('\t') + '\n';
+                    });
+                    text += '\n';
+                });
+                navigator.clipboard.writeText(text).then(function () {
+                    notify('Таблица скопирована в буфер обмена');
+                });
             });
             // Загружаем демо при старте
             loadDemo();
