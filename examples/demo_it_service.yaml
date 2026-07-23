@@ -1,0 +1,146 @@
+project:
+  name: "IT-сервисная компания (демо)"
+  version: 1
+
+nodes:
+  - id: HOURLY_RATE
+    type: INPUT
+    value: 3500
+    min: 2500
+    max: 6000
+    source: manual
+
+  - id: DEVELOPERS
+    type: INPUT
+    value: 20
+    min: 10
+    max: 50
+    source: manual
+
+  - id: UTILIZATION
+    type: INPUT
+    value: 0.75
+    min: 0.5
+    max: 0.95
+    source: manual
+
+  - id: WORKING_HOURS
+    type: INTERMEDIATE
+    source: computed
+
+  - id: REVENUE
+    type: INTERMEDIATE
+    source: computed
+
+  - id: AVG_SALARY
+    type: INPUT
+    value: 180000
+    min: 120000
+    max: 300000
+    source: manual
+
+  - id: PAYROLL_COST
+    type: INTERMEDIATE
+    source: computed
+
+  - id: OFFICE_COST
+    type: INPUT
+    value: 400000
+    min: 200000
+    max: 800000
+    source: manual
+
+  - id: TOTAL_COST
+    type: INTERMEDIATE
+    source: computed
+
+  - id: NET_PROFIT
+    type: TARGET
+    source: computed
+
+  - id: MARKET_INDEX
+    type: EXTERNAL
+    value: 0.85
+    source: manual
+
+  - id: ATTRITION
+    type: INTERMEDIATE
+    source: computed
+
+  - id: SALARY_MARKET_GAP
+    type: INPUT
+    value: 1.1
+    min: 0.8
+    max: 1.5
+    source: manual
+
+edges:
+  - from: DEVELOPERS
+    to: WORKING_HOURS
+    type: LIN
+    coefficient: 160.0
+
+  - from: UTILIZATION
+    to: WORKING_HOURS
+    type: LIN
+    coefficient: 1.0
+
+  - from: WORKING_HOURS
+    to: REVENUE
+    type: LIN
+    coefficient: 1.0
+
+  - from: HOURLY_RATE
+    to: REVENUE
+    type: LIN
+    coefficient: 1.0
+
+  - from: AVG_SALARY
+    to: PAYROLL_COST
+    type: LIN
+    coefficient: 1.0
+
+  - from: DEVELOPERS
+    to: PAYROLL_COST
+    type: LIN
+    coefficient: 1.0
+
+  - from: REVENUE
+    to: NET_PROFIT
+    type: LIN
+    coefficient: 1.0
+
+  - from: PAYROLL_COST
+    to: NET_PROFIT
+    type: LIN
+    coefficient: -1.0
+
+  - from: OFFICE_COST
+    to: TOTAL_COST
+    type: LIN
+    coefficient: 1.0
+
+  - from: TOTAL_COST
+    to: NET_PROFIT
+    type: LIN
+    coefficient: -1.0
+
+  - from: MARKET_INDEX
+    to: UTILIZATION
+    type: LIN
+    coefficient: 0.10
+
+  - from: SALARY_MARKET_GAP
+    to: ATTRITION
+    type: EXP
+    coefficient: 0.15
+    lag_days: 60
+
+constraints:
+  - node: NET_PROFIT
+    operator: ">="
+    value: 0
+
+  - node: UTILIZATION
+    operator: "<="
+    value: 0.9
