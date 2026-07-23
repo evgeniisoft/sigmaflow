@@ -50,31 +50,46 @@
             </div>
         </div>
 
-        <!-- ПАНЕЛЬ ДАННЫЕ -->
-        <div id="panel-data" class="panel">
-            <h3>ТАБЛИЦА УЗЛОВ</h3>
-            <div style="overflow-x: auto;">
-                <table id="data-table">
-                    <thead>
-                        <tr>
-                            <th>НАЗВАНИЕ (ID)</th>
-                            <th>ТИП</th>
-                            <th>ЗНАЧЕНИЕ</th>
-                            <th>МИН</th>
-                            <th>МАКС</th>
-                            <th>ИСТОЧНИК</th>
-                        </tr>
-                    </thead>
-                    <tbody id="data-table-body">
-                    </tbody>
-                </table>
-            </div>
-            <div id="compute-results" style="display:none;">
-                <h4>РЕЗУЛЬТАТЫ ВЫЧИСЛЕНИЙ</h4>
-                <div id="compute-results-body"></div>
-            </div>
-        </div>
-
+                <!-- ПАНЕЛЬ ДАННЫЕ -->
+                <div id="panel-data" class="panel">
+                    <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
+                        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
+                            <button id="btn-compute-data" class="primary">ВЫЧИСЛИТЬ</button>
+                            <button id="btn-apply-table" class="primary">ПРИМЕНИТЬ ИЗМЕНЕНИЯ</button>
+                            <span style="color:var(--text-hint);font-size:12px;margin-left:auto;">ФИЛЬТР:</span>
+                            <select id="table-filter"
+                                style="font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 8px;">
+                                <option value="ALL">ВСЕ</option>
+                                <option value="INPUT">INPUT</option>
+                                <option value="EXTERNAL">EXTERNAL</option>
+                                <option value="COMPUTED">INTERMEDIATE + TARGET</option>
+                            </select>
+                            <span style="color:var(--text-hint);font-size:12px;">ПОИСК:</span>
+                            <input type="text" id="table-search" placeholder="Название или ID"
+                                style="font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 8px;width:180px;">
+                        </div>
+                        <div style="overflow-x:auto;flex:1;">
+                            <table id="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>НАЗВАНИЕ (ID)</th>
+                                        <th>ТИП</th>
+                                        <th>ЗНАЧЕНИЕ</th>
+                                        <th>МИН</th>
+                                        <th>МАКС</th>
+                                        <th>ИСТ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="data-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="compute-results" style="display:none;margin-top:12px;flex-shrink:0;">
+                            <h4>РЕЗУЛЬТАТЫ ВЫЧИСЛЕНИЙ</h4>
+                            <div id="compute-results-body"></div>
+                        </div>
+                    </div>
+                </div>
         <!-- ПАНЕЛЬ КАЛИБРОВКА -->
         <div id="panel-calibrate" class="panel">
             <h3>КАЛИБРОВКА МОДЕЛИ</h3>
@@ -615,70 +630,107 @@
         // ============================================================
 
         function renderDataTable() {
-            if (!graph) return;
+                if (!graph) return;
 
-            var html = '';
-            var nodeKeys = Object.keys(graph.nodes).sort();
+                var filter = document.getElementById('table-filter');
+                var filterVal = filter ? filter.value : 'ALL';
+                var search = document.getElementById('table-search');
+                var searchVal = search ? search.value.toLowerCase() : '';
 
-            nodeKeys.forEach(function (key) {
-                var n = graph.nodes[key];
-                html += '<tr>';
-                html += '<td class="id-cell">' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
-                html += '<td>' + n.type + '</td>';
-                html += '<td class="value-cell">' + formatValue(n.value) + '</td>';
-                html += '<td class="value-cell">' + formatValue(n.min) + '</td>';
-                html += '<td class="value-cell">' + formatValue(n.max) + '</td>';
-                html += '<td>' + n.source + '</td>';
-                html += '</tr>';
-            });
+                var html = '';
+                var nodeKeys = Object.keys(graph.nodes).sort();
 
-            elDataTable.innerHTML = html;
-        }
+                nodeKeys.forEach(function (key) {
+                    var n = graph.nodes[key];
+
+                    // Фильтр по типу
+                    if (filterVal === 'INPUT' && n.type !== 'INPUT') return;
+                    if (filterVal === 'EXTERNAL' && n.type !== 'EXTERNAL') return;
+                    if (filterVal === 'COMPUTED' && n.type !== 'INTERMEDIATE' && n.type !== 'TARGET') return;
+
+                    // Поиск по названию или ID
+                    if (searchVal) {
+                        var labelMatch = (n.label || '').toLowerCase().indexOf(searchVal) >= 0;
+                        var idMatch = n.id.toLowerCase().indexOf(searchVal) >= 0;
+                        if (!labelMatch && !idMatch) return;
+                    }
+
+                    var isEditable = (n.type === 'INPUT' || n.type === 'EXTERNAL');
+                    var rowStyle = '';
+                    if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
+                        rowStyle = 'background:rgba(42,48,64,0.3);';
+                    } else if (n.type === 'EXTERNAL') {
+                        rowStyle = 'background:rgba(212,168,67,0.05);';
+                    }
+
+                    html += '<tr style="' + rowStyle + '">';
+                    html += '<td class="id-cell">' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
+                    html += '<td>' + n.type + '</td>';
+                    html += '<td class="value-cell">';
+                    if (isEditable) {
+                        html += '<input type="number" class="table-input" data-node-id="' + n.id + '" value="' + (n.value !== null ? n.value : '') + '" step="any" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;">';
+                    } else {
+                        html += '<span style="color:var(--text-hint);">' + formatValue(n.value) + '</span>';
+                    }
+                    html += '</td>';
+                    html += '<td class="value-cell">' + formatValue(n.min) + '</td>';
+                    html += '<td class="value-cell">' + formatValue(n.max) + '</td>';
+                    html += '<td>' + n.source + '</td>';
+                    html += '</tr>';
+                });
+
+                elDataTable.innerHTML = html;
+            }
 
         function renderComputeResults() {
-            if (!graph) return;
+                if (!graph) return;
 
-            var html = '';
+                var html = '';
 
-            var computedNodes = Object.keys(graph.nodes)
-                .map(function (k) { return graph.nodes[k]; })
-                .filter(function (n) {
-                    return n.type === 'TARGET' || n.type === 'INTERMEDIATE';
-                });
+                var computedNodes = Object.keys(graph.nodes)
+                    .map(function (k) { return graph.nodes[k]; })
+                    .filter(function (n) {
+                        return n.type === 'TARGET' || n.type === 'INTERMEDIATE';
+                    });
 
-            if (computedNodes.length > 0) {
-                html += '<div style="margin-bottom:8px;color:var(--text-hint);font-size:11px;">ВЫЧИСЛЕННЫЕ УЗЛЫ</div>';
-                computedNodes.forEach(function (n) {
-                    html += '<div class="result-row">';
-                    html += '<span class="label">' + (n.label || n.id) + '</span>';
-                    html += '<span class="value">' + formatValue(n.value) + '</span>';
-                    html += '</div>';
-                });
+                if (computedNodes.length > 0) {
+                    html += '<div style="margin-bottom:8px;color:var(--text-hint);font-size:11px;">ВЫЧИСЛЕННЫЕ УЗЛЫ</div>';
+                    computedNodes.sort(function (a, b) {
+                        if (a.type === 'TARGET' && b.type !== 'TARGET') return -1;
+                        if (a.type !== 'TARGET' && b.type === 'TARGET') return 1;
+                        return (a.label || a.id).localeCompare(b.label || b.id);
+                    });
+                    computedNodes.forEach(function (n) {
+                        html += '<div class="result-row">';
+                        html += '<span class="label">' + (n.label || n.id) + ' (' + n.id + ')</span>';
+                        html += '<span class="value">' + formatValue(n.value) + '</span>';
+                        html += '</div>';
+                    });
+                }
+
+                if (graph.constraints.length > 0) {
+                    html += '<div style="margin-top:12px;margin-bottom:8px;color:var(--text-hint);font-size:11px;">ОГРАНИЧЕНИЯ</div>';
+                    graph.constraints.forEach(function (c) {
+                        var node = graph.nodes[c.node];
+                        var ok = node ? checkConstraint(c, node) : null;
+                        var cls = 'result-row';
+                        if (ok === true) cls += ' constraint-ok';
+                        if (ok === false) cls += ' constraint-fail';
+
+                        html += '<div class="' + cls + '">';
+                        html += '<span class="label">' + (node ? (node.label || node.id) : c.node) + ' ' + c.operator + ' ' + formatValue(c.value) + '</span>';
+                        html += '<span class="value">';
+                        if (ok === true) html += 'OK';
+                        else if (ok === false) html += 'НАРУШЕНО';
+                        else html += '\u2014';
+                        html += '</span>';
+                        html += '</div>';
+                    });
+                }
+
+                elComputeBody.innerHTML = html;
+                elComputeResults.style.display = 'block';
             }
-
-            if (graph.constraints.length > 0) {
-                html += '<div style="margin-top:12px;margin-bottom:8px;color:var(--text-hint);font-size:11px;">ОГРАНИЧЕНИЯ</div>';
-                graph.constraints.forEach(function (c) {
-                    var node = graph.nodes[c.node];
-                    var ok = node ? checkConstraint(c, node) : null;
-                    var cls = 'result-row';
-                    if (ok === true) cls += ' constraint-ok';
-                    if (ok === false) cls += ' constraint-fail';
-
-                    html += '<div class="' + cls + '">';
-                    html += '<span class="label">' + (node ? (node.label || node.id) : c.node) + ' ' + c.operator + ' ' + formatValue(c.value) + '</span>';
-                    html += '<span class="value">';
-                    if (ok === true) html += 'OK';
-                    else if (ok === false) html += 'НАРУШЕНО';
-                    else html += '—';
-                    html += '</span>';
-                    html += '</div>';
-                });
-            }
-
-            elComputeBody.innerHTML = html;
-            elComputeResults.style.display = 'block';
-        }
 
         // ============================================================
         // ПОЛНАЯ ПЕРЕРИСОВКА
@@ -817,7 +869,45 @@
                 if (graph) renderGraph();
             });
             document.getElementById('btn-run-diagnostics').addEventListener('click', runDiagnostics);
+            // Применить изменения из таблицы
+            document.getElementById('btn-apply-table').addEventListener('click', function () {
+                if (!graph) {
+                    notify('Сначала загрузите модель', true);
+                    return;
+                }
+                var inputs = document.querySelectorAll('.table-input');
+                var changed = 0;
+                inputs.forEach(function (inp) {
+                    var nodeId = inp.dataset.nodeId;
+                    var node = graph.nodes[nodeId];
+                    if (node) {
+                        var newVal = parseFloat(inp.value);
+                        if (!isNaN(newVal) && node.value !== newVal) {
+                            node.value = newVal;
+                            changed++;
+                        }
+                    }
+                });
+                if (changed > 0) {
+                    graph.compute();
+                    updateStatusBar('Применено ' + changed + ' изменений, модель пересчитана');
+                    notify('Применено ' + changed + ' изменений');
+                    renderAll();
+                } else {
+                    notify('Нет изменений для применения');
+                }
+            });
 
+            // Кнопка ВЫЧИСЛИТЬ на вкладке ДАННЫЕ
+            document.getElementById('btn-compute-data').addEventListener('click', runCompute);
+
+            // Фильтр и поиск в таблице
+            document.getElementById('table-filter').addEventListener('change', function () {
+                renderDataTable();
+            });
+            document.getElementById('table-search').addEventListener('input', function () {
+                renderDataTable();
+            });
             // Загружаем демо при старте
             loadDemo();
         });
