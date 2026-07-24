@@ -335,22 +335,57 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var rdY = self._val('RD_EXP');
     var trainY = self._val('TRAINING_EXP');
     var daY = self._val('DA');
-    var intY = self._val('INTEREST');
+    var intY = 0;
+    if (self.credits) {
+        self.credits.forEach(function (cr) {
+            intY += (cr.amount || 0) * (cr.rate || 0);
+        });
+    }
     var intIncY = self._val('INTEREST_INCOME');
     var othIncY = self._val('OTHER_INCOME');
     var othExpY = self._val('OTHER_EXP');
     var penY = self._val('PENALTIES');
     var divY = self._val('DIVIDENDS');
 
-    // Кредиты
-    var repayY = self._val('LOAN_REPAYMENT');
-    var newLoansY = self._val('NEW_LOANS');
-    var loanSch = self._schedule('LOAN_REPAYMENT', repayY, horizon);
-    var newLoanSch = self._schedule('NEW_LOANS', newLoansY, horizon);
+    // Кредиты из кредитного портфеля
+    var repayY = 0;
+    var newLoansY = 0;
+    var loanSch = [];
+    var newLoanSch = [];
+    for (var i = 0; i < horizon; i++) { loanSch.push(0); newLoanSch.push(0); }
+    if (self.credits) {
+        self.credits.forEach(function (cr) {
+            var mp = cr.monthlyPayment || 0;
+            var amount = cr.amount || 0;
+            var term = cr.term || 12;
+            var rate = cr.rate || 0;
+            var monthlyRate = rate / 12;
+            var bodyPayment = amount / term;
+            for (var j = 0; j < horizon && j < term; j++) {
+                loanSch[j] = (loanSch[j] || 0) + bodyPayment;
+            }
+            repayY += amount;
+            newLoansY += amount;
+        });
+    }
 
-    // CAPEX
-    var capexY = self._val('CAPEX');
-    var capexSch = self._schedule('CAPEX', capexY, horizon);
+    // CAPEX из инвестиционного портфеля
+    var capexY = 0;
+    var capexSch = [];
+    for (var i = 0; i < horizon; i++) capexSch.push(0);
+    if (self.investments) {
+        self.investments.forEach(function (inv) {
+            var schedule = inv.schedule || [];
+            var start = inv.start || 0;
+            for (var j = 0; j < schedule.length; j++) {
+                var monthIdx = start + j;
+                if (monthIdx < horizon) {
+                    capexSch[monthIdx] = (capexSch[monthIdx] || 0) + (schedule[j] || 0);
+                }
+            }
+            capexY += inv.cost || 0;
+        });
+    }
 
     // Стартовый остаток
     var cashStart = self._val('CASH_START');
