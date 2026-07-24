@@ -29,6 +29,8 @@
         <button class="nav-btn" data-panel="calibrate">КАЛИБРОВКА</button>
         <button class="nav-btn" data-panel="scenarios">СЦЕНАРИИ</button>
         <button class="nav-btn" data-panel="optimize">ОПТИМИЗАЦИЯ</button>
+        <button class="nav-btn" data-panel="investments">ИНВЕСТИЦИИ</button>
+        <button class="nav-btn" data-panel="credits">КРЕДИТЫ</button>
         <button class="nav-btn" data-panel="company">КОМПАНИЯ</button>
         <button class="nav-btn" data-panel="calendar">КАЛЕНДАРЬ</button>
         <button class="nav-btn" data-panel="diagnostics">ДИАГНОСТИКА</button>
@@ -178,6 +180,141 @@
             <h3>ОПТИМИЗАЦИЯ</h3>
             <div class="placeholder">
                 Обратный счёт от цели, многокритериальная оптимизация, подбор рычагов.
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ ИНВЕСТИЦИИ -->
+        <div id="panel-investments" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;">
+                    <h3 style="margin:0;">ИНВЕСТИЦИИ (CAPEX)</h3>
+                    <button id="btn-add-investment" class="primary" style="margin-left:auto;">+ ДОБАВИТЬ ПРОЕКТ</button>
+                </div>
+        
+                <div id="investments-list" style="margin-bottom:12px;"></div>
+        
+                <div style="color:var(--text-hint);font-size:12px;margin-top:8px;">
+                    ИТОГО CAPEX за период: <span id="capex-total" style="color:var(--text-heading);">0</span>
+                </div>
+        
+                <div id="investment-form"
+                    style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-top:8px;">
+                    <div class="form-group">
+                        <label>НАЗВАНИЕ ПРОЕКТА</label>
+                        <input type="text" id="inv-name" placeholder="Например: Станок ЧПУ">
+                    </div>
+                    <div class="form-group">
+                        <label>ОБЩАЯ СТОИМОСТЬ</label>
+                        <input type="number" id="inv-cost" placeholder="400000" step="10000" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>МЕСЯЦ НАЧАЛА</label>
+                        <select id="inv-start-month">
+                            <option value="0">Январь</option>
+                            <option value="1">Февраль</option>
+                            <option value="2">Март</option>
+                            <option value="3">Апрель</option>
+                            <option value="4">Май</option>
+                            <option value="5">Июнь</option>
+                            <option value="6">Июль</option>
+                            <option value="7">Август</option>
+                            <option value="8">Сентябрь</option>
+                            <option value="9">Октябрь</option>
+                            <option value="10">Ноябрь</option>
+                            <option value="11">Декабрь</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>КОЛИЧЕСТВО ПЛАТЕЖЕЙ</label>
+                        <select id="inv-payments-count" onchange="updateInvSchedule()">
+                            <option value="1">1 (единовременно)</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="6">6</option>
+                            <option value="12">12 (равномерно)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>ГРАФИК ПЛАТЕЖЕЙ (помесячно)</label>
+                        <div id="inv-schedule-inputs"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>ВЛИЯЕТ НА УЗЕЛ</label>
+                        <select id="inv-affects">
+                            <option value="FIXED_ASSETS">Основные средства (FIXED_ASSETS)</option>
+                            <option value="INTANGIBLE_ASSETS">Нематериальные активы</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button id="btn-save-investment" class="primary">СОХРАНИТЬ</button>
+                        <button id="btn-cancel-investment">ОТМЕНА</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ПАНЕЛЬ КРЕДИТЫ -->
+        <div id="panel-credits" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;">
+                    <h3 style="margin:0;">КРЕДИТНЫЙ ПОРТФЕЛЬ</h3>
+                    <button id="btn-add-credit" class="primary" style="margin-left:auto;">+ ДОБАВИТЬ КРЕДИТ</button>
+                </div>
+        
+                <div id="credits-list" style="margin-bottom:12px;"></div>
+        
+                <div style="color:var(--text-hint);font-size:12px;margin-top:8px;">
+                    ИТОГО кредитный портфель: <span id="loans-total" style="color:var(--text-heading);">0</span> |
+                    Ежемесячный платёж: <span id="loans-monthly" style="color:var(--text-heading);">0</span>
+                </div>
+        
+                <div id="covenants-status" style="margin-top:12px;"></div>
+        
+                <div id="credit-form"
+                    style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-top:8px;">
+                    <div class="form-group">
+                        <label>НАЗВАНИЕ КРЕДИТА</label>
+                        <input type="text" id="cr-name" placeholder="Например: Оборотный кредит">
+                    </div>
+                    <div class="form-group">
+                        <label>БАНК</label>
+                        <input type="text" id="cr-bank" placeholder="Сбербанк">
+                    </div>
+                    <div class="form-group">
+                        <label>СУММА</label>
+                        <input type="number" id="cr-amount" placeholder="5000000" step="100000" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>ГОДОВАЯ СТАВКА (%)</label>
+                        <input type="number" id="cr-rate" placeholder="21" step="0.1" min="0" max="50">
+                    </div>
+                    <div class="form-group">
+                        <label>ТИП СТАВКИ</label>
+                        <select id="cr-rate-type">
+                            <option value="fixed">Фиксированная</option>
+                            <option value="floating">Плавающая (привязана к ставке ЦБ)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>СРОК (МЕСЯЦЕВ)</label>
+                        <input type="number" id="cr-term" placeholder="36" step="6" min="1" max="120">
+                    </div>
+                    <div class="form-group">
+                        <label>ТИП ПОГАШЕНИЯ</label>
+                        <select id="cr-repayment-type" onchange="updateCreditInfo()">
+                            <option value="annuity">Аннуитетный (равные платежи)</option>
+                            <option value="equal">Равное погашение тела</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>ЕЖЕМЕСЯЧНЫЙ ПЛАТЁЖ (ТЕЛО + ПРОЦЕНТЫ)</label>
+                        <input type="number" id="cr-monthly-payment" readonly>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button id="btn-save-credit" class="primary">СОХРАНИТЬ</button>
+                        <button id="btn-cancel-credit">ОТМЕНА</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1389,6 +1526,186 @@
                     notify('Таблица скопирована в буфер обмена');
                 });
             });
+                // ==================== ИНВЕСТИЦИИ ====================
+            if (!graph) graph = {};
+            if (!graph.investments) graph.investments = [];
+            // Загрузка из localStorage
+            try {
+                var saved = localStorage.getItem('sigmaflow_investments');
+                if (saved) graph.investments = JSON.parse(saved);
+            } catch (e) { }
+
+            function saveInvestments() {
+                localStorage.setItem('sigmaflow_investments', JSON.stringify(graph.investments || []));
+                renderInvestments();
+            }
+
+            function renderInvestments() {
+                var list = document.getElementById('investments-list');
+                var total = 0;
+                var html = '<table><thead><tr><th>ПРОЕКТ</th><th>СТОИМОСТЬ</th><th>СТАРТ</th><th>ГРАФИК</th><th>СТАТУС</th><th></th></tr></thead><tbody>';
+                var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+                (graph.investments || []).forEach(function (inv, idx) {
+                    total += inv.cost;
+                    html += '<tr>';
+                    html += '<td>' + inv.name + '</td>';
+                    html += '<td class="value-cell">' + formatValue(inv.cost) + '</td>';
+                    html += '<td>' + months[inv.start] + '</td>';
+                    html += '<td>' + (inv.schedule || []).map(function (v) { return formatValue(v); }).join(' / ') + '</td>';
+                    html += '<td>' + (inv.status || 'plan') + '</td>';
+                    html += '<td><button onclick="deleteInvestment(' + idx + ')" style="font-size:10px;padding:2px 6px;">X</button></td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                list.innerHTML = html || 'Нет инвестиционных проектов';
+                document.getElementById('capex-total').textContent = formatValue(total);
+            }
+
+            window.deleteInvestment = function (idx) {
+                graph.investments.splice(idx, 1);
+                saveInvestments();
+            };
+
+            document.getElementById('btn-add-investment').addEventListener('click', function () {
+                document.getElementById('investment-form').style.display = 'block';
+                document.getElementById('inv-name').value = '';
+                document.getElementById('inv-cost').value = '';
+                document.getElementById('inv-payments-count').value = 1;
+                updateInvSchedule();
+            });
+
+            document.getElementById('btn-cancel-investment').addEventListener('click', function () {
+                document.getElementById('investment-form').style.display = 'none';
+            });
+
+            document.getElementById('btn-save-investment').addEventListener('click', function () {
+                var name = document.getElementById('inv-name').value;
+                var cost = parseFloat(document.getElementById('inv-cost').value);
+                var start = parseInt(document.getElementById('inv-start-month').value);
+                var count = parseInt(document.getElementById('inv-payments-count').value);
+                var affects = document.getElementById('inv-affects').value;
+                var schedule = [];
+                var inputs = document.querySelectorAll('.inv-schedule-input');
+                inputs.forEach(function (inp) { schedule.push(parseFloat(inp.value) || 0); });
+                if (!name || isNaN(cost)) { notify('Заполните название и стоимость', true); return; }
+                graph.investments.push({ name: name, cost: cost, start: start, schedule: schedule, affects: affects, status: 'planned' });
+                saveInvestments();
+                document.getElementById('investment-form').style.display = 'none';
+                notify('Проект добавлен');
+            });
+
+            window.updateInvSchedule = function () {
+                var count = parseInt(document.getElementById('inv-payments-count').value);
+                var cost = parseFloat(document.getElementById('inv-cost').value) || 0;
+                var perPayment = Math.round(cost / count);
+                var html = '';
+                for (var i = 0; i < count; i++) {
+                    html += '<input type="number" class="inv-schedule-input" value="' + perPayment + '" step="1000" style="width:100px;margin-right:4px;">';
+                }
+                document.getElementById('inv-schedule-inputs').innerHTML = html;
+            };
+
+            // ==================== КРЕДИТЫ ====================
+            if (!graph.credits) graph.credits = [];
+            try {
+                var savedCr = localStorage.getItem('sigmaflow_credits');
+                if (savedCr) graph.credits = JSON.parse(savedCr);
+            } catch (e) { }
+
+            function saveCredits() {
+                localStorage.setItem('sigmaflow_credits', JSON.stringify(graph.credits || []));
+                renderCredits();
+            }
+
+            function renderCredits() {
+                var list = document.getElementById('credits-list');
+                var total = 0;
+                var monthly = 0;
+                var html = '<table><thead><tr><th>КРЕДИТ</th><th>БАНК</th><th>СУММА</th><th>СТАВКА</th><th>ПЛАТЁЖ/МЕС</th><th></th></tr></thead><tbody>';
+                (graph.credits || []).forEach(function (cr, idx) {
+                    total += cr.amount;
+                    monthly += cr.monthlyPayment || 0;
+                    html += '<tr>';
+                    html += '<td>' + cr.name + '</td>';
+                    html += '<td>' + (cr.bank || '') + '</td>';
+                    html += '<td class="value-cell">' + formatValue(cr.amount) + '</td>';
+                    html += '<td class="value-cell">' + (cr.rate * 100).toFixed(1) + '%</td>';
+                    html += '<td class="value-cell">' + formatValue(cr.monthlyPayment) + '</td>';
+                    html += '<td><button onclick="deleteCredit(' + idx + ')" style="font-size:10px;padding:2px 6px;">X</button></td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                list.innerHTML = html || 'Нет кредитов';
+                document.getElementById('loans-total').textContent = formatValue(total);
+                document.getElementById('loans-monthly').textContent = formatValue(monthly);
+                // Обновить узлы модели
+                if (graph.nodes['LOANS']) graph.nodes['LOANS'].value = total;
+                if (graph.nodes['LOAN_REPAYMENT']) graph.nodes['LOAN_REPAYMENT'].value = monthly;
+            }
+
+            window.deleteCredit = function (idx) {
+                graph.credits.splice(idx, 1);
+                saveCredits();
+            };
+
+            document.getElementById('btn-add-credit').addEventListener('click', function () {
+                document.getElementById('credit-form').style.display = 'block';
+                document.getElementById('cr-name').value = '';
+                document.getElementById('cr-bank').value = '';
+                document.getElementById('cr-amount').value = '';
+                document.getElementById('cr-rate').value = '';
+                document.getElementById('cr-term').value = '';
+                document.getElementById('cr-monthly-payment').value = '';
+            });
+
+            document.getElementById('btn-cancel-credit').addEventListener('click', function () {
+                document.getElementById('credit-form').style.display = 'none';
+            });
+
+            document.getElementById('btn-save-credit').addEventListener('click', function () {
+                var name = document.getElementById('cr-name').value;
+                var bank = document.getElementById('cr-bank').value;
+                var amount = parseFloat(document.getElementById('cr-amount').value);
+                var rate = parseFloat(document.getElementById('cr-rate').value) / 100;
+                var term = parseInt(document.getElementById('cr-term').value);
+                var rateType = document.getElementById('cr-rate-type').value;
+                var repaymentType = document.getElementById('cr-repayment-type').value;
+                if (!name || isNaN(amount) || isNaN(rate) || isNaN(term)) { notify('Заполните все поля', true); return; }
+                var monthlyRate = rate / 12;
+                var monthlyPayment;
+                if (repaymentType === 'annuity') {
+                    monthlyPayment = amount * (monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1);
+                } else {
+                    monthlyPayment = amount / term + amount * monthlyRate;
+                }
+                graph.credits.push({
+                    name: name, bank: bank, amount: amount, rate: rate, term: term,
+                    rateType: rateType, repaymentType: repaymentType,
+                    monthlyPayment: Math.round(monthlyPayment)
+                });
+                saveCredits();
+                document.getElementById('credit-form').style.display = 'none';
+                notify('Кредит добавлен');
+            });
+
+            window.updateCreditInfo = function () {
+                var amount = parseFloat(document.getElementById('cr-amount').value) || 0;
+                var rate = (parseFloat(document.getElementById('cr-rate').value) || 0) / 100;
+                var term = parseInt(document.getElementById('cr-term').value) || 1;
+                var type = document.getElementById('cr-repayment-type').value;
+                var monthlyRate = rate / 12;
+                var payment;
+                if (type === 'annuity') {
+                    payment = amount * (monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1);
+                } else {
+                    payment = amount / term + amount * monthlyRate;
+                }
+                document.getElementById('cr-monthly-payment').value = Math.round(payment);
+            };
+
+            // Начальная отрисовка
+            renderInvestments();
+            renderCredits();
             // Загружаем демо при старте
             loadDemo();
         });
