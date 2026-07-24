@@ -1599,7 +1599,9 @@
                 var schedule = [];
                 var inputs = document.querySelectorAll('.inv-schedule-input');
                 inputs.forEach(function (inp) { schedule.push(parseFloat(inp.value) || 0); });
-                if (!name || isNaN(cost)) { notify('Заполните название и стоимость', true); return; }
+                        if (!name || isNaN(cost)) { notify('Заполните название и стоимость', true); return; }
+                if (!graph) { notify('Модель не загружена', true); return; }
+                if (!graph.investments) graph.investments = [];
                 graph.investments.push({ name: name, cost: cost, start: start, schedule: schedule, affects: affects, status: 'planned' });
                 saveInvestments();
                 document.getElementById('investment-form').style.display = 'none';
@@ -1690,6 +1692,8 @@
                 var rateType = document.getElementById('cr-rate-type').value;
                 var repaymentType = document.getElementById('cr-repayment-type').value;
                 if (!name || isNaN(amount) || isNaN(rate) || isNaN(term)) { notify('Заполните все поля', true); return; }
+                if (!graph) { notify('Модель не загружена', true); return; }
+                if (!graph.credits) graph.credits = [];
                 var monthlyRate = rate / 12;
                 var monthlyPayment;
                 if (repaymentType === 'annuity') {
