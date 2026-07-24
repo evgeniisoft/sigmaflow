@@ -503,6 +503,21 @@
                 updateStatusBar('Полная модель загружена');
                 notify('Полная модель загружена');
                 renderAll();
+                            // Восстановление настроек компании
+                try {
+                    var savedCompany = localStorage.getItem('sigmaflow_company');
+                    if (savedCompany) {
+                        graph.company = JSON.parse(savedCompany);
+                        if (graph.nodes['TAX_RATE']) graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate || 0.20;
+                        // Применить к интерфейсу
+                        if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
+                        if (graph.company.nds_rate !== undefined) document.getElementById('company-nds-rate').value = graph.company.nds_rate;
+                        if (graph.company.profit_tax_rate !== undefined) document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate;
+                        if (graph.company.insurance_rate !== undefined) document.getElementById('company-insurance-rate').value = graph.company.insurance_rate;
+                        if (graph.company.has_property_tax !== undefined) document.getElementById('company-has-property-tax').checked = graph.company.has_property_tax;
+                        document.getElementById('company-status').textContent = 'Настройки загружены из сохранённых.';
+                    }
+                } catch (e) { }
             } catch (err) {
                 updateStatusBar('Ошибка загрузки');
                 notify('Ошибка: ' + err.message, true);
@@ -1007,7 +1022,7 @@
                 var color = n.type === 'EXTERNAL' ? 'var(--warning)' : 'var(--ok)';
                 var row = '<tr>';
                 row += '<td><span style="color:' + color + ';margin-right:4px;">▌</span>' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
-                row += '<td class="value-cell"><input type="number" class="table-input" data-node-id="' + n.id + '" value="' + (n.value !== null ? n.value : '') + '" step="any" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;"></td>';
+                row += '<td class="value-cell"><input type="number" class="table-input" data-node-id="' + n.id + '" value="' + (n.value !== null ? n.value : '') + '" step="any" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;"' + (isReadOnly ? ' readonly' : '') + '></td>';
                 row += '<td style="text-align:center;">';
                 row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 1.1)" style="font-size:10px;padding:2px 6px;">+</button>';
                 row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 0.9)" style="font-size:10px;padding:2px 6px;margin-left:2px;">-</button>';
@@ -1015,6 +1030,8 @@
                 row += '<td class="value-cell">' + formatValue(n.min) + '</td>';
                 row += '<td class="value-cell">' + formatValue(n.max) + '</td>';
                 row += '</tr>';
+                var readOnlyIds = ['TAX_RATE'];
+                var isReadOnly = readOnlyIds.indexOf(nid) >= 0;
                 return row;
             }
 
@@ -1492,6 +1509,7 @@
                 document.getElementById('company-status').textContent = 'Настройки применены. Перейдите на вкладку КАЛЕНДАРЬ для просмотра.';
                 updateStatusBar('Настройки компании обновлены');
                 notify('Параметры компании сохранены');
+                localStorage.setItem('sigmaflow_company', JSON.stringify(graph.company));
             });
                 // Сворачивание расширенных параметров
             document.getElementById('toggle-extended').addEventListener('click', function () {
