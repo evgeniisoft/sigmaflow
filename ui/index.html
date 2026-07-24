@@ -524,6 +524,8 @@
             updateStatusBar('Вычисления выполнены');
             notify('Вычисления выполнены');
             renderAll();
+            initInvestments();
+            initCredits();
         }
 
         // ============================================================
@@ -1526,14 +1528,22 @@
                     notify('Таблица скопирована в буфер обмена');
                 });
             });
-                // ==================== ИНВЕСТИЦИИ ====================
-            if (!graph) graph = {};
-            if (!graph.investments) graph.investments = [];
-            // Загрузка из localStorage
+                    // ==================== ИНВЕСТИЦИИ ====================
+            // Загрузка из localStorage (graph ещё не загружен — отложим)
+            var savedInvestments = null;
             try {
-                var saved = localStorage.getItem('sigmaflow_investments');
-                if (saved) graph.investments = JSON.parse(saved);
+                savedInvestments = localStorage.getItem('sigmaflow_investments');
             } catch (e) { }
+
+            // Применим после загрузки модели
+            function initInvestments() {
+                if (!graph) return;
+                if (!graph.investments) graph.investments = [];
+                if (savedInvestments && graph.investments.length === 0) {
+                    try { graph.investments = JSON.parse(savedInvestments); } catch (e) { }
+                }
+                renderInvestments();
+            }
 
             function saveInvestments() {
                 localStorage.setItem('sigmaflow_investments', JSON.stringify(graph.investments || []));
@@ -1572,7 +1582,9 @@
                 document.getElementById('inv-cost').value = '';
                 document.getElementById('inv-payments-count').value = 1;
                 updateInvSchedule();
-            });
+                document.getElementById('inv-cost').addEventListener('input', function () {
+                updateInvSchedule();
+                });
 
             document.getElementById('btn-cancel-investment').addEventListener('click', function () {
                 document.getElementById('investment-form').style.display = 'none';
@@ -1594,7 +1606,7 @@
                 notify('Проект добавлен');
             });
 
-            window.updateInvSchedule = function () {
+                window.updateInvSchedule = function () {
                 var count = parseInt(document.getElementById('inv-payments-count').value);
                 var cost = parseFloat(document.getElementById('inv-cost').value) || 0;
                 var perPayment = Math.round(cost / count);
@@ -1605,12 +1617,20 @@
                 document.getElementById('inv-schedule-inputs').innerHTML = html;
             };
 
-            // ==================== КРЕДИТЫ ====================
-            if (!graph.credits) graph.credits = [];
+                // ==================== КРЕДИТЫ ====================
+            var savedCredits = null;
             try {
-                var savedCr = localStorage.getItem('sigmaflow_credits');
-                if (savedCr) graph.credits = JSON.parse(savedCr);
+                savedCredits = localStorage.getItem('sigmaflow_credits');
             } catch (e) { }
+
+            function initCredits() {
+                if (!graph) return;
+                if (!graph.credits) graph.credits = [];
+                if (savedCredits && graph.credits.length === 0) {
+                    try { graph.credits = JSON.parse(savedCredits); } catch (e) { }
+                }
+                renderCredits();
+            }
 
             function saveCredits() {
                 localStorage.setItem('sigmaflow_credits', JSON.stringify(graph.credits || []));
@@ -1704,8 +1724,7 @@
             };
 
             // Начальная отрисовка
-            renderInvestments();
-            renderCredits();
+            // Начальная отрисовка — будет вызвана после загрузки модели в loadDemo()
             // Загружаем демо при старте
             loadDemo();
         });
