@@ -1563,8 +1563,15 @@
 
             function saveInvestments() {
                 localStorage.setItem('sigmaflow_investments', JSON.stringify(graph.investments || []));
+                // Обновить узел CAPEX в модели
+                if (graph && graph.nodes['CAPEX']) {
+                    var total = 0;
+                    (graph.investments || []).forEach(function (inv) { total += inv.cost; });
+                    graph.nodes['CAPEX'].value = total;
+                }
                 renderInvestments();
             }
+            
 
             function renderInvestments() {
                 var list = document.getElementById('investments-list');
@@ -1654,6 +1661,25 @@
 
             function saveCredits() {
                 localStorage.setItem('sigmaflow_credits', JSON.stringify(graph.credits || []));
+                // Обновить узлы модели
+                if (graph) {
+                    var total = 0, monthly = 0;
+                    (graph.credits || []).forEach(function (cr) {
+                        total += cr.amount;
+                        monthly += cr.monthlyPayment || 0;
+                    });
+                    if (graph.nodes['LOANS']) graph.nodes['LOANS'].value = total;
+                    if (graph.nodes['LOAN_REPAYMENT']) graph.nodes['LOAN_REPAYMENT'].value = monthly;
+                    // Обновить INTEREST — годовые проценты
+                    var yearlyInterest = 0;
+                    (graph.credits || []).forEach(function (cr) {
+                        yearlyInterest += cr.amount * cr.rate;
+                    });
+                    if (graph.nodes['INTEREST']) {
+                        // INTEREST вычисляется формулой LOANS * LOAN_RATE — её не трогаем
+                        // Но если формулы нет — зададим вручную
+                    }
+                }
                 renderCredits();
             }
 
