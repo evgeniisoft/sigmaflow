@@ -546,6 +546,11 @@
             var yamlText = DEMO_FULL;
 
             try {
+                var data = parseYAML(yamlText);
+                graph = Graph.fromDict(data);
+                elProjectName.textContent = graph.name;
+                updateStatusBar('Базовая модель загружена');
+
                 var loaded = false;
                 if (graph && graph.nodes) {
                     loaded = loadModelFromStorage();
@@ -559,7 +564,7 @@
                 renderAll();
                 renderInvestments();
                 renderCredits();
-                            
+
             } catch (err) {
                 updateStatusBar('Ошибка загрузки');
                 notify('Ошибка: ' + err.message, true);
