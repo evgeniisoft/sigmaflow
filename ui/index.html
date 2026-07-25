@@ -914,97 +914,110 @@
                         }
                     }
 
-                    function renderTraceGraph(nodeId, depth) {
-                        var container = document.getElementById('graph-container');
-                        container.innerHTML = '';
+                            function renderTraceGraph(nodeId, depth) {
+                                    var container = document.getElementById('graph-container');
+                                    container.innerHTML = '';
 
-                        if (!graph || !graph.nodes[nodeId]) return;
+                                    if (!graph || !graph.nodes[nodeId]) return;
 
-                        var width = container.clientWidth;
-                        var height = container.clientHeight;
+                                    var width = container.clientWidth;
+                                    var height = container.clientHeight;
 
-                        // Находим связанные узлы на заданную глубину
-                        var visited = {};
-                        var nodesToShow = [];
-                        var linksToShow = [];
+                                    var visited = {};
+                                    var nodesToShow = [];
+                                    var linksToShow = [];
 
-                        function trace(id, currentDepth) {
-                            if (currentDepth > depth && depth > 0) return;
-                            if (visited[id]) return;
-                            visited[id] = true;
+                                    function trace(id, currentDepth) {
+                                        if (currentDepth > depth && depth > 0) return;
+                                        if (visited[id]) return;
+                                        visited[id] = true;
 
-                            var n = graph.nodes[id];
-                            if (!n) return;
-                            nodesToShow.push(n);
+                                        var n = graph.nodes[id];
+                                        if (!n) return;
+                                        nodesToShow.push(n);
 
-                            if (depth === 0 || currentDepth < depth) {
-                                graph.edges.forEach(function (e) {
-                                    if (e.to === id) {
-                                        trace(e.from, currentDepth + 1);
-                                        linksToShow.push({ source: e.from, target: e.to, type: e.type, coefficient: e.coefficient });
+                                        if (depth === 0 || currentDepth < depth) {
+                                            // Входящие связи из рёбер
+                                            graph.edges.forEach(function (e) {
+                                                if (e.to === id) {
+                                                    trace(e.from, currentDepth + 1);
+                                                    linksToShow.push({ source: e.from, target: e.to, type: e.type, coefficient: e.coefficient });
+                                                }
+                                            });
+
+                                            // Входящие связи из формулы
+                                            if (n.formula) {
+                                                var expr = n.formula.replace(/MAX|MIN|ABS|SQRT|[()]/gi, '');
+                                                Object.keys(graph.nodes).forEach(function (key) {
+                                                    if (key !== id && expr.indexOf(key) >= 0) {
+                                                        trace(key, currentDepth + 1);
+                                                        linksToShow.push({ source: key, target: id, type: 'FORMULA', coefficient: null });
+                                                    }
+                                                });
+                                            }
+                                        }
                                     }
-                                });
-                            }
-                        }
 
-                        trace(nodeId, 0);
+                                    trace(nodeId, 0);
 
-                        // D3.js визуализация
-                        var svg = d3.select('#graph-container').append('svg').attr('width', width).attr('height', height);
+                                    var svg = d3.select('#graph-container').append('svg').attr('width', width).attr('height', height);
 
-                        var linkList = linksToShow.map(function (l) {
-                            return { source: l.source, target: l.target, type: l.type, coefficient: l.coefficient };
-                        });
+                                    var linkList = linksToShow.map(function (l) {
+                                        return { source: l.source, target: l.target, type: l.type, coefficient: l.coefficient };
+                                    });
 
-                        var simulation = d3.forceSimulation(nodesToShow)
-                            .force('link', d3.forceLink(linkList).id(function (d) { return d.id; }).distance(120))
-                            .force('charge', d3.forceManyBody().strength(-400))
-                            .force('center', d3.forceCenter(width / 2, height / 2));
+                                    var simulation = d3.forceSimulation(nodesToShow)
+                                        .force('link', d3.forceLink(linkList).id(function (d) { return d.id; }).distance(130))
+                                        .force('charge', d3.forceManyBody().strength(-400))
+                                        .force('center', d3.forceCenter(width / 2, height / 2));
 
-                        svg.append('defs').selectAll('marker').data(['arrow']).join('marker')
-                            .attr('id', 'arrow').attr('viewBox', '0 -4 8 8').attr('refX', 75).attr('refY', 0)
-                            .attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto')
-                            .append('path').attr('d', 'M0,-4L8,0L0,4').attr('fill', '#2a3040');
+                                    svg.append('defs').selectAll('marker').data(['arrow']).join('marker')
+                                        .attr('id', 'arrow').attr('viewBox', '0 -4 8 8').attr('refX', 75).attr('refY', 0)
+                                        .attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto')
+                                        .append('path').attr('d', 'M0,-4L8,0L0,4').attr('fill', '#2a3040');
 
-                        var link = svg.append('g').selectAll('line').data(linkList).join('line')
-                            .attr('stroke', '#2a3040').attr('stroke-width', 1.5).attr('marker-end', 'url(#arrow)');
+                                    var link = svg.append('g').selectAll('line').data(linkList).join('line')
+                                        .attr('stroke', function (d) { return d.type === 'FORMULA' ? '#5a9fd4' : '#2a3040'; })
+                                        .attr('stroke-width', function (d) { return d.type === 'FORMULA' ? 2 : 1.5; })
+                                        .attr('stroke-dasharray', function (d) { return d.type === 'FORMULA' ? '6 3' : null; })
+                                        .attr('marker-end', 'url(#arrow)');
 
-                        var node = svg.append('g').selectAll('g').data(nodesToShow).join('g');
+                                    var node = svg.append('g').selectAll('g').data(nodesToShow).join('g');
 
-                        node.append('rect')
-                            .attr('width', 180).attr('height', 64).attr('x', -90).attr('y', -32).attr('rx', 2)
-                            .attr('fill', '#131820')
-                            .attr('stroke', function (d) {
-                                if (d.id === nodeId) return '#5a9fd4';
-                                switch (d.type) { case 'TARGET': return '#5a9fd4'; case 'INPUT': return '#4b8c5a'; case 'EXTERNAL': return '#d4a843'; default: return '#2a3040'; }
-                            })
-                            .attr('stroke-width', function (d) { return d.id === nodeId ? 3 : 1; })
-                            .attr('opacity', function (d) { return d.enabled === false ? 0.4 : 1.0; });
+                                    node.append('rect')
+                                        .attr('width', 180).attr('height', 64).attr('x', -90).attr('y', -32).attr('rx', 2)
+                                        .attr('fill', '#131820')
+                                        .attr('stroke', function (d) {
+                                            if (d.id === nodeId) return '#5a9fd4';
+                                            switch (d.type) { case 'TARGET': return '#5a9fd4'; case 'INPUT': return '#4b8c5a'; case 'EXTERNAL': return '#d4a843'; default: return '#2a3040'; }
+                                        })
+                                        .attr('stroke-width', function (d) { return d.id === nodeId ? 3 : 1; })
+                                        .attr('opacity', function (d) { return d.enabled === false ? 0.4 : 1.0; });
 
-                        node.append('text').attr('text-anchor', 'middle').attr('dy', -15)
-                            .attr('fill', '#e0e3e8').attr('font-size', '11px').attr('font-family', "'JetBrains Mono', monospace")
-                            .text(function (d) { return d.label || d.id; });
+                                    node.append('text').attr('text-anchor', 'middle').attr('dy', -15)
+                                        .attr('fill', '#e0e3e8').attr('font-size', '11px').attr('font-family', "'JetBrains Mono', monospace")
+                                        .text(function (d) { return d.label || d.id; });
 
-                        node.append('text').attr('text-anchor', 'middle').attr('dy', 8)
-                            .attr('fill', '#c8ccd4').attr('font-size', '13px').attr('font-family', "'JetBrains Mono', monospace")
-                            .text(function (d) { return formatValue(d.value); });
+                                    node.append('text').attr('text-anchor', 'middle').attr('dy', 8)
+                                        .attr('fill', '#c8ccd4').attr('font-size', '13px').attr('font-family', "'JetBrains Mono', monospace")
+                                        .text(function (d) { return formatValue(d.value); });
 
-                        node.call(d3.drag()
-                            .on('start', function (event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-                            .on('drag', function (event, d) { d.fx = event.x; d.fy = event.y; })
-                            .on('end', function (event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
-                        );
+                                    node.call(d3.drag()
+                                        .on('start', function (event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+                                        .on('drag', function (event, d) { d.fx = event.x; d.fy = event.y; })
+                                        .on('end', function (event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+                                    );
 
-                        simulation.on('tick', function () {
-                            link.attr('x1', function (d) { return d.source.x; }).attr('y1', function (d) { return d.source.y; })
-                                .attr('x2', function (d) { return d.target.x; }).attr('y2', function (d) { return d.target.y; });
-                            node.attr('transform', function (d) {
-                                d.x = Math.max(90, Math.min(width - 90, d.x));
-                                d.y = Math.max(32, Math.min(height - 32, d.y));
-                                return 'translate(' + d.x + ',' + d.y + ')';
-                            });
-                        });
-                    }
+                                    simulation.on('tick', function () {
+                                        link.attr('x1', function (d) { return d.source.x; }).attr('y1', function (d) { return d.source.y; })
+                                            .attr('x2', function (d) { return d.target.x; }).attr('y2', function (d) { return d.target.y; });
+                                        node.attr('transform', function (d) {
+                                            d.x = Math.max(90, Math.min(width - 90, d.x));
+                                            d.y = Math.max(32, Math.min(height - 32, d.y));
+                                            return 'translate(' + d.x + ',' + d.y + ')';
+                                        });
+                                    });
+                                }
 
                     function renderAnalysis(nodeId) {
                         var n = graph.nodes[nodeId];
