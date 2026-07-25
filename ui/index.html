@@ -1993,7 +1993,7 @@
                 var list = document.getElementById('scenarios-list');
 
                 // Считаем базовую прибыль
-                var baseProfit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : null;
+                var baseProfit = (graph && graph.nodes && graph.nodes['NET_PROFIT']) ? graph.nodes['NET_PROFIT'].value : null;
 
                 var html = '<div style="margin-bottom:8px;font-size:12px;">Базовая прибыль: <span style="color:' + (baseProfit >= 0 ? 'var(--ok)' : 'var(--critical)') + ';font-weight:500;">' + formatValue(baseProfit) + '</span></div>';
                 html += '<table><thead><tr><th>СЦЕНАРИЙ</th><th>ОПИСАНИЕ</th><th>ПРИБЫЛЬ</th><th>ОТКЛ. ОТ БАЗЫ</th><th></th></tr></thead><tbody>';
