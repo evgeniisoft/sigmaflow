@@ -735,8 +735,6 @@
                                     document.getElementById('btn-create-model').addEventListener('click', function () {
                             var industry = document.getElementById('wizard-industry').value;
                             var taxSystem = document.getElementById('wizard-tax-system').value;
-                            var revenue = parseFloat(document.getElementById('wizard-revenue').value) || 10000000;
-                            var employees = parseInt(document.getElementById('wizard-employees').value) || 30;
                             var companyName = document.getElementById('wizard-name').value.trim() || 'Новая компания';
 
                             createModel(industry, taxSystem, companyName);
