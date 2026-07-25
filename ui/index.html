@@ -726,16 +726,7 @@
                     </select>
                 </div>
 
-                <div class="form-group">
-                    <label>ПРИМЕРНАЯ МЕСЯЧНАЯ ВЫРУЧКА (руб)</label>
-                    <input type="number" id="wizard-revenue" value="10000000" step="100000" style="width:100%;">
-                </div>
-
-                <div class="form-group">
-                    <label>КОЛИЧЕСТВО СОТРУДНИКОВ</label>
-                    <input type="number" id="wizard-employees" value="30" step="1" style="width:100%;">
-                </div>
-
+                
                 <button id="btn-create-model" class="primary" style="width:100%;margin-top:16px;padding:12px;">СОЗДАТЬ КОМПАНИЮ</button>
             `;
 
@@ -748,12 +739,12 @@
                             var employees = parseInt(document.getElementById('wizard-employees').value) || 30;
                             var companyName = document.getElementById('wizard-name').value.trim() || 'Новая компания';
 
-                            createModel(industry, taxSystem, revenue, employees, companyName);
+                            createModel(industry, taxSystem, companyName);
                             wizard.remove();
                         });
                     }
 
-                            function createModel(industry, taxSystem, revenue, employees, companyName) {
+                            function createModel(industry, taxSystem, companyName) {
                                     var yamlText;
                                     switch (industry) {
                                         case 'production': yamlText = TEMPLATE_PRODUCTION; break;
@@ -773,22 +764,7 @@
                                     graph.name = companyName || graph.name;
                                     graph.industry = industry;
 
-                                    // Подставляем примерную выручку
-                                    if (graph.nodes['REVENUE']) {
-                                        graph.nodes['REVENUE'].value = revenue;
-                                    }
-                                    // Подставляем количество сотрудников (распределяем между производственным и АУП)
-                                    var prodRatio = (industry === 'production') ? 0.75 : (industry === 'retail' ? 0.7 : 0.85);
-                                    var prodCount = Math.round(employees * prodRatio);
-                                    var adminCount = employees - prodCount;
-
-                                    if (graph.nodes['PROD_HEADCOUNT']) graph.nodes['PROD_HEADCOUNT'].value = prodCount;
-                                    if (graph.nodes['STAFF_HEADCOUNT']) graph.nodes['STAFF_HEADCOUNT'].value = prodCount;
-                                    if (graph.nodes['SPECIALIST_HEADCOUNT']) graph.nodes['SPECIALIST_HEADCOUNT'].value = prodCount;
-                                    if (graph.nodes['DEV_HEADCOUNT']) graph.nodes['DEV_HEADCOUNT'].value = prodCount;
-
-                                    if (graph.nodes['ADMIN_HEADCOUNT']) graph.nodes['ADMIN_HEADCOUNT'].value = adminCount;
-
+                                    
                                     // Налоговый режим
                                     if (!graph.company) graph.company = {};
                                     graph.company.tax_system = taxSystem;
