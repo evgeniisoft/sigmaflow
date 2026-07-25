@@ -546,7 +546,10 @@
             var yamlText = DEMO_FULL;
 
             try {
-                var loaded = loadModelFromStorage();
+                var loaded = false;
+                if (graph && graph.nodes) {
+                    loaded = loadModelFromStorage();
+                }
                 if (loaded) {
                     graph.compute();
                     elProjectName.textContent = graph.name + ' (сохранённая)';
