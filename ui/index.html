@@ -467,6 +467,10 @@
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="sigmaflow.js"></script>
     <script src="demo_full.js"></script>
+    <script src="template_production.js"></script>
+    <script src="template_retail.js"></script>
+    <script src="template_services.js"></script>
+    <script src="template_it.js"></script>
     <script>
         // ============================================================
         // ГЛАВНЫЙ МОДУЛЬ ПРИЛОЖЕНИЯ
@@ -538,39 +542,200 @@
                 }
             }
 
-        function loadDemo() {
-            if (typeof DEMO_FULL === 'undefined') {
-                notify('Файл demo_full.js не загружен', true);
-                return;
-            }
-            var yamlText = DEMO_FULL;
+                function loadDemo() {
+                        // Проверяем, есть ли сохранённая модель
+                        var hasSavedModel = localStorage.getItem('sigmaflow_model');
 
-            try {
-                var data = parseYAML(yamlText);
-                graph = Graph.fromDict(data);
-                elProjectName.textContent = graph.name;
-                updateStatusBar('Базовая модель загружена');
+                        if (!hasSavedModel) {
+                            // Первый запуск — показываем мастер настройки
+                            showSetupWizard();
+                            return;
+                        }
 
-                var loaded = false;
-                if (graph && graph.nodes) {
-                    loaded = loadModelFromStorage();
-                }
-                if (loaded) {
-                    graph.compute();
-                    elProjectName.textContent = graph.name + ' (сохранённая)';
-                    updateStatusBar('Модель загружена из сохранённых данных');
-                }
+                        // Загружаем модель из localStorage
+                        loadFromStorage();
+                    }
 
-                renderAll();
-                renderInvestments();
-                renderCredits();
+                    function loadFromStorage() {
+                        var saved = localStorage.getItem('sigmaflow_model');
+                        if (!saved) {
+                            notify('Нет сохранённой модели', true);
+                            return;
+                        }
 
-            } catch (err) {
-                updateStatusBar('Ошибка загрузки');
-                notify('Ошибка: ' + err.message, true);
-                console.error(err);
-            }
-        }
+                        try {
+                            var modelData = JSON.parse(saved);
+                            var templateName = modelData.template || 'demo_full';
+                            var yamlText;
+
+                            switch (templateName) {
+                                case 'production': yamlText = TEMPLATE_PRODUCTION; break;
+                                case 'retail': yamlText = TEMPLATE_RETAIL; break;
+                                case 'services': yamlText = TEMPLATE_SERVICES; break;
+                                case 'it': yamlText = TEMPLATE_IT; break;
+                                default: yamlText = DEMO_FULL;
+                            }
+
+                            if (!yamlText) {
+                                notify('Шаблон не найден: ' + templateName, true);
+                                return;
+                            }
+
+                            var data = parseYAML(yamlText);
+                            graph = Graph.fromDict(data);
+                            elProjectName.textContent = graph.name;
+                            updateStatusBar('Модель загружена из шаблона');
+
+                            loadModelFromStorage();
+                            graph.compute();
+                            elProjectName.textContent = graph.name + ' (сохранённая)';
+                            updateStatusBar('Модель загружена из сохранённых данных');
+
+                            renderAll();
+                            renderInvestments();
+                            renderCredits();
+
+                            // Восстановление настроек компании в интерфейсе
+                            if (graph.company) {
+                                if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
+                                if (graph.company.nds_rate !== undefined) document.getElementById('company-nds-rate').value = graph.company.nds_rate;
+                                if (graph.company.profit_tax_rate !== undefined) document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate;
+                                if (graph.company.insurance_rate !== undefined) document.getElementById('company-insurance-rate').value = graph.company.insurance_rate;
+                                if (graph.company.has_property_tax !== undefined) document.getElementById('company-has-property-tax').checked = graph.company.has_property_tax;
+                            }
+
+                        } catch (err) {
+                            updateStatusBar('Ошибка загрузки');
+                            notify('Ошибка: ' + err.message, true);
+                            console.error(err);
+                        }
+                    }
+
+                    function showSetupWizard() {
+                        // Скрываем все панели, показываем мастер
+                        document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+                        document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); });
+
+                        var main = document.querySelector('main');
+                        var wizard = document.createElement('div');
+                        wizard.id = 'setup-wizard';
+                        wizard.style.cssText = 'padding:40px;max-width:600px;margin:0 auto;flex:1;overflow-y:auto;';
+                        wizard.innerHTML = `
+                <h2 style="margin-bottom:24px;">ДОБРО ПОЖАЛОВАТЬ В SIGMAFLOW</h2>
+                <p style="color:var(--text-hint);margin-bottom:24px;">Давайте настроим модель вашей компании.</p>
+
+                <div class="form-group">
+                    <label>ОТРАСЛЬ</label>
+                    <select id="wizard-industry" style="width:100%;">
+                        <option value="production">Производство</option>
+                        <option value="retail">Торговля (розница / опт)</option>
+                        <option value="services">Услуги / Сервис</option>
+                        <option value="it">IT / Разработка ПО</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>НАЛОГОВЫЙ РЕЖИМ</label>
+                    <select id="wizard-tax-system" style="width:100%;">
+                        <option value="OSNO">ОСНО (общая система)</option>
+                        <option value="USN_INCOME">УСН «Доходы» (6%)</option>
+                        <option value="USN_INCOME_MINUS">УСН «Доходы минус расходы» (15%)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>ПРИМЕРНАЯ МЕСЯЧНАЯ ВЫРУЧКА (руб)</label>
+                    <input type="number" id="wizard-revenue" value="10000000" step="100000" style="width:100%;">
+                </div>
+
+                <div class="form-group">
+                    <label>КОЛИЧЕСТВО СОТРУДНИКОВ</label>
+                    <input type="number" id="wizard-employees" value="30" step="1" style="width:100%;">
+                </div>
+
+                <button id="btn-create-model" class="primary" style="width:100%;margin-top:16px;padding:12px;">СОЗДАТЬ МОДЕЛЬ</button>
+            `;
+
+                        main.appendChild(wizard);
+
+                        document.getElementById('btn-create-model').addEventListener('click', function () {
+                            var industry = document.getElementById('wizard-industry').value;
+                            var taxSystem = document.getElementById('wizard-tax-system').value;
+                            var revenue = parseFloat(document.getElementById('wizard-revenue').value) || 10000000;
+                            var employees = parseInt(document.getElementById('wizard-employees').value) || 30;
+
+                            createModel(industry, taxSystem, revenue, employees);
+                            wizard.remove();
+                        });
+                    }
+
+                    function createModel(industry, taxSystem, revenue, employees) {
+                        var yamlText;
+                        switch (industry) {
+                            case 'production': yamlText = TEMPLATE_PRODUCTION; break;
+                            case 'retail': yamlText = TEMPLATE_RETAIL; break;
+                            case 'services': yamlText = TEMPLATE_SERVICES; break;
+                            case 'it': yamlText = TEMPLATE_IT; break;
+                            default: yamlText = DEMO_FULL;
+                        }
+
+                        if (!yamlText) {
+                            notify('Ошибка загрузки шаблона', true);
+                            return;
+                        }
+
+                        var data = parseYAML(yamlText);
+                        graph = Graph.fromDict(data);
+
+                        // Устанавливаем налоговый режим
+                        if (!graph.company) graph.company = {};
+                        graph.company.tax_system = taxSystem;
+                        if (taxSystem === 'OSNO') {
+                            graph.company.nds_rate = 0.22;
+                            graph.company.profit_tax_rate = 0.20;
+                        } else {
+                            graph.company.nds_rate = 0;
+                            graph.company.nds_exempt = true;
+                            graph.company.profit_tax_rate = taxSystem === 'USN_INCOME' ? 0.06 : 0.15;
+                        }
+                        graph.company.insurance_rate = 0.30;
+                        graph.company.has_property_tax = (industry === 'production' || industry === 'retail');
+                        graph.company.property_tax_rate = 0.022;
+
+                        // Корректируем ставку налога в модели
+                        if (graph.nodes['TAX_RATE']) {
+                            graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
+                        }
+
+                        // Сохраняем
+                        graph.compute();
+                        elProjectName.textContent = graph.name;
+                        updateStatusBar('Модель создана');
+                        notify('Модель создана. Настройте параметры компании на вкладке КОМПАНИЯ.');
+
+                        // Запоминаем шаблон
+                        var modelData = {
+                            template: industry,
+                            nodes: {},
+                            investments: [],
+                            credits: [],
+                            company: graph.company
+                        };
+                        Object.keys(graph.nodes).forEach(function (key) {
+                            var n = graph.nodes[key];
+                            modelData.nodes[key] = {
+                                value: n.value,
+                                enabled: n.enabled,
+                                min: n.min,
+                                max: n.max
+                            };
+                        });
+                        localStorage.setItem('sigmaflow_model', JSON.stringify(modelData));
+
+                        renderAll();
+                        renderInvestments();
+                        renderCredits();
+                    }
 
         // ============================================================
         // ВЫЧИСЛЕНИЕ
