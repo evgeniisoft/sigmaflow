@@ -185,13 +185,38 @@
             </div>
         </div>
 
-        <!-- ПАНЕЛЬ СЦЕНАРИИ -->
-        <div id="panel-scenarios" class="panel">
-            <h3>СТРЕСС-ТЕСТЫ И СЦЕНАРИИ</h3>
-            <div class="placeholder">
-                Создавайте сценарии внешних шоков и проверяйте устойчивость модели.
-            </div>
-        </div>
+                <!-- ПАНЕЛЬ СЦЕНАРИИ -->
+                <div id="panel-scenarios" class="panel">
+                    <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
+                        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;">
+                            <h3 style="margin:0;">СЦЕНАРИИ</h3>
+                            <button id="btn-add-scenario" class="primary" style="margin-left:auto;">+ НОВЫЙ СЦЕНАРИЙ</button>
+                        </div>
+                
+                        <div id="scenarios-list" style="margin-bottom:16px;"></div>
+                
+                        <div id="scenario-form"
+                            style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
+                            <div class="form-group">
+                                <label>НАЗВАНИЕ СЦЕНАРИЯ</label>
+                                <input type="text" id="sc-name" placeholder="Например: Рост ставки ЦБ до 25%">
+                            </div>
+                            <div class="form-group">
+                                <label>ОПИСАНИЕ</label>
+                                <input type="text" id="sc-desc" placeholder="Что моделируем">
+                            </div>
+                            <div style="color:var(--text-hint);font-size:11px;margin-bottom:8px;">ШОКИ (изменения параметров)</div>
+                            <div id="scenario-shocks"></div>
+                            <button id="btn-add-shock" style="margin-bottom:12px;">+ ДОБАВИТЬ ШОК</button>
+                            <div style="display:flex;gap:8px;">
+                                <button id="btn-save-scenario" class="primary">СОХРАНИТЬ</button>
+                                <button id="btn-cancel-scenario">ОТМЕНА</button>
+                            </div>
+                        </div>
+                
+                        <div id="scenario-comparison" style="display:none;margin-top:16px;"></div>
+                    </div>
+                </div>
 
         <!-- ПАНЕЛЬ ОПТИМИЗАЦИЯ -->
         <div id="panel-optimize" class="panel">
@@ -638,6 +663,7 @@
                                     renderAll();
                                     window.renderInvestments();
                                     window.renderCredits();
+                                    renderScenarios();
                                     refreshCompanyList();
 
                                     if (graph.company) {
@@ -834,6 +860,7 @@
                                     renderAll();
                                     window.renderInvestments();
                                     window.renderCredits();
+                                    renderScenarios();
                                     refreshCompanyList();
                                 }
 
@@ -2071,6 +2098,152 @@
                     this.textContent = '◀ ПОЛНЫЙ ГРАФ';
                 }
             });
+
+                // ==================== СЦЕНАРИИ ====================
+            if (!graph) graph = {};
+            if (!graph.scenarios) graph.scenarios = [];
+
+            function saveScenarios() {
+                if (graph && graph.scenarios) {
+                    localStorage.setItem('sigmaflow_scenarios_' + getCurrentCompanyId(), JSON.stringify(graph.scenarios));
+                }
+            }
+
+            function loadScenarios() {
+                var saved = localStorage.getItem('sigmaflow_scenarios_' + getCurrentCompanyId());
+                if (saved && graph) {
+                    graph.scenarios = JSON.parse(saved);
+                }
+            }
+
+            function renderScenarios() {
+                loadScenarios();
+                var list = document.getElementById('scenarios-list');
+                var html = '<table><thead><tr><th>СЦЕНАРИЙ</th><th>ОПИСАНИЕ</th><th>ШОКИ</th><th>ПРИБЫЛЬ</th><th></th></tr></thead><tbody>';
+
+                (graph.scenarios || []).forEach(function (sc, idx) {
+                    // Считаем прибыль для сценария
+                    var profit = computeScenario(sc);
+
+                    html += '<tr>';
+                    html += '<td>' + sc.name + '</td>';
+                    html += '<td>' + (sc.desc || '') + '</td>';
+                    html += '<td>' + (sc.shocks || []).map(function (s) { return s.node + ' ' + (s.value > 0 ? '+' : '') + s.value; }).join(', ') + '</td>';
+                    html += '<td class="value-cell" style="color:' + (profit >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(profit) + '</td>';
+                    html += '<td>';
+                    html += '<button onclick="applyScenario(' + idx + ')" style="font-size:10px;padding:2px 6px;">▶</button>';
+                    html += '<button onclick="deleteScenario(' + idx + ')" style="font-size:10px;padding:2px 6px;margin-left:2px;">X</button>';
+                    html += '</td>';
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                list.innerHTML = html || 'Нет сценариев. Создайте новый сценарий для стресс-теста.';
+            }
+
+            function computeScenario(sc) {
+                if (!graph || !sc) return null;
+                // Сохраняем оригинальные значения
+                var saved = {};
+                (sc.shocks || []).forEach(function (shock) {
+                    var n = graph.nodes[shock.node];
+                    if (n) {
+                        saved[shock.node] = n.value;
+                        n.value = shock.value;
+                    }
+                });
+                // Пересчитываем
+                graph.compute();
+                var profit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : null;
+                // Возвращаем оригинальные значения
+                Object.keys(saved).forEach(function (key) {
+                    if (graph.nodes[key]) graph.nodes[key].value = saved[key];
+                });
+                graph.compute();
+                return profit;
+            }
+
+            window.applyScenario = function (idx) {
+                var sc = graph.scenarios[idx];
+                if (!sc) return;
+                (sc.shocks || []).forEach(function (shock) {
+                    var n = graph.nodes[shock.node];
+                    if (n) n.value = shock.value;
+                });
+                graph.compute();
+                renderAll();
+                updateStatusBar('Применён сценарий: ' + sc.name);
+                notify('Сценарий «' + sc.name + '» применён');
+            };
+
+            window.deleteScenario = function (idx) {
+                graph.scenarios.splice(idx, 1);
+                saveScenarios();
+                renderScenarios();
+            };
+
+            document.getElementById('btn-add-scenario').addEventListener('click', function () {
+                document.getElementById('scenario-form').style.display = 'block';
+                document.getElementById('sc-name').value = '';
+                document.getElementById('sc-desc').value = '';
+                document.getElementById('scenario-shocks').innerHTML = '';
+                addShockRow();
+            });
+
+            document.getElementById('btn-cancel-scenario').addEventListener('click', function () {
+                document.getElementById('scenario-form').style.display = 'none';
+            });
+
+            document.getElementById('btn-add-shock').addEventListener('click', function () {
+                addShockRow();
+            });
+
+            function addShockRow() {
+                var container = document.getElementById('scenario-shocks');
+                var html = '<div class="shock-row" style="display:flex;gap:8px;margin-bottom:4px;">';
+                html += '<select class="shock-node" style="flex:1;font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">';
+                if (graph && graph.nodes) {
+                    var nodeIds = Object.keys(graph.nodes).filter(function (k) {
+                        return graph.nodes[k].type === 'INPUT' || graph.nodes[k].type === 'EXTERNAL';
+                    }).sort();
+                    nodeIds.forEach(function (id) {
+                        html += '<option value="' + id + '">' + (graph.nodes[id].label || id) + ' (' + id + ')</option>';
+                    });
+                }
+                html += '</select>';
+                html += '<input type="number" class="shock-value" placeholder="Новое значение" step="any" style="width:150px;font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">';
+                html += '<button class="btn-remove-shock" style="font-size:10px;padding:2px 6px;">X</button>';
+                html += '</div>';
+                container.insertAdjacentHTML('beforeend', html);
+
+                container.lastElementChild.querySelector('.btn-remove-shock').addEventListener('click', function () {
+                    this.parentElement.remove();
+                });
+            }
+
+            document.getElementById('btn-save-scenario').addEventListener('click', function () {
+                var name = document.getElementById('sc-name').value.trim();
+                var desc = document.getElementById('sc-desc').value.trim();
+                if (!name) { notify('Введите название сценария', true); return; }
+
+                var shocks = [];
+                document.querySelectorAll('.shock-row').forEach(function (row) {
+                    var node = row.querySelector('.shock-node').value;
+                    var value = parseFloat(row.querySelector('.shock-value').value);
+                    if (node && !isNaN(value)) shocks.push({ node: node, value: value });
+                });
+
+                if (!graph.scenarios) graph.scenarios = [];
+                graph.scenarios.push({ name: name, desc: desc, shocks: shocks });
+                saveScenarios();
+                document.getElementById('scenario-form').style.display = 'none';
+                renderScenarios();
+                notify('Сценарий «' + name + '» сохранён');
+            });
+
+            // Загружаем сценарии при старте
+            loadScenarios();
+            renderScenarios();
 
             // Загружаем демо при старте
             loadDemo();
