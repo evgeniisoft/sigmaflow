@@ -14,11 +14,11 @@
     <header>
         <span class="logo">SIGMAFLOW</span>
         <span class="project-name" id="project-name">Проект не загружен</span>
-        <select id="select-demo"
-            style="font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:6px 12px;cursor:pointer;">
-            <option value="full">ПОЛНАЯ МОДЕЛЬ</option>
+        <select id="select-company"
+            style="font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:6px 12px;cursor:pointer;max-width:300px;">
+            <option value="">Нет компаний</option>
         </select>
-        <button id="btn-load-demo">ЗАГРУЗИТЬ</button>
+        <button id="btn-new-company" style="font-size:12px;padding:6px 12px;">+ НОВАЯ</button>
         <button id="btn-save">СОХРАНИТЬ</button>
     </header>
 
@@ -492,69 +492,147 @@
         // ============================================================
         // ЗАГРУЗКА ДЕМО
         // ============================================================
-            function saveModelToStorage() {
-                if (!graph) return;
-                try {
-                    var modelData = {
-                        nodes: {},
-                        investments: graph.investments || [],
-                        credits: graph.credits || [],
-                        company: graph.company || {}
-                    };
-                    Object.keys(graph.nodes).forEach(function (key) {
-                        var n = graph.nodes[key];
-                        modelData.nodes[key] = {
-                            value: n.value,
-                            enabled: n.enabled,
-                            min: n.min,
-                            max: n.max
-                        };
-                    });
-                    localStorage.setItem('sigmaflow_model', JSON.stringify(modelData));
-                } catch (e) {
-                    console.error('Ошибка сохранения модели:', e);
-                }
-            }
-
-            function loadModelFromStorage() {
-                try {
-                    var saved = localStorage.getItem('sigmaflow_model');
-                    if (!saved) return false;
-                    var data = JSON.parse(saved);
-                    if (data.nodes) {
-                        Object.keys(data.nodes).forEach(function (key) {
-                            if (graph.nodes[key]) {
-                                var nd = data.nodes[key];
-                                if (nd.value !== undefined) graph.nodes[key].value = nd.value;
-                                if (nd.enabled !== undefined) graph.nodes[key].enabled = nd.enabled;
-                                if (nd.min !== undefined) graph.nodes[key].min = nd.min;
-                                if (nd.max !== undefined) graph.nodes[key].max = nd.max;
-                            }
-                        });
-                    }
-                    if (data.investments) graph.investments = data.investments;
-                    if (data.credits) graph.credits = data.credits;
-                    if (data.company) graph.company = data.company;
-                    return true;
-                } catch (e) {
-                    console.error('Ошибка загрузки модели:', e);
-                    return false;
-                }
-            }
-
-                function loadDemo() {
-                        // Проверяем, есть ли сохранённая модель
-                        var hasSavedModel = localStorage.getItem('sigmaflow_model');
-
-                        if (!hasSavedModel) {
-                            // Первый запуск — показываем мастер настройки
-                            showSetupWizard();
-                            return;
+                    function getAllCompanies() {
+                            try {
+                                var data = localStorage.getItem('sigmaflow_companies');
+                                return data ? JSON.parse(data) : {};
+                            } catch (e) { return {}; }
                         }
 
-                        // Загружаем модель из localStorage
-                        loadFromStorage();
-                    }
+                        function saveAllCompanies(companies) {
+                            localStorage.setItem('sigmaflow_companies', JSON.stringify(companies));
+                        }
+
+                        function getCurrentCompanyId() {
+                            return localStorage.getItem('sigmaflow_current_company') || '';
+                        }
+
+                        function setCurrentCompanyId(id) {
+                            localStorage.setItem('sigmaflow_current_company', id);
+                        }
+
+                        function saveCurrentModel() {
+                            if (!graph) return;
+                            var companyId = getCurrentCompanyId();
+                            if (!companyId) return;
+                            var companies = getAllCompanies();
+                            var modelData = {
+                                name: graph.name,
+                                industry: graph.industry || 'production',
+                                nodes: {},
+                                investments: graph.investments || [],
+                                credits: graph.credits || [],
+                                company: graph.company || {}
+                            };
+                            Object.keys(graph.nodes).forEach(function (key) {
+                                var n = graph.nodes[key];
+                                modelData.nodes[key] = {
+                                    value: n.value,
+                                    enabled: n.enabled,
+                                    min: n.min,
+                                    max: n.max
+                                };
+                            });
+                            companies[companyId] = modelData;
+                            saveAllCompanies(companies);
+                        }
+
+                        function loadCompany(companyId) {
+                            var companies = getAllCompanies();
+                            var modelData = companies[companyId];
+                            if (!modelData) return false;
+
+                            var yamlText;
+                            switch (modelData.industry) {
+                                case 'production': yamlText = TEMPLATE_PRODUCTION; break;
+                                case 'retail': yamlText = TEMPLATE_RETAIL; break;
+                                case 'services': yamlText = TEMPLATE_SERVICES; break;
+                                case 'it': yamlText = TEMPLATE_IT; break;
+                                default: return false;
+                            }
+
+                            var data = parseYAML(yamlText);
+                            graph = Graph.fromDict(data);
+                            graph.industry = modelData.industry;
+
+                            if (modelData.nodes) {
+                                Object.keys(modelData.nodes).forEach(function (key) {
+                                    if (graph.nodes[key]) {
+                                        var nd = modelData.nodes[key];
+                                        if (nd.value !== undefined) graph.nodes[key].value = nd.value;
+                                        if (nd.enabled !== undefined) graph.nodes[key].enabled = nd.enabled;
+                                        if (nd.min !== undefined) graph.nodes[key].min = nd.min;
+                                        if (nd.max !== undefined) graph.nodes[key].max = nd.max;
+                                    }
+                                });
+                            }
+
+                            graph.investments = modelData.investments || [];
+                            graph.credits = modelData.credits || [];
+                            graph.company = modelData.company || {};
+                            graph.name = modelData.name || graph.name;
+
+                            setCurrentCompanyId(companyId);
+                            graph.compute();
+                            elProjectName.textContent = graph.name;
+                            return true;
+                        }
+
+                        function refreshCompanyList() {
+                            var select = document.getElementById('select-company');
+                            var companies = getAllCompanies();
+                            var current = getCurrentCompanyId();
+
+                            select.innerHTML = '';
+                            var hasCompanies = false;
+                            Object.keys(companies).forEach(function (id) {
+                                hasCompanies = true;
+                                var opt = document.createElement('option');
+                                opt.value = id;
+                                opt.textContent = companies[id].name + ' (' + companies[id].industry + ')';
+                                if (id === current) opt.selected = true;
+                                select.appendChild(opt);
+                            });
+
+                            if (!hasCompanies) {
+                                var opt = document.createElement('option');
+                                opt.value = '';
+                                opt.textContent = 'Нет компаний';
+                                select.appendChild(opt);
+                            }
+                        }
+
+                        function loadDemo() {
+                                var currentId = getCurrentCompanyId();
+                                var companies = getAllCompanies();
+
+                                if (!currentId || !companies[currentId]) {
+                                    // Нет текущей компании — показываем мастер
+                                    showSetupWizard();
+                                    return;
+                                }
+
+                                // Загружаем текущую компанию
+                                var loaded = loadCompany(currentId);
+                                if (loaded) {
+                                    elProjectName.textContent = graph.name;
+                                    updateStatusBar('Компания загружена');
+                                    renderAll();
+                                    window.renderInvestments();
+                                    window.renderCredits();
+                                    refreshCompanyList();
+
+                                    if (graph.company) {
+                                        if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
+                                        if (graph.company.nds_rate !== undefined) document.getElementById('company-nds-rate').value = graph.company.nds_rate;
+                                        if (graph.company.profit_tax_rate !== undefined) document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate;
+                                        if (graph.company.insurance_rate !== undefined) document.getElementById('company-insurance-rate').value = graph.company.insurance_rate;
+                                        if (graph.company.has_property_tax !== undefined) document.getElementById('company-has-property-tax').checked = graph.company.has_property_tax;
+                                    }
+                                } else {
+                                    showSetupWizard();
+                                }
+                            }
 
                     function loadFromStorage() {
                         var saved = localStorage.getItem('sigmaflow_model');
@@ -715,7 +793,8 @@
 
                         // Запоминаем шаблон
                         var modelData = {
-                            template: industry,
+                            name: graph.name,
+                            industry: industry,
                             nodes: {},
                             investments: [],
                             credits: [],
@@ -730,11 +809,20 @@
                                 max: n.max
                             };
                         });
-                        localStorage.setItem('sigmaflow_model', JSON.stringify(modelData));
+
+                        var companies = getAllCompanies();
+                        var companyId = 'company_' + Date.now();
+                        companies[companyId] = modelData;
+                        saveAllCompanies(companies);
+                        setCurrentCompanyId(companyId);
 
                         renderAll();
-                        renderInvestments();
-                        renderCredits();
+                        window.renderInvestments();
+                        window.renderCredits();
+                        refreshCompanyList();
+                        elProjectName.textContent = graph.name;
+                        updateStatusBar('Компания создана');
+                        notify('Модель создана. Настройте параметры на вкладке КОМПАНИЯ.');
                     }
 
         // ============================================================
@@ -1166,7 +1254,7 @@
                     updateStatusBar('Значения обновлены, модель пересчитана');
                     notify('Изменения применены, модель пересчитана');
                     renderAll();
-                    saveModelToStorage();
+                    saveCurrentModel();
                 });
             }
         }
@@ -1634,7 +1722,6 @@
         document.addEventListener('DOMContentLoaded', function () {
             initNavigation();
 
-            document.getElementById('btn-load-demo').addEventListener('click', loadDemo);
             document.getElementById('btn-compute').addEventListener('click', runCompute);
             document.getElementById('btn-save').addEventListener('click', saveProject);
             document.getElementById('btn-reset-view').addEventListener('click', function () {
@@ -1662,7 +1749,7 @@
                         updateStatusBar('Применено ' + changed + ' изменений, модель пересчитана');
                         notify('Применено ' + changed + ' изменений');
                         renderAll();
-                        saveModelToStorage();
+                        saveCurrentModel();
                     } else {
                         notify('Нет изменений для применения');
                     }
@@ -1723,7 +1810,7 @@
                 updateStatusBar('Настройки компании обновлены');
                 notify('Параметры компании сохранены');
                 localStorage.setItem('sigmaflow_company', JSON.stringify(graph.company));
-                saveModelToStorage();
+                saveCurrentModel();
             });
                 // Сворачивание расширенных параметров
             document.getElementById('toggle-extended').addEventListener('click', function () {
@@ -1784,7 +1871,7 @@
                     graph.nodes['CAPEX'].value = total;
                 }
                 renderInvestments();
-                saveModelToStorage();
+                saveCurrentModel();
             }
             
 
@@ -1896,7 +1983,7 @@
                     }
                 }
                 renderCredits();
-                saveModelToStorage();
+                saveCurrentModel();
             }
 
             window.renderCredits = function () {
@@ -1985,6 +2072,24 @@
                 }
                 document.getElementById('cr-monthly-payment').value = Math.round(payment);
             };
+
+            document.getElementById('select-company').addEventListener('change', function () {
+                var id = this.value;
+                if (!id) return;
+                if (loadCompany(id)) {
+                    graph.compute();
+                    elProjectName.textContent = graph.name;
+                    renderAll();
+                    window.renderInvestments();
+                    window.renderCredits();
+                    refreshCompanyList();
+                    updateStatusBar('Компания загружена');
+                }
+            });
+
+            document.getElementById('btn-new-company').addEventListener('click', function () {
+                showSetupWizard();
+            });
 
             // Загружаем демо при старте
             loadDemo();
