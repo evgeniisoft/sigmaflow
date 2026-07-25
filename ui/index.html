@@ -562,9 +562,9 @@
 
                                     if (graph.company) {
                                         if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
-                                        if (graph.company.nds_rate !== undefined) document.getElementById('company-nds-rate').value = String(graph.company.nds_rate);
-                                        if (graph.company.profit_tax_rate !== undefined) document.getElementById('company-profit-tax-rate').value = String(graph.company.profit_tax_rate);
-                                        if (graph.company.insurance_rate !== undefined) document.getElementById('company-insurance-rate').value = String(graph.company.insurance_rate);
+                                        if (graph.company.nds_rate !== undefined) document.getElementById('company-nds-rate').value = graph.company.nds_rate.toFixed(2);
+                                        if (graph.company.profit_tax_rate !== undefined) document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate.toFixed(2);
+                                        if (graph.company.insurance_rate !== undefined) document.getElementById('company-insurance-rate').value = graph.company.insurance_rate.toFixed(2);
                                     }
                                 } else {
                                     showSetupWizard();
