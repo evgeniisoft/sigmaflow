@@ -1051,7 +1051,6 @@
                         renderDashboard();
                         renderDataTable();
                         renderComputeResults();
-                        updateInspector();
                     }
 
         function dragstarted(event, d) {
@@ -1421,7 +1420,7 @@
                             panel.classList.add('active');
                             // При переключении на СТРАТЕГИЮ — перерисовать граф
                             if (btn.dataset.panel === 'strategy' && graph) {
-                                setTimeout(function () { renderGraph(); }, 100);
+                                setTimeout(function () { renderDashboard(); }, 100);
                             }
                         }
                     });
