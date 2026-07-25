@@ -39,20 +39,38 @@
     <!-- ОСНОВНАЯ ОБЛАСТЬ -->
     <main>
 
-        <!-- ПАНЕЛЬ СТРАТЕГИЯ -->
-        <div id="panel-strategy" class="panel active">
-            <div id="strategy-left">
-                <div id="strategy-toolbar">
-                    <button id="btn-compute" class="primary">ВЫЧИСЛИТЬ</button>
-                    <button id="btn-reset-view">СБРОСИТЬ ВИД</button>
+                <!-- ПАНЕЛЬ СТРАТЕГИЯ -->
+                <div id="panel-strategy" class="panel active">
+                    <div style="display:flex;height:100%;">
+                        <div style="flex:1;padding:16px;overflow-y:auto;">
+                            <h3 style="margin:0 0 16px 0;">КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ</h3>
+                            <div id="dashboard-metrics"
+                                style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+                            </div>
+                            <div id="dashboard-analysis"
+                                style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
+                            </div>
+                            <button id="btn-full-graph" style="margin-top:8px;">▶ ПОЛНЫЙ ГРАФ</button>
+                        </div>
+                        <div id="dashboard-graph-panel"
+                            style="width:50%;background:var(--bg-primary);border-left:1px solid var(--border);display:flex;flex-direction:column;">
+                            <div
+                                style="padding:8px 12px;background:var(--bg-panel);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-hint);">
+                                ГРАФ МОДЕЛИ <span id="graph-selected-node"></span>
+                            </div>
+                            <div id="graph-container" style="flex:1;overflow:hidden;"></div>
+                            <div
+                                style="padding:4px 12px;background:var(--bg-panel);border-top:1px solid var(--border);font-size:10px;color:var(--text-hint);">
+                                Глубина:
+                                <button class="graph-depth-btn active" data-depth="2">2</button>
+                                <button class="graph-depth-btn" data-depth="3">3</button>
+                                <button class="graph-depth-btn" data-depth="4">4</button>
+                                <button class="graph-depth-btn" data-depth="0">ВСЕ</button>
+                                &nbsp;| Кликните на метрику для трассировки
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="graph-container"></div>
-            </div>
-            <div id="inspector">
-                <h3>СВОЙСТВА</h3>
-                <div id="inspector-content">Выберите узел на графе</div>
-            </div>
-        </div>
 
             <!-- ПАНЕЛЬ ДАННЫЕ -->
             <div id="panel-data" class="panel">
@@ -735,6 +753,8 @@
                                     document.getElementById('btn-create-model').addEventListener('click', function () {
                             var industry = document.getElementById('wizard-industry').value;
                             var taxSystem = document.getElementById('wizard-tax-system').value;
+                            var revenue = parseFloat(document.getElementById('wizard-revenue').value) || 10000000;
+                            var employees = parseInt(document.getElementById('wizard-employees').value) || 30;
                             var companyName = document.getElementById('wizard-name').value.trim() || 'Новая компания';
 
                             createModel(industry, taxSystem, companyName);
@@ -843,258 +863,198 @@
         var svg = null;
         var simulation = null;
 
-        function renderGraph() {
-            elGraphContainer.innerHTML = '';
+                var currentTracedNode = null;
+                    var graphDepth = 2;
 
-            var width = elGraphContainer.clientWidth;
-            var height = elGraphContainer.clientHeight;
+                    function renderDashboard() {
+                        if (!graph) return;
 
-            svg = d3.select('#graph-container')
-                .append('svg')
-                .attr('width', width)
-                .attr('height', height);
+                        var keyMetrics = [
+                            { id: 'NET_PROFIT', label: 'Чистая прибыль' },
+                            { id: 'REVENUE', label: 'Выручка' },
+                            { id: 'EBITDA', label: 'EBITDA' },
+                            { id: 'FCF', label: 'Денежный поток' },
+                            { id: 'ASSETS', label: 'Активы' },
+                            { id: 'DEBT_EBITDA', label: 'Долг/EBITDA' },
+                            { id: 'CASH', label: 'Остаток денег' },
+                            { id: 'GROSS_PROFIT', label: 'Валовая прибыль' }
+                        ];
 
-            var nodeList = Object.keys(graph.nodes).map(function (key) {
-                return graph.nodes[key];
-            });
+                        var html = '';
+                        keyMetrics.forEach(function (m) {
+                            var n = graph.nodes[m.id];
+                            if (!n) return;
+                            var val = n.value !== null && n.value !== undefined ? n.value : 0;
+                            var formatted = formatValue(val);
+                            var color = val >= 0 ? 'var(--ok)' : 'var(--critical)';
+                            var borderColor = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
 
-            var linkList = graph.edges.map(function (e) {
-                return {
-                    source: e.from,
-                    target: e.to,
-                    type: e.type,
-                    coefficient: e.coefficient
-                };
-            });
+                            html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
+                            html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
+                            html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatted + '</div>';
+                            html += '</div>';
+                        });
 
-            // Уровни иерархии и колонки для варианта D
-            var nodeLayout = {
-                'NET_PROFIT': { level: 0, col: 'center' },
-                'EBT': { level: 1, col: 'center' },
-                'TAX': { level: 1, col: 'right' },
-                'FCF': { level: 2, col: 'right' },
-                'EBITDA': { level: 2, col: 'center' },
-                'EBIT': { level: 2, col: 'center' },
-                'GROSS_PROFIT': { level: 3, col: 'center' },
-                'INTEREST': { level: 3, col: 'left' },
-                'INTEREST_INCOME': { level: 3, col: 'left' },
-                'OTHER_INCOME': { level: 3, col: 'left' },
-                'OTHER_EXP': { level: 3, col: 'left' },
-                'PENALTIES': { level: 3, col: 'left' },
-                'DA': { level: 3, col: 'center' },
-                'CFO': { level: 3, col: 'right' },
-                'CFI': { level: 3, col: 'right' },
-                'CFF': { level: 3, col: 'right' },
-                'CASH': { level: 3, col: 'right' },
-                'ASSETS': { level: 3, col: 'right' },
-                'RETAINED_EARNINGS': { level: 3, col: 'right' },
-                'DEBT_EBITDA': { level: 3, col: 'right' },
-                'REVENUE': { level: 4, col: 'center' },
-                'COGS': { level: 4, col: 'center' },
-                'SELLING_EXP': { level: 4, col: 'left' },
-                'ADMIN_EXP': { level: 4, col: 'left' },
-                'delta_RECEIVABLES': { level: 4, col: 'right' },
-                'delta_PAYABLES': { level: 4, col: 'right' },
-                'delta_INVENTORY': { level: 4, col: 'right' },
-                'NEW_LOANS': { level: 4, col: 'right' },
-                'LOAN_REPAYMENT': { level: 4, col: 'right' },
-                'DIVIDENDS': { level: 4, col: 'right' },
-                'CURRENT_ASSETS': { level: 4, col: 'right' },
-                'MATERIAL_COST': { level: 5, col: 'center' },
-                'DIRECT_LABOR': { level: 5, col: 'center' },
-                'ENERGY_COST': { level: 5, col: 'center' },
-                'LOGISTICS_COST': { level: 5, col: 'center' },
-                'DEFECT_RATE': { level: 5, col: 'center' },
-                'SCALE_EFFECT': { level: 5, col: 'center' },
-                'MARKETING': { level: 5, col: 'left' },
-                'ADMIN_PAYROLL': { level: 5, col: 'left' },
-                'RENT': { level: 5, col: 'left' },
-                'IT_EXP': { level: 5, col: 'left' },
-                'RD_EXP': { level: 5, col: 'left' },
-                'TRAINING_EXP': { level: 5, col: 'left' },
-                'INVENTORY': { level: 5, col: 'right' },
-                'RECEIVABLES': { level: 5, col: 'right' },
-                'PAYABLES': { level: 5, col: 'right' },
-                'EQUITY': { level: 5, col: 'right' },
-                'PRICE': { level: 6, col: 'center' },
-                'VOLUME': { level: 6, col: 'center' },
-                'UNIT_MATERIAL': { level: 6, col: 'center' },
-                'PROD_HEADCOUNT': { level: 6, col: 'center' },
-                'PROD_AVG_SALARY': { level: 6, col: 'center' },
-                'ADMIN_HEADCOUNT': { level: 6, col: 'left' },
-                'ADMIN_AVG_SALARY': { level: 6, col: 'left' },
-                'ATTRITION': { level: 6, col: 'left' },
-                'ENGAGEMENT': { level: 6, col: 'left' },
-                'SPI': { level: 6, col: 'left' },
-                'LABOR_INDEX': { level: 6, col: 'left' },
-                'WEAR': { level: 6, col: 'center' },
-                'LOAN_RATE': { level: 6, col: 'right' },
-                'LOANS': { level: 6, col: 'right' },
-                'CREDIT_RATING': { level: 6, col: 'right' },
-                'BANK_SPREAD': { level: 6, col: 'right' },
-                'FIXED_ASSETS': { level: 6, col: 'right' },
-                'INTANGIBLE_ASSETS': { level: 6, col: 'right' },
-                'DA_RATE': { level: 6, col: 'right' },
-                'CAPEX': { level: 6, col: 'right' },
-                'CAPACITY_UTIL': { level: 6, col: 'right' },
-                'TECH_OBSOLESCENCE': { level: 6, col: 'right' },
-                'RATE_TYPE': { level: 6, col: 'right' },
-                'SEASON': { level: 7, col: 'center' },
-                'BUSINESS_ACTIVITY': { level: 7, col: 'center' },
-                'COMPETITION': { level: 7, col: 'center' },
-                'HOUSEHOLD_INCOME': { level: 7, col: 'center' },
-                'CB_RATE': { level: 7, col: 'right' },
-                'PMI': { level: 7, col: 'right' },
-                'CCI': { level: 7, col: 'right' },
-                'SANCTIONS': { level: 7, col: 'right' },
-                'INFLATION': { level: 7, col: 'right' },
-                'FX_RATE': { level: 7, col: 'right' },
-                'TARIFFS': { level: 7, col: 'right' },
-                'GEO_INDEX': { level: 7, col: 'right' },
-                'SUPPLIER_RISK': { level: 7, col: 'right' }
-            };
+                        document.getElementById('dashboard-metrics').innerHTML = html;
 
-            var levelHeight = 100;
-            var colPositions = {
-                'left': width * 0.15,
-                'center': width * 0.50,
-                'right': width * 0.85
-            };
+                        // Обработчики кликов на метриках
+                        document.querySelectorAll('.metric-card').forEach(function (card) {
+                            card.addEventListener('click', function () {
+                                var nodeId = card.dataset.node;
+                                currentTracedNode = nodeId;
+                                document.getElementById('graph-selected-node').textContent = ' — ' + (graph.nodes[nodeId] ? graph.nodes[nodeId].label : nodeId);
+                                renderTraceGraph(nodeId, graphDepth);
+                                renderAnalysis(nodeId);
+                                renderDashboard();
+                            });
+                        });
 
-            nodeList.forEach(function (n) {
-                var layout = nodeLayout[n.id] || { level: 4, col: 'center' };
-                n.fy = 90 + layout.level * levelHeight;
-                n.fx = colPositions[layout.col] || colPositions['center'];
-            });
-
-            simulation = d3.forceSimulation(nodeList)
-                .force('link', d3.forceLink(linkList).id(function (d) { return d.id; }).distance(100))
-                .force('charge', d3.forceManyBody().strength(-250))
-                .force('x', d3.forceX(function (d) { return d.fx; }).strength(0.3))
-                .force('y', d3.forceY(function (d) { return d.fy; }).strength(0.5))
-                .force('collision', d3.forceCollide(55));
-
-            svg.append('defs').selectAll('marker')
-                .data(['arrow'])
-                .join('marker')
-                .attr('id', 'arrow')
-                .attr('viewBox', '0 -4 8 8')
-                .attr('refX', 90)
-                .attr('refY', 0)
-                .attr('markerWidth', 6)
-                .attr('markerHeight', 6)
-                .attr('orient', 'auto')
-                .append('path')
-                .attr('d', 'M0,-4L8,0L0,4')
-                .attr('fill', '#2a3040');
-
-            var link = svg.append('g')
-                .selectAll('line')
-                .data(linkList)
-                .join('line')
-                .attr('stroke', '#2a3040')
-                .attr('stroke-width', 1.5)
-                .attr('marker-end', 'url(#arrow)');
-
-            var linkLabel = svg.append('g')
-                .selectAll('text')
-                .data(linkList)
-                .join('text')
-                .attr('fill', '#6a7080')
-                .attr('font-size', '9px')
-                .attr('font-family', "'JetBrains Mono', monospace")
-                .attr('text-anchor', 'middle')
-                .text(function (d) {
-                    var s = d.type;
-                    if (d.coefficient !== null && d.coefficient !== undefined) {
-                        s += ' ' + (d.coefficient > 0 ? '+' : '') + d.coefficient.toFixed(2);
+                        // Если был выбран узел — рисуем граф
+                        if (currentTracedNode) {
+                            renderTraceGraph(currentTracedNode, graphDepth);
+                            renderAnalysis(currentTracedNode);
+                        }
                     }
-                    return s;
-                });
 
-            var node = svg.append('g')
-                .selectAll('g')
-                .data(nodeList)
-                .join('g')
-                .attr('class', 'node')
-                .call(d3.drag()
-                    .on('start', dragstarted)
-                    .on('drag', dragged)
-                    .on('end', dragended))
-                .on('click', function (event, d) {
-                    selectNode(d.id);
-                });
+                    function renderTraceGraph(nodeId, depth) {
+                        var container = document.getElementById('graph-container');
+                        container.innerHTML = '';
 
-            node.append('rect')
-                .attr('width', 200)
-                .attr('height', 74)
-                .attr('x', -100)
-                .attr('y', -37)
-                .attr('rx', 2)
-                .attr('fill', '#131820')
-                .attr('stroke', function (d) {
-                    switch (d.type) {
-                        case 'TARGET': return '#5a9fd4';
-                        case 'INPUT': return '#4b8c5a';
-                        case 'EXTERNAL': return '#d4a843';
-                        default: return '#2a3040';
+                        if (!graph || !graph.nodes[nodeId]) return;
+
+                        var width = container.clientWidth;
+                        var height = container.clientHeight;
+
+                        // Находим связанные узлы на заданную глубину
+                        var visited = {};
+                        var nodesToShow = [];
+                        var linksToShow = [];
+
+                        function trace(id, currentDepth) {
+                            if (currentDepth > depth && depth > 0) return;
+                            if (visited[id]) return;
+                            visited[id] = true;
+
+                            var n = graph.nodes[id];
+                            if (!n) return;
+                            nodesToShow.push(n);
+
+                            if (depth === 0 || currentDepth < depth) {
+                                graph.edges.forEach(function (e) {
+                                    if (e.to === id) {
+                                        trace(e.from, currentDepth + 1);
+                                        linksToShow.push({ source: e.from, target: e.to, type: e.type, coefficient: e.coefficient });
+                                    }
+                                });
+                            }
+                        }
+
+                        trace(nodeId, 0);
+
+                        // D3.js визуализация
+                        var svg = d3.select('#graph-container').append('svg').attr('width', width).attr('height', height);
+
+                        var linkList = linksToShow.map(function (l) {
+                            return { source: l.source, target: l.target, type: l.type, coefficient: l.coefficient };
+                        });
+
+                        var simulation = d3.forceSimulation(nodesToShow)
+                            .force('link', d3.forceLink(linkList).id(function (d) { return d.id; }).distance(120))
+                            .force('charge', d3.forceManyBody().strength(-400))
+                            .force('center', d3.forceCenter(width / 2, height / 2));
+
+                        svg.append('defs').selectAll('marker').data(['arrow']).join('marker')
+                            .attr('id', 'arrow').attr('viewBox', '0 -4 8 8').attr('refX', 75).attr('refY', 0)
+                            .attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto')
+                            .append('path').attr('d', 'M0,-4L8,0L0,4').attr('fill', '#2a3040');
+
+                        var link = svg.append('g').selectAll('line').data(linkList).join('line')
+                            .attr('stroke', '#2a3040').attr('stroke-width', 1.5).attr('marker-end', 'url(#arrow)');
+
+                        var node = svg.append('g').selectAll('g').data(nodesToShow).join('g');
+
+                        node.append('rect')
+                            .attr('width', 180).attr('height', 64).attr('x', -90).attr('y', -32).attr('rx', 2)
+                            .attr('fill', '#131820')
+                            .attr('stroke', function (d) {
+                                if (d.id === nodeId) return '#5a9fd4';
+                                switch (d.type) { case 'TARGET': return '#5a9fd4'; case 'INPUT': return '#4b8c5a'; case 'EXTERNAL': return '#d4a843'; default: return '#2a3040'; }
+                            })
+                            .attr('stroke-width', function (d) { return d.id === nodeId ? 3 : 1; })
+                            .attr('opacity', function (d) { return d.enabled === false ? 0.4 : 1.0; });
+
+                        node.append('text').attr('text-anchor', 'middle').attr('dy', -15)
+                            .attr('fill', '#e0e3e8').attr('font-size', '11px').attr('font-family', "'JetBrains Mono', monospace")
+                            .text(function (d) { return d.label || d.id; });
+
+                        node.append('text').attr('text-anchor', 'middle').attr('dy', 8)
+                            .attr('fill', '#c8ccd4').attr('font-size', '13px').attr('font-family', "'JetBrains Mono', monospace")
+                            .text(function (d) { return formatValue(d.value); });
+
+                        node.call(d3.drag()
+                            .on('start', function (event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+                            .on('drag', function (event, d) { d.fx = event.x; d.fy = event.y; })
+                            .on('end', function (event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+                        );
+
+                        simulation.on('tick', function () {
+                            link.attr('x1', function (d) { return d.source.x; }).attr('y1', function (d) { return d.source.y; })
+                                .attr('x2', function (d) { return d.target.x; }).attr('y2', function (d) { return d.target.y; });
+                            node.attr('transform', function (d) {
+                                d.x = Math.max(90, Math.min(width - 90, d.x));
+                                d.y = Math.max(32, Math.min(height - 32, d.y));
+                                return 'translate(' + d.x + ',' + d.y + ')';
+                            });
+                        });
                     }
-                })
-                .attr('stroke-width', function (d) {
-                    return d.type === 'TARGET' ? 2 : 1;
-                })
-                .attr('stroke-dasharray', function (d) {
-                    switch (d.type) {
-                        case 'INTERMEDIATE': return '4 2';
-                        case 'EXTERNAL': return '2 2';
-                        default: return null;
+
+                    function renderAnalysis(nodeId) {
+                        var n = graph.nodes[nodeId];
+                        if (!n) return;
+
+                        var panel = document.getElementById('dashboard-analysis');
+                        panel.style.display = 'block';
+
+                        // Находим входящие связи
+                        var incoming = graph.edges.filter(function (e) { return e.to === nodeId; });
+                        var totalInfluence = 0;
+                        var factors = [];
+
+                        incoming.forEach(function (e) {
+                            var fromNode = graph.nodes[e.from];
+                            if (!fromNode || fromNode.value === null) return;
+                            var impact = Math.abs(fromNode.value * (e.coefficient || 1));
+                            totalInfluence += impact;
+                            factors.push({ node: fromNode, edge: e, impact: impact });
+                        });
+
+                        factors.sort(function (a, b) { return b.impact - a.impact; });
+
+                        var html = '<div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">ФАКТОРЫ, ВЛИЯЮЩИЕ НА «' + (n.label || n.id) + '»</div>';
+
+                        if (factors.length === 0) {
+                            html += '<div style="font-size:12px;">Нет входящих связей. Это входной параметр.</div>';
+                        } else {
+                            factors.forEach(function (f) {
+                                var pct = totalInfluence > 0 ? (f.impact / totalInfluence * 100).toFixed(1) : 0;
+                                var bar = Math.round(pct / 2);
+                                html += '<div style="margin-bottom:4px;font-size:12px;">';
+                                html += '<span>' + (f.node.label || f.node.id) + '</span>';
+                                html += '<span style="float:right;">' + pct + '%</span>';
+                                html += '<div style="background:var(--bg-primary);height:4px;margin-top:2px;"><div style="background:var(--accent);height:4px;width:' + bar + '%;"></div></div>';
+                                html += '</div>';
+                            });
+                        }
+
+                        panel.innerHTML = html;
                     }
-                })
-                .attr('opacity', function (d) { return d.enabled === false ? 0.4 : 1.0; });
 
-            node.append('text')
-                .attr('text-anchor', 'middle')
-                .attr('dy', -16)
-                .attr('fill', '#e0e3e8')
-                .attr('font-size', '11px')
-                .attr('font-family', "'JetBrains Mono', monospace")
-                .attr('font-weight', '500')
-                .text(function (d) { return d.label || d.id; });
-
-            node.append('text')
-                .attr('text-anchor', 'middle')
-                .attr('dy', 4)
-                .attr('fill', '#c8ccd4')
-                .attr('font-size', '13px')
-                .attr('font-family', "'JetBrains Mono', monospace")
-                .text(function (d) { return formatValue(d.value); });
-
-            node.append('text')
-                .attr('text-anchor', 'middle')
-                .attr('dy', 22)
-                .attr('fill', '#6a7080')
-                .attr('font-size', '9px')
-                .attr('font-family', "'JetBrains Mono', monospace")
-                .text(function (d) { return d.id + ' | ' + d.type; });
-
-            simulation.on('tick', function () {
-                link
-                    .attr('x1', function (d) { return d.source.x; })
-                    .attr('y1', function (d) { return d.source.y; })
-                    .attr('x2', function (d) { return d.target.x; })
-                    .attr('y2', function (d) { return d.target.y; });
-
-                linkLabel
-                    .attr('x', function (d) { return (d.source.x + d.target.x) / 2; })
-                    .attr('y', function (d) { return (d.source.y + d.target.y) / 2 - 10; });
-
-                node.attr('transform', function (d) {
-                    d.x = Math.max(110, Math.min(width - 110, d.x));
-                    d.y = Math.max(40, Math.min(height - 40, d.y));
-                    return 'translate(' + d.x + ',' + d.y + ')';
-                });
-            });
-        }
+                    function renderAll() {
+                        renderDashboard();
+                        renderDataTable();
+                        renderComputeResults();
+                        updateInspector();
+                    }
 
         function dragstarted(event, d) {
             if (!event.active) simulation.alphaTarget(0.3).restart();
@@ -2083,6 +2043,28 @@
 
             document.getElementById('btn-new-company').addEventListener('click', function () {
                 showSetupWizard();
+            });
+
+            document.querySelectorAll('.graph-depth-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.graph-depth-btn').forEach(function (b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    graphDepth = parseInt(btn.dataset.depth);
+                    if (currentTracedNode) {
+                        renderTraceGraph(currentTracedNode, graphDepth);
+                    }
+                });
+            });
+
+            document.getElementById('btn-full-graph').addEventListener('click', function () {
+                var panel = document.getElementById('dashboard-graph-panel');
+                if (panel.style.display === 'none') {
+                    panel.style.display = 'flex';
+                    this.textContent = '▶ ПОЛНЫЙ ГРАФ';
+                } else {
+                    panel.style.display = 'none';
+                    this.textContent = '◀ ПОЛНЫЙ ГРАФ';
+                }
             });
 
             // Загружаем демо при старте
