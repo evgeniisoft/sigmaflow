@@ -563,19 +563,11 @@
                                     refreshCompanyList();
 
                                     if (graph.company) {
-                                        console.log('Восстанавливаем интерфейс НАСТРОЕК');
                                         if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
-                                        if (graph.company.nds_rate !== undefined) {
-                                            document.getElementById('company-nds-rate').value = graph.company.nds_rate.toString();
-                                        }
-                                        if (graph.company.profit_tax_rate !== undefined) {
-                                            document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate.toFixed(2);
-                                        }
-                                        if (graph.company.insurance_rate !== undefined) {
-                                            document.getElementById('company-insurance-rate').value = graph.company.insurance_rate.toFixed(3);
-                                        }
+                                        if (graph.company.nds_rate !== undefined) setSelectByValue('company-nds-rate', graph.company.nds_rate);
+                                        if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
+                                        if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
                                     }
-                                    console.log('После восстановления insurance-rate в DOM:', document.getElementById('company-insurance-rate').value);
                                 } else {
                                     showSetupWizard();
                                 }
@@ -1832,9 +1824,9 @@
                             // Обновить интерфейс НАСТРОЕК
                     if (graph.company) {
                         if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
-                        if (graph.company.nds_rate !== undefined) document.getElementById('company-nds-rate').value = graph.company.nds_rate.toString();
-                        if (graph.company.profit_tax_rate !== undefined) document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate.toFixed(2);
-                        if (graph.company.insurance_rate !== undefined) document.getElementById('company-insurance-rate').value = graph.company.insurance_rate.toFixed(3);
+                        if (graph.company.nds_rate !== undefined) setSelectByValue('company-nds-rate', graph.company.nds_rate);
+                        if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
+                        if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
                     }
                     updateStatusBar('Компания загружена');
                 }
@@ -2043,6 +2035,26 @@
                 } else {
                     section.style.display = 'none';
                     arrow.textContent = '▶';
+                }
+            }
+
+            function setSelectByValue(selectId, value) {
+                var el = document.getElementById(selectId);
+                if (!el) return;
+                var options = el.querySelectorAll('option');
+                var found = false;
+                options.forEach(function (o) {
+                    if (parseFloat(o.value) === value) {
+                        el.value = o.value;
+                        found = true;
+                    }
+                });
+                if (!found && value === 0) {
+                    options.forEach(function (o) {
+                        if (o.value === '0' || o.value === '0.0' || o.value === '0.00') {
+                            el.value = o.value;
+                        }
+                    });
                 }
             }
 
