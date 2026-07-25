@@ -1623,7 +1623,7 @@
             }
             
 
-            function renderInvestments() {
+            window.renderInvestments = function () {
                 var list = document.getElementById('investments-list');
                 var total = 0;
                 var html = '<table><thead><tr><th>ПРОЕКТ</th><th>СТОИМОСТЬ</th><th>СТАРТ</th><th>ГРАФИК</th><th>СТАТУС</th><th></th></tr></thead><tbody>';
@@ -1734,7 +1734,7 @@
                 saveModelToStorage();
             }
 
-            function renderCredits() {
+            window.renderCredits = function () {
                 var list = document.getElementById('credits-list');
                 var total = 0;
                 var monthly = 0;
