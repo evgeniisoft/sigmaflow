@@ -2116,7 +2116,7 @@
                 }
             }
 
-            function renderScenarios() {
+            window.renderScenarios = function () {
                 loadScenarios();
                 var list = document.getElementById('scenarios-list');
                 var html = '<table><thead><tr><th>СЦЕНАРИЙ</th><th>ОПИСАНИЕ</th><th>ШОКИ</th><th>ПРИБЫЛЬ</th><th></th></tr></thead><tbody>';
@@ -2243,7 +2243,7 @@
 
             // Загружаем сценарии при старте
             loadScenarios();
-            renderScenarios();
+            window.renderScenarios();
 
             // Загружаем демо при старте
             loadDemo();
