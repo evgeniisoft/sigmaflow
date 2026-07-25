@@ -122,6 +122,22 @@ nav {
     border-bottom: 2px solid var(--accent);
 }
 
+.nav-btn-alert {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        border-color: var(--warning);
+    }
+
+    50% {
+        border-color: transparent;
+    }
+}
+
 /* ============================================================
    ОСНОВНАЯ ОБЛАСТЬ
    ============================================================ */
