@@ -1676,11 +1676,7 @@
         document.addEventListener('DOMContentLoaded', function () {
             initNavigation();
 
-            document.getElementById('btn-compute').addEventListener('click', runCompute);
             document.getElementById('btn-save').addEventListener('click', saveProject);
-            document.getElementById('btn-reset-view').addEventListener('click', function () {
-                if (graph) renderGraph();
-            });
             document.getElementById('btn-run-diagnostics').addEventListener('click', runDiagnostics);
             // Применить изменения из таблицы
                 document.getElementById('btn-apply-table').addEventListener('click', function () {
