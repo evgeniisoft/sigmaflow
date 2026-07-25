@@ -18,6 +18,8 @@
             style="font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:6px 12px;cursor:pointer;max-width:300px;">
             <option value="">Нет компаний</option>
         </select>
+        <button id="btn-delete-company"
+            style="font-size:12px;padding:6px 12px;color:var(--critical);border-color:var(--critical);">УДАЛИТЬ</button>
         <button id="btn-new-company" style="font-size:12px;padding:6px 12px;">+ НОВАЯ</button>
         <button id="btn-save">СОХРАНИТЬ</button>
     </header>
@@ -1819,6 +1821,13 @@
                     window.renderInvestments();
                     window.renderCredits();
                     refreshCompanyList();
+                            // Обновить интерфейс НАСТРОЕК
+                    if (graph.company) {
+                        if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
+                        if (graph.company.nds_rate !== undefined) document.getElementById('company-nds-rate').value = graph.company.nds_rate.toFixed(2);
+                        if (graph.company.profit_tax_rate !== undefined) document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate.toFixed(2);
+                        if (graph.company.insurance_rate !== undefined) document.getElementById('company-insurance-rate').value = graph.company.insurance_rate.toFixed(2);
+                    }
                     updateStatusBar('Компания загружена');
                 }
             });
@@ -2032,6 +2041,26 @@
             // Загружаем сценарии при старте
             loadScenarios();
             window.renderScenarios();
+
+            document.getElementById('btn-delete-company').addEventListener('click', function () {
+                var currentId = getCurrentCompanyId();
+                if (!currentId) return;
+                if (!confirm('Удалить компанию «' + (graph ? graph.name : '') + '»? Все данные будут потеряны.')) return;
+
+                var companies = getAllCompanies();
+                delete companies[currentId];
+                saveAllCompanies(companies);
+
+                // Переключиться на другую компанию или показать мастер
+                var remaining = Object.keys(companies);
+                if (remaining.length > 0) {
+                    setCurrentCompanyId(remaining[0]);
+                    location.reload();
+                } else {
+                    localStorage.removeItem('sigmaflow_current_company');
+                    location.reload();
+                }
+            });
 
             // Загружаем демо при старте
             loadDemo();
