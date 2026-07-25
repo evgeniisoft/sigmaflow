@@ -575,6 +575,7 @@
                                             document.getElementById('company-insurance-rate').value = graph.company.insurance_rate.toFixed(3);
                                         }
                                     }
+                                    console.log('После восстановления insurance-rate в DOM:', document.getElementById('company-insurance-rate').value);
                                 } else {
                                     showSetupWizard();
                                 }
