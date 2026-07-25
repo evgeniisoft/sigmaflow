@@ -417,7 +417,6 @@
         // DOM-элементы
         var elProjectName = document.getElementById('project-name');
         var elStatusBar = document.getElementById('status-bar');
-        var elInspector = document.getElementById('inspector-content');
         var elDataTable = document.getElementById('data-table-body');
         var elComputeResults = document.getElementById('compute-results');
         var elComputeBody = document.getElementById('compute-results-body');
@@ -1005,14 +1004,11 @@
         // ============================================================
 
         function selectNode(id) {
-            selectedNodeId = id;
-            updateInspector();
-        }
+                // Панель свойств узла отключена
+            }
 
-        function updateInspector() {
-            if (!selectedNodeId || !graph || !graph.nodes[selectedNodeId]) {
-                elInspector.innerHTML = 'Выберите узел на графе';
-                return;
+            function updateInspector() {
+                // Панель свойств узла отключена
             }
 
             var n = graph.nodes[selectedNodeId];
@@ -1665,7 +1661,9 @@
                 }
 
                 saveCurrentModel();
-                document.getElementById('company-status').textContent = 'Настройки применены.';
+                var statusEl = document.getElementById('company-status');
+                if (statusEl) statusEl.textContent = 'Настройки применены.';
+                notify('Параметры компании сохранены');
                 updateStatusBar('Настройки компании обновлены');
                 notify('Параметры компании сохранены');
             });
