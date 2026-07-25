@@ -2038,7 +2038,7 @@
                 }
             }
 
-            function setSelectByValue(selectId, value) {
+            window.setSelectByValue = function (selectId, value) {
                 var el = document.getElementById(selectId);
                 if (!el) return;
                 var options = el.querySelectorAll('option');
