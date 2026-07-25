@@ -690,6 +690,7 @@
                     }
 
                     function showSetupWizard() {
+                        if (document.getElementById('setup-wizard')) return;
                         // Скрываем все панели, показываем мастер
                         document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
                         document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); });
@@ -698,9 +699,13 @@
                         var wizard = document.createElement('div');
                         wizard.id = 'setup-wizard';
                         wizard.style.cssText = 'padding:40px;max-width:600px;margin:0 auto;flex:1;overflow-y:auto;';
-                        wizard.innerHTML = `
-                <h2 style="margin-bottom:24px;">ДОБРО ПОЖАЛОВАТЬ В SIGMAFLOW</h2>
-                <p style="color:var(--text-hint);margin-bottom:24px;">Давайте настроим модель вашей компании.</p>
+                                    wizard.innerHTML = `
+                <h2 style="margin-bottom:24px;">НОВАЯ КОМПАНИЯ</h2>
+
+                <div class="form-group">
+                    <label>НАЗВАНИЕ КОМПАНИИ</label>
+                    <input type="text" id="wizard-name" placeholder="Например: ООО Ромашка" style="width:100%;">
+                </div>
 
                 <div class="form-group">
                     <label>ОТРАСЛЬ</label>
@@ -731,99 +736,114 @@
                     <input type="number" id="wizard-employees" value="30" step="1" style="width:100%;">
                 </div>
 
-                <button id="btn-create-model" class="primary" style="width:100%;margin-top:16px;padding:12px;">СОЗДАТЬ МОДЕЛЬ</button>
+                <button id="btn-create-model" class="primary" style="width:100%;margin-top:16px;padding:12px;">СОЗДАТЬ КОМПАНИЮ</button>
             `;
 
                         main.appendChild(wizard);
 
-                        document.getElementById('btn-create-model').addEventListener('click', function () {
+                                    document.getElementById('btn-create-model').addEventListener('click', function () {
                             var industry = document.getElementById('wizard-industry').value;
                             var taxSystem = document.getElementById('wizard-tax-system').value;
                             var revenue = parseFloat(document.getElementById('wizard-revenue').value) || 10000000;
                             var employees = parseInt(document.getElementById('wizard-employees').value) || 30;
+                            var companyName = document.getElementById('wizard-name').value.trim() || 'Новая компания';
 
-                            createModel(industry, taxSystem, revenue, employees);
+                            createModel(industry, taxSystem, revenue, employees, companyName);
                             wizard.remove();
                         });
                     }
 
-                    function createModel(industry, taxSystem, revenue, employees) {
-                        var yamlText;
-                        switch (industry) {
-                            case 'production': yamlText = TEMPLATE_PRODUCTION; break;
-                            case 'retail': yamlText = TEMPLATE_RETAIL; break;
-                            case 'services': yamlText = TEMPLATE_SERVICES; break;
-                            case 'it': yamlText = TEMPLATE_IT; break;
-                            default: yamlText = DEMO_FULL;
-                        }
+                            function createModel(industry, taxSystem, revenue, employees, companyName) {
+                                    var yamlText;
+                                    switch (industry) {
+                                        case 'production': yamlText = TEMPLATE_PRODUCTION; break;
+                                        case 'retail': yamlText = TEMPLATE_RETAIL; break;
+                                        case 'services': yamlText = TEMPLATE_SERVICES; break;
+                                        case 'it': yamlText = TEMPLATE_IT; break;
+                                        default: yamlText = DEMO_FULL;
+                                    }
 
-                        if (!yamlText) {
-                            notify('Ошибка загрузки шаблона', true);
-                            return;
-                        }
+                                    if (!yamlText) {
+                                        notify('Ошибка загрузки шаблона', true);
+                                        return;
+                                    }
 
-                        var data = parseYAML(yamlText);
-                        graph = Graph.fromDict(data);
+                                    var data = parseYAML(yamlText);
+                                    graph = Graph.fromDict(data);
+                                    graph.name = companyName || graph.name;
+                                    graph.industry = industry;
 
-                        // Устанавливаем налоговый режим
-                        if (!graph.company) graph.company = {};
-                        graph.company.tax_system = taxSystem;
-                        if (taxSystem === 'OSNO') {
-                            graph.company.nds_rate = 0.22;
-                            graph.company.profit_tax_rate = 0.20;
-                        } else {
-                            graph.company.nds_rate = 0;
-                            graph.company.nds_exempt = true;
-                            graph.company.profit_tax_rate = taxSystem === 'USN_INCOME' ? 0.06 : 0.15;
-                        }
-                        graph.company.insurance_rate = 0.30;
-                        graph.company.has_property_tax = (industry === 'production' || industry === 'retail');
-                        graph.company.property_tax_rate = 0.022;
+                                    // Подставляем примерную выручку
+                                    if (graph.nodes['REVENUE']) {
+                                        graph.nodes['REVENUE'].value = revenue;
+                                    }
+                                    // Подставляем количество сотрудников (распределяем между производственным и АУП)
+                                    var prodRatio = (industry === 'production') ? 0.75 : (industry === 'retail' ? 0.7 : 0.85);
+                                    var prodCount = Math.round(employees * prodRatio);
+                                    var adminCount = employees - prodCount;
 
-                        // Корректируем ставку налога в модели
-                        if (graph.nodes['TAX_RATE']) {
-                            graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
-                        }
+                                    if (graph.nodes['PROD_HEADCOUNT']) graph.nodes['PROD_HEADCOUNT'].value = prodCount;
+                                    if (graph.nodes['STAFF_HEADCOUNT']) graph.nodes['STAFF_HEADCOUNT'].value = prodCount;
+                                    if (graph.nodes['SPECIALIST_HEADCOUNT']) graph.nodes['SPECIALIST_HEADCOUNT'].value = prodCount;
+                                    if (graph.nodes['DEV_HEADCOUNT']) graph.nodes['DEV_HEADCOUNT'].value = prodCount;
 
-                        // Сохраняем
-                        graph.compute();
-                        elProjectName.textContent = graph.name;
-                        updateStatusBar('Модель создана');
-                        notify('Модель создана. Настройте параметры компании на вкладке КОМПАНИЯ.');
+                                    if (graph.nodes['ADMIN_HEADCOUNT']) graph.nodes['ADMIN_HEADCOUNT'].value = adminCount;
 
-                        // Запоминаем шаблон
-                        var modelData = {
-                            name: graph.name,
-                            industry: industry,
-                            nodes: {},
-                            investments: [],
-                            credits: [],
-                            company: graph.company
-                        };
-                        Object.keys(graph.nodes).forEach(function (key) {
-                            var n = graph.nodes[key];
-                            modelData.nodes[key] = {
-                                value: n.value,
-                                enabled: n.enabled,
-                                min: n.min,
-                                max: n.max
-                            };
-                        });
+                                    // Налоговый режим
+                                    if (!graph.company) graph.company = {};
+                                    graph.company.tax_system = taxSystem;
+                                    if (taxSystem === 'OSNO') {
+                                        graph.company.nds_rate = 0.22;
+                                        graph.company.profit_tax_rate = 0.20;
+                                    } else {
+                                        graph.company.nds_rate = 0;
+                                        graph.company.nds_exempt = true;
+                                        graph.company.profit_tax_rate = taxSystem === 'USN_INCOME' ? 0.06 : 0.15;
+                                    }
+                                    graph.company.insurance_rate = 0.30;
+                                    graph.company.has_property_tax = (industry === 'production' || industry === 'retail');
+                                    graph.company.property_tax_rate = 0.022;
 
-                        var companies = getAllCompanies();
-                        var companyId = 'company_' + Date.now();
-                        companies[companyId] = modelData;
-                        saveAllCompanies(companies);
-                        setCurrentCompanyId(companyId);
+                                    if (graph.nodes['TAX_RATE']) {
+                                        graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
+                                    }
 
-                        renderAll();
-                        window.renderInvestments();
-                        window.renderCredits();
-                        refreshCompanyList();
-                        elProjectName.textContent = graph.name;
-                        updateStatusBar('Компания создана');
-                        notify('Модель создана. Настройте параметры на вкладке КОМПАНИЯ.');
-                    }
+                                    graph.compute();
+
+                                    // Сохраняем
+                                    var modelData = {
+                                        name: graph.name,
+                                        industry: industry,
+                                        nodes: {},
+                                        investments: [],
+                                        credits: [],
+                                        company: graph.company
+                                    };
+                                    Object.keys(graph.nodes).forEach(function (key) {
+                                        var n = graph.nodes[key];
+                                        modelData.nodes[key] = {
+                                            value: n.value,
+                                            enabled: n.enabled,
+                                            min: n.min,
+                                            max: n.max
+                                        };
+                                    });
+
+                                    var companies = getAllCompanies();
+                                    var companyId = 'company_' + Date.now();
+                                    companies[companyId] = modelData;
+                                    saveAllCompanies(companies);
+                                    setCurrentCompanyId(companyId);
+
+                                    elProjectName.textContent = graph.name;
+                                    updateStatusBar('Компания создана');
+                                    notify('Компания "' + graph.name + '" создана. Настройте параметры на вкладке КОМПАНИЯ.');
+
+                                    renderAll();
+                                    window.renderInvestments();
+                                    window.renderCredits();
+                                    refreshCompanyList();
+                                }
 
         // ============================================================
         // ВЫЧИСЛЕНИЕ
