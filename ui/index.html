@@ -563,7 +563,6 @@
                                         if (graph.company.nds_rate !== undefined) document.getElementById('company-nds-rate').value = graph.company.nds_rate;
                                         if (graph.company.profit_tax_rate !== undefined) document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate;
                                         if (graph.company.insurance_rate !== undefined) document.getElementById('company-insurance-rate').value = graph.company.insurance_rate;
-                                        if (graph.company.has_property_tax !== undefined) document.getElementById('company-has-property-tax').checked = graph.company.has_property_tax;
                                     }
                                 } else {
                                     showSetupWizard();
@@ -615,7 +614,6 @@
                                 if (graph.company.nds_rate !== undefined) document.getElementById('company-nds-rate').value = graph.company.nds_rate;
                                 if (graph.company.profit_tax_rate !== undefined) document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate;
                                 if (graph.company.insurance_rate !== undefined) document.getElementById('company-insurance-rate').value = graph.company.insurance_rate;
-                                if (graph.company.has_property_tax !== undefined) document.getElementById('company-has-property-tax').checked = graph.company.has_property_tax;
                             }
 
                         } catch (err) {
@@ -1645,15 +1643,10 @@
                 }
                 buildCalendar();
             });
-                    // Переключение налогового режима — показ/скрытие настроек НДС
+                                // Переключение налогового режима
             document.getElementById('company-tax-system').addEventListener('change', function () {
                 var v = this.value;
                 document.getElementById('osno-settings').style.display = (v === 'OSNO') ? 'block' : 'none';
-                document.getElementById('usn-nds-settings').style.display = (v === 'USN_INCOME' || v === 'USN_INCOME_MINUS') ? 'block' : 'none';
-            });
-
-            document.getElementById('company-has-property-tax').addEventListener('change', function () {
-                document.getElementById('property-tax-rate-group').style.display = this.checked ? 'block' : 'none';
             });
 
             // Применить настройки компании
@@ -1663,32 +1656,18 @@
 
                 var taxSystem = document.getElementById('company-tax-system').value;
                 graph.company.tax_system = taxSystem;
-
-                if (taxSystem === 'OSNO') {
-                    graph.company.nds_rate = parseFloat(document.getElementById('company-nds-rate').value);
-                    graph.company.nds_exempt = document.getElementById('company-nds-exempt').checked;
-                } else {
-                    graph.company.nds_rate = document.getElementById('company-usn-nds-active').checked
-                        ? parseFloat(document.getElementById('company-usn-nds-rate').value) : 0;
-                    graph.company.nds_exempt = !document.getElementById('company-usn-nds-active').checked;
-                }
-
+                graph.company.nds_rate = parseFloat(document.getElementById('company-nds-rate').value);
                 graph.company.profit_tax_rate = parseFloat(document.getElementById('company-profit-tax-rate').value);
                 graph.company.insurance_rate = parseFloat(document.getElementById('company-insurance-rate').value);
-                graph.company.has_property_tax = document.getElementById('company-has-property-tax').checked;
-                graph.company.property_tax_rate = document.getElementById('company-has-property-tax').checked
-                    ? parseFloat(document.getElementById('company-property-tax-rate').value) / 100 : 0;
 
-                // Обновляем ставку налога на прибыль в модели
                 if (graph.nodes['TAX_RATE']) {
                     graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
                 }
 
-                document.getElementById('company-status').textContent = 'Настройки применены. Перейдите на вкладку КАЛЕНДАРЬ для просмотра.';
+                saveCurrentModel();
+                document.getElementById('company-status').textContent = 'Настройки применены.';
                 updateStatusBar('Настройки компании обновлены');
                 notify('Параметры компании сохранены');
-                localStorage.setItem('sigmaflow_company', JSON.stringify(graph.company));
-                saveCurrentModel();
             });
                 // Сворачивание расширенных параметров
             document.getElementById('toggle-extended').addEventListener('click', function () {
