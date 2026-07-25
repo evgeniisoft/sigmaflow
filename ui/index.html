@@ -563,10 +563,17 @@
                                     refreshCompanyList();
 
                                     if (graph.company) {
+                                        console.log('Восстанавливаем интерфейс НАСТРОЕК');
                                         if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
-                                        if (graph.company.nds_rate !== undefined) document.getElementById('company-nds-rate').value = graph.company.nds_rate.toFixed(2);
-                                        if (graph.company.profit_tax_rate !== undefined) document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate.toFixed(2);
-                                        if (graph.company.insurance_rate !== undefined) document.getElementById('company-insurance-rate').value = graph.company.insurance_rate.toFixed(2);
+                                        if (graph.company.nds_rate !== undefined) {
+                                            document.getElementById('company-nds-rate').value = graph.company.nds_rate.toFixed(2);
+                                        }
+                                        if (graph.company.profit_tax_rate !== undefined) {
+                                            document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate.toFixed(2);
+                                        }
+                                        if (graph.company.insurance_rate !== undefined) {
+                                            document.getElementById('company-insurance-rate').value = graph.company.insurance_rate.toFixed(3);
+                                        }
                                     }
                                 } else {
                                     showSetupWizard();
