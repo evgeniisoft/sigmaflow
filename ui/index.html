@@ -2142,7 +2142,7 @@
             }
 
             function computeScenario(sc) {
-                if (!graph || !sc) return null;
+                if (!graph || !graph.nodes || !sc) return null;
                 // Сохраняем оригинальные значения
                 var saved = {};
                 (sc.shocks || []).forEach(function (shock) {
