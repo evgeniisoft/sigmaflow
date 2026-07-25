@@ -1750,7 +1750,8 @@
                 });
                 html += '</tbody></table>';
                 list.innerHTML = html || 'Нет инвестиционных проектов';
-                document.getElementById('capex-total').textContent = formatValue(total);
+                var capexEl = document.getElementById('capex-total');
+                if (capexEl) capexEl.textContent = formatValue(total);
             }
 
             window.deleteInvestment = function (idx) {
@@ -1862,8 +1863,10 @@
                 });
                 html += '</tbody></table>';
                 list.innerHTML = html || 'Нет кредитов';
-                document.getElementById('loans-total').textContent = formatValue(total);
-                document.getElementById('loans-monthly').textContent = formatValue(monthly);
+                var loansEl = document.getElementById('loans-total');
+                if (loansEl) loansEl.textContent = formatValue(total);
+                var monthlyEl = document.getElementById('loans-monthly');
+                if (monthlyEl) monthlyEl.textContent = formatValue(monthly);
                 if (graph.nodes['LOANS']) graph.nodes['LOANS'].value = total;
                 if (graph.nodes['LOAN_REPAYMENT']) graph.nodes['LOAN_REPAYMENT'].value = monthly;
             }
