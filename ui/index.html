@@ -203,37 +203,36 @@
                 </div>
             </div>
         </div>
-                <!-- ПАНЕЛЬ ЖИВАЯ МОДЕЛЬ -->
+        <!-- ПАНЕЛЬ ЖИВАЯ МОДЕЛЬ -->
         <div id="panel-live" class="panel">
             <div style="padding:16px;overflow-y:auto;flex:1;">
                 <h3 style="margin:0 0 16px 0;">ЖИВАЯ МОДЕЛЬ</h3>
-                <p style="color:var(--text-hint);font-size:13px;margin-bottom:16px;">Двигайте ползунки — наблюдайте каскад изменений в реальном времени</p>
+                <p style="color:var(--text-hint);font-size:13px;margin-bottom:24px;">Двигайте ползунки — наблюдайте каскад изменений в реальном времени</p>
                 
-                <div style="display:flex;gap:24px;margin-bottom:24px;">
+                <div style="display:flex;gap:32px;margin-bottom:24px;">
                     <div style="flex:1;">
-                        <div style="font-size:12px;color:var(--text-hint);margin-bottom:12px;">ДО / ПОСЛЕ</div>
+                        <div style="font-size:13px;color:var(--text-hint);margin-bottom:12px;">ПАРАМЕТРЫ</div>
+                        <div id="live-sliders"></div>
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-size:13px;color:var(--text-hint);margin-bottom:12px;">ДО / ПОСЛЕ</div>
                         <table id="live-comparison" style="width:100%;font-size:13px;">
                             <thead><tr><th>ПОКАЗАТЕЛЬ</th><th>ДО</th><th>ПОСЛЕ</th><th>Δ</th></tr></thead>
                             <tbody id="live-comparison-body"></tbody>
                         </table>
                     </div>
-                    <div style="flex:1;">
-                        <div style="font-size:12px;color:var(--text-hint);margin-bottom:12px;">ПАРАМЕТРЫ</div>
-                        <div id="live-sliders"></div>
-                    </div>
                 </div>
 
-                <div style="font-size:12px;color:var(--text-hint);margin-bottom:8px;">КАСКАД ИЗМЕНЕНИЙ</div>
+                <div style="font-size:13px;color:var(--text-hint);margin-bottom:8px;">КАСКАД ИЗМЕНЕНИЙ</div>
                 <div id="live-cascade" style="font-size:14px;line-height:2;"></div>
 
                 <div style="margin-top:24px;display:flex;gap:12px;">
-                    <button id="btn-live-apply" class="primary">ПРИМЕНИТЬ К МОДЕЛИ</button>
+                   <button id="btn-live-apply" class="primary">ПРИМЕНИТЬ К МОДЕЛИ</button>
                     <button id="btn-live-save-scenario">СОХРАНИТЬ КАК СЦЕНАРИЙ</button>
                     <button id="btn-live-reset">СБРОСИТЬ</button>
                 </div>
-            </div>
-        </div>
-        </div>
+              </div>
+         </div>
                 <!-- ПАНЕЛЬ СЦЕНАРИИ -->
                 <div id="panel-scenarios" class="panel">
                     <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
@@ -2410,27 +2409,22 @@ function buildLiveModel() {
         liveBaseValues[key] = graph.nodes[key].value;
     });
     
-    // Ползунки
+        // Ползунки
     var slidersHtml = '';
     top5.forEach(function(e, idx) {
         var min = e.min !== null ? e.min : e.currentValue * 0.5;
         var max = e.max !== null ? e.max : e.currentValue * 1.5;
         var step = e.step || (Math.abs(e.currentValue) / 100);
         
-        slidersHtml += '<div style="margin-bottom:12px;">';
-        slidersHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;">';
-        slidersHtml += '<span>' + e.label + '</span>';
-        slidersHtml += '<span id="live-val-' + idx + '" style="font-size:14px;font-weight:500;">' + formatInputValue(e.currentValue) + '</span>';
+        slidersHtml += '<div style="margin-bottom:20px;">';
+        slidersHtml += '<div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;">';
+        slidersHtml += '<span style="font-weight:500;">' + e.label + '</span>';
+        slidersHtml += '<span id="live-val-' + idx + '" style="font-weight:700;font-size:16px;">' + formatInputValue(e.currentValue) + '</span>';
         slidersHtml += '</div>';
-        slidersHtml += '<input type="range" id="live-slider-' + idx + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + e.currentValue + '" oninput="updateLiveModel()" style="width:100%;height:24px;">';
-        slidersHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-hint);">';
+        slidersHtml += '<input type="range" id="live-slider-' + idx + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + e.currentValue + '" oninput="updateLiveModel()" style="width:100%;height:28px;">';
+        slidersHtml += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-hint);margin-top:4px;">';
         slidersHtml += '<span>' + formatInputValue(min) + '</span>';
-        slidersHtml += '<span style="font-size:12px;color:var(--accent);">Δ +10%: ' + formatValue(e.profitDelta10) + '</span>';
-        slidersHtml += '<span>' + formatInputValue(max) + '</span>';
-        slidersHtml += '</div>';
-        slidersHtml += '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);">';
-        slidersHtml += '<span>' + formatInputValue(min) + '</span>';
-        slidersHtml += '<span>Δ при +10%: ' + formatValue(e.profitDelta10) + '</span>';
+        slidersHtml += '<span style="color:var(--accent);">Δ +10%: ' + formatValue(e.profitDelta10) + '</span>';
         slidersHtml += '<span>' + formatInputValue(max) + '</span>';
         slidersHtml += '</div>';
         slidersHtml += '</div>';
