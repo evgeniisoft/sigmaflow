@@ -526,6 +526,77 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     };
 };
 
+Graph.prototype.getPnL = function (startMonth, horizon) {
+    var self = this;
+    horizon = horizon || 12;
+    startMonth = startMonth !== undefined ? startMonth : new Date().getMonth();
+
+    var revY = self._val('REVENUE');
+    var cogsY = self._val('COGS');
+    var sellY = self._val('SELLING_EXP');
+    var admY = self._val('ADMIN_EXP');
+    var daY = self._val('DA');
+    var intY = 0;
+    if (self.credits) {
+        self.credits.forEach(function (cr) {
+            intY += (cr.amount || 0) * (cr.rate || 0) / 12;
+        });
+    }
+    var otherIncY = self._val('OTHER_INCOME');
+    var otherExpY = self._val('OTHER_EXP');
+    var penY = self._val('PENALTIES');
+    var ebtY = self._val('EBT');
+    var taxRate = self._company('profit_tax_rate', 0.25);
+    var annualTax = Math.max(0, ebtY) * taxRate;
+    var quarterlyTax = annualTax / 4;
+
+    var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    var rows = [];
+    var totals = { rev: 0, cogs: 0, gross: 0, sell: 0, adm: 0, ebitda: 0, da: 0, ebit: 0, int: 0, ebt: 0, tax: 0, net: 0 };
+    var cumulative = 0;
+
+    for (var p = 0; p < horizon; p++) {
+        var mo = (startMonth + p) % 12;
+        var label = months[mo] + ' ' + (2026 + Math.floor((startMonth + p) / 12));
+
+        var revenue = revY;
+        var cogs = -Math.abs(cogsY);
+        var gross = revenue + cogs;
+        var selling = -Math.abs(sellY);
+        var admin = -Math.abs(admY);
+        var ebitda = gross + selling + admin;
+        var da = -Math.abs(daY);
+        var ebit = ebitda + da;
+        var interest = -Math.abs(intY);
+        var other = (otherIncY || 0) - Math.abs(otherExpY || 0) - Math.abs(penY || 0);
+        var ebt = ebit + interest + other;
+
+        var profitTax = 0;
+        if (mo === 2 || mo === 3 || mo === 6 || mo === 9) {
+            profitTax = -quarterlyTax;
+        }
+
+        var net = ebt + profitTax;
+        cumulative += net;
+
+        rows.push({
+            label: label,
+            revenue: revenue, cogs: cogs, gross: gross,
+            selling: selling, admin: admin, ebitda: ebitda,
+            da: da, ebit: ebit,
+            interest: interest, other: other, ebt: ebt,
+            tax: profitTax, net: net, cumulative: cumulative
+        });
+
+        totals.rev += revenue; totals.cogs += cogs; totals.gross += gross;
+        totals.sell += selling; totals.adm += admin; totals.ebitda += ebitda;
+        totals.da += da; totals.ebit += ebit; totals.int += interest;
+        totals.ebt += ebt; totals.tax += profitTax; totals.net += net;
+    }
+
+    return { rows: rows, totals: totals, endCumulative: cumulative };
+};
+
 // Вспомогательные методы
 Graph.prototype._val = function (id) {
     var n = this.nodes[id];
