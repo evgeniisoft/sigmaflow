@@ -1778,7 +1778,7 @@
                 var amount = parseFloat(document.getElementById('cr-amount').value);
                 var rate = parseFloat(document.getElementById('cr-rate').value) / 100;
                 var term = parseInt(document.getElementById('cr-term').value);
-                var rateType = document.getElementById('cr-rate-type').value;
+                var rateType = 'fixed';
                 var repaymentType = document.getElementById('cr-repayment-type').value;
                 if (!name || isNaN(amount) || isNaN(rate) || isNaN(term)) { notify('Заполните все поля', true); return; }
                 if (!graph) { notify('Модель не загружена', true); return; }
@@ -1800,19 +1800,23 @@
                 notify('Кредит добавлен');
             });
 
-            window.updateCreditInfo = function () {
-                var amount = parseFloat(document.getElementById('cr-amount').value) || 0;
-                var rate = (parseFloat(document.getElementById('cr-rate').value) || 0) / 100;
+                window.updateCreditInfo = function () {
+                var amount = parseFloat(unformatInputValue(document.getElementById('cr-amount').value)) || 0;
+                var rate = (parseFloat(unformatInputValue(document.getElementById('cr-rate').value)) || 0) / 100;
                 var term = parseInt(document.getElementById('cr-term').value) || 1;
                 var type = document.getElementById('cr-repayment-type').value;
                 var monthlyRate = rate / 12;
                 var payment;
                 if (type === 'annuity') {
-                    payment = amount * (monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1);
+                    if (monthlyRate > 0 && term > 0) {
+                        payment = amount * (monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1);
+                    } else {
+                        payment = amount / term;
+                    }
                 } else {
                     payment = amount / term + amount * monthlyRate;
                 }
-                document.getElementById('cr-monthly-payment').value = Math.round(payment);
+                document.getElementById('cr-monthly-payment').value = Math.round(payment) || 0;
             };
 
             document.getElementById('select-company').addEventListener('change', function () {
