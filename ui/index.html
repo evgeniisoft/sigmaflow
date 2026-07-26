@@ -50,6 +50,9 @@
                                 style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
                             </div>
                             <button id="btn-full-graph" style="margin-top:8px;">▶ ПОЛНЫЙ ГРАФ</button>
+                            <button id="btn-analysis" style="margin-top:8px;">▶ АНАЛИЗ И РЕКОМЕНДАЦИИ</button>
+                            <div id="dashboard-analysis-panel"
+                                style="display:none;margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border);"></div>
                         </div>
                         <div id="dashboard-graph-panel"
                             style="width:50%;background:var(--bg-primary);border-left:1px solid var(--border);display:flex;flex-direction:column;">
@@ -1620,6 +1623,58 @@
             document.getElementById('btn-build-pnl').addEventListener('click', function () {
                 if (!graph) { notify('Сначала загрузите модель', true); return; }
                 buildPnL();
+                document.getElementById('btn-analysis').addEventListener('click', function () {
+                    if (!graph) { notify('Сначала загрузите модель', true); return; }
+                    graph.compute();
+                    var effects = graph.getMarginalEffects();
+                    var panel = document.getElementById('dashboard-analysis-panel');
+
+                    if (panel.style.display === 'none') {
+                        panel.style.display = 'block';
+                        this.textContent = '▼ АНАЛИЗ И РЕКОМЕНДАЦИИ';
+
+                        var html = '<div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">ПРЕДЕЛЬНЫЕ ЭФФЕКТЫ (изменение прибыли при +1% параметра)</div>';
+                        html += '<table><thead><tr><th>ПАРАМЕТР</th><th>ТЕКУЩЕЕ</th><th>Δ ПРИБЫЛИ</th><th>ЭЛАСТИЧНОСТЬ</th></tr></thead><tbody>';
+
+                        effects.slice(0, 10).forEach(function (e) {
+                            var sign = e.profitDelta >= 0 ? '+' : '';
+                            var color = e.profitDelta >= 0 ? 'var(--ok)' : 'var(--critical)';
+                            html += '<tr>';
+                            html += '<td>' + e.label + '</td>';
+                            html += '<td class="value-cell">' + formatValue(e.currentValue) + '</td>';
+                            html += '<td class="value-cell" style="color:' + color + ';">' + sign + formatValue(e.profitDelta) + '</td>';
+                            html += '<td class="value-cell">' + (e.elasticity * 100).toFixed(1) + '%</td>';
+                            html += '</tr>';
+                        });
+
+                        html += '</tbody></table>';
+
+                        // Простые рекомендации на основе эффектов
+                        html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 8px;">РЕКОМЕНДАЦИИ</div>';
+
+                        var topPositive = effects.filter(function (e) { return e.profitDelta > 0; }).slice(0, 3);
+                        var topNegative = effects.filter(function (e) { return e.profitDelta < 0; }).slice(0, 3);
+
+                        if (topPositive.length > 0) {
+                            html += '<div style="margin-bottom:8px;">Для увеличения прибыли:</div>';
+                            topPositive.forEach(function (e) {
+                                html += '<div style="font-size:12px;padding:2px 0;">● Увеличить <b>' + e.label + '</b> — эффект ~' + formatValue(e.profitDelta * 10) + ' при +10%</div>';
+                            });
+                        }
+
+                        if (topNegative.length > 0) {
+                            html += '<div style="margin:8px 0;">Для сокращения убытков:</div>';
+                            topNegative.forEach(function (e) {
+                                html += '<div style="font-size:12px;padding:2px 0;">● Сократить <b>' + e.label + '</b> — эффект ~' + formatValue(Math.abs(e.profitDelta) * 10) + ' при -10%</div>';
+                            });
+                        }
+
+                        panel.innerHTML = html;
+                    } else {
+                        panel.style.display = 'none';
+                        this.textContent = '▶ АНАЛИЗ И РЕКОМЕНДАЦИИ';
+                    }
+                });
             });
             // Применить изменения из таблицы
                 document.getElementById('btn-apply-table').addEventListener('click', function () {
