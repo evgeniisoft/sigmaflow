@@ -597,6 +597,69 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
     return { rows: rows, totals: totals, endCumulative: cumulative };
 };
 
+Graph.prototype.getMarginalEffects = function () {
+    var self = this;
+
+    // Сохраняем текущее состояние
+    var saved = {};
+    Object.keys(self.nodes).forEach(function (key) {
+        saved[key] = self.nodes[key].value;
+    });
+
+    // Базовая прибыль
+    self.compute();
+    var baseProfit = self.nodes['NET_PROFIT'] ? self.nodes['NET_PROFIT'].value : 0;
+
+    var effects = [];
+
+    Object.keys(self.nodes).forEach(function (key) {
+        var n = self.nodes[key];
+        if (n.type !== 'INPUT' && n.type !== 'EXTERNAL') return;
+        if (n.value === null || n.value === 0) return;
+        if (n.enabled === false) return;
+
+        // Изменяем на +1%
+        var delta = n.value * 0.01;
+        if (Math.abs(delta) < 0.001) delta = 0.01;
+
+        // Восстанавливаем все значения
+        Object.keys(saved).forEach(function (k) {
+            self.nodes[k].value = saved[k];
+        });
+
+        // Применяем изменение
+        n.value = n.value + delta;
+
+        // Пересчитываем
+        self.compute();
+        var newProfit = self.nodes['NET_PROFIT'] ? self.nodes['NET_PROFIT'].value : 0;
+
+        var profitDelta = newProfit - baseProfit;
+        var elasticity = baseProfit !== 0 ? (profitDelta / baseProfit) / 0.01 : 0;
+
+        effects.push({
+            node: key,
+            label: n.label || key,
+            type: n.type,
+            currentValue: saved[key],
+            profitDelta: profitDelta,
+            elasticity: elasticity,
+            absImpact: Math.abs(profitDelta)
+        });
+    });
+
+    // Восстанавливаем модель
+    Object.keys(saved).forEach(function (k) {
+        self.nodes[k].value = saved[k];
+    });
+    self.compute();
+
+    // Сортируем по абсолютному влиянию
+    effects.sort(function (a, b) { return b.absImpact - a.absImpact; });
+
+    return effects;
+};
+
 // Вспомогательные методы
 Graph.prototype._val = function (id) {
     var n = this.nodes[id];
