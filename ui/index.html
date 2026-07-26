@@ -278,6 +278,10 @@
                                                 <option value="0.076">7.6% (IT-компании, резиденты ОЭЗ и ТОР)</option>
                                             </select>
                                         </div>
+                                        <div class="form-group">
+                                            <label>ОТСРОЧКА ПЛАТЕЖЕЙ КЛИЕНТОВ (дней)</label>
+                                            <input type="number" id="company-receivables-days" value="30" min="0" max="180" step="1" style="width:100%;">
+                                        </div>
                                         <button id="btn-apply-company" class="primary" style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>
                                     </div>
                                 </div>
@@ -571,6 +575,7 @@
                                         if (graph.company.nds_rate !== undefined) setSelectByValue('company-nds-rate', graph.company.nds_rate);
                                         if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
                                         if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
+                                        if (graph.company.receivables_days !== undefined) document.getElementById('company-receivables-days').value = graph.company.receivables_days;
                                     }
                                 } else {
                                     showSetupWizard();
@@ -1535,6 +1540,7 @@
                 graph.company.nds_rate = parseFloat(document.getElementById('company-nds-rate').value);
                 graph.company.profit_tax_rate = parseFloat(document.getElementById('company-profit-tax-rate').value);
                 graph.company.insurance_rate = parseFloat(document.getElementById('company-insurance-rate').value);
+                graph.company.receivables_days = parseInt(document.getElementById('company-receivables-days').value) || 30;
 
                 if (graph.nodes['TAX_RATE']) {
                     graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
@@ -1835,6 +1841,7 @@
                         if (graph.company.nds_rate !== undefined) setSelectByValue('company-nds-rate', graph.company.nds_rate);
                         if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
                         if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
+                        if (graph.company.receivables_days !== undefined) document.getElementById('company-receivables-days').value = graph.company.receivables_days;
                     }
                     updateStatusBar('Компания загружена');
                 }
