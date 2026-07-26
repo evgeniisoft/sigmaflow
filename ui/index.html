@@ -348,6 +348,20 @@
                                             <div class="form-group"><label>БАНК</label><input type="text" id="cr-bank"></div>
                                             <div class="form-group"><label>СУММА</label><input type="number" id="cr-amount" step="100000"
                                                     min="0" oninput="updateCreditInfo()"></div>
+                                                    <div class="form-group"><label>МЕСЯЦ ПОЛУЧЕНИЯ</label><select id="cr-start-month">
+                                                            <option value="0">Янв</option>
+                                                            <option value="1">Фев</option>
+                                                            <option value="2">Мар</option>
+                                                            <option value="3">Апр</option>
+                                                            <option value="4">Май</option>
+                                                            <option value="5">Июн</option>
+                                                            <option value="6">Июл</option>
+                                                            <option value="7">Авг</option>
+                                                            <option value="8">Сен</option>
+                                                            <option value="9">Окт</option>
+                                                            <option value="10">Ноя</option>
+                                                            <option value="11">Дек</option>
+                                                        </select></div>
                                             <div class="form-group"><label>СТАВКА (%)</label><input type="number" id="cr-rate" step="0.1"
                                                     min="0" max="50" oninput="updateCreditInfo()"></div>
                                             <div class="form-group"><label>СРОК (МЕС)</label><input type="number" id="cr-term" step="6" min="1"
@@ -1796,10 +1810,12 @@
                 } else {
                     monthlyPayment = amount / term + amount * monthlyRate;
                 }
+                var startMonth = parseInt(document.getElementById('cr-start-month').value) || 0;
                 graph.credits.push({
                     name: name, bank: bank, amount: amount, rate: rate, term: term,
                     rateType: rateType, repaymentType: repaymentType,
-                    monthlyPayment: Math.round(monthlyPayment)
+                    monthlyPayment: Math.round(monthlyPayment),
+                    startMonth: startMonth
                 });
                 saveCredits();
                 document.getElementById('credit-form').style.display = 'none';
