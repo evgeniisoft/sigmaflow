@@ -597,66 +597,53 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
     return { rows: rows, totals: totals, endCumulative: cumulative };
 };
 
-Graph.prototype.getMarginalEffects = function () {
+Graph.prototype.getMarginalEffects = function() {
     var self = this;
-
-    // Сохраняем текущее состояние
     var saved = {};
-    Object.keys(self.nodes).forEach(function (key) {
+    Object.keys(self.nodes).forEach(function(key) {
         saved[key] = self.nodes[key].value;
     });
-
-    // Базовая прибыль
+    
     self.compute();
     var baseProfit = self.nodes['NET_PROFIT'] ? self.nodes['NET_PROFIT'].value : 0;
-
+    var baseRevenue = self.nodes['REVENUE'] ? Math.abs(self.nodes['REVENUE'].value) : 1;
+    
     var effects = [];
-
-    Object.keys(self.nodes).forEach(function (key) {
+    
+    Object.keys(self.nodes).forEach(function(key) {
         var n = self.nodes[key];
         if (n.type !== 'INPUT' && n.type !== 'EXTERNAL') return;
         if (n.value === null || n.value === 0) return;
         if (n.enabled === false) return;
-
-        // Изменяем на +1%
+        
         var delta = n.value * 0.01;
         if (Math.abs(delta) < 0.001) delta = 0.01;
-
-        // Восстанавливаем все значения
-        Object.keys(saved).forEach(function (k) {
-            self.nodes[k].value = saved[k];
-        });
-
-        // Применяем изменение
+        
+        Object.keys(saved).forEach(function(k) { self.nodes[k].value = saved[k]; });
+        
         n.value = n.value + delta;
-
-        // Пересчитываем
         self.compute();
         var newProfit = self.nodes['NET_PROFIT'] ? self.nodes['NET_PROFIT'].value : 0;
-
         var profitDelta = newProfit - baseProfit;
-        var elasticity = baseProfit !== 0 ? (profitDelta / baseProfit) / 0.01 : 0;
-
+        
         effects.push({
             node: key,
             label: n.label || key,
             type: n.type,
             currentValue: saved[key],
+            min: n.min,
+            max: n.max,
+            step: Number.isInteger(saved[key]) ? 1 : (Math.abs(saved[key]) > 100 ? Math.round(Math.abs(saved[key]) / 100) : 0.01),
             profitDelta: profitDelta,
-            elasticity: elasticity,
-            absImpact: Math.abs(profitDelta)
+            profitDelta10: profitDelta * 10,
+            impactPct: baseRevenue !== 0 ? (Math.abs(profitDelta) / baseRevenue * 100).toFixed(1) : 0
         });
     });
-
-    // Восстанавливаем модель
-    Object.keys(saved).forEach(function (k) {
-        self.nodes[k].value = saved[k];
-    });
+    
+    Object.keys(saved).forEach(function(k) { self.nodes[k].value = saved[k]; });
     self.compute();
-
-    // Сортируем по абсолютному влиянию
-    effects.sort(function (a, b) { return b.absImpact - a.absImpact; });
-
+    
+    effects.sort(function(a, b) { return Math.abs(b.profitDelta) - Math.abs(a.profitDelta); });
     return effects;
 };
 
