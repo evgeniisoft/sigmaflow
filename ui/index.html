@@ -2019,6 +2019,8 @@
                 document.querySelectorAll('.shock-row').forEach(function (row) {
                     var node = row.querySelector('.shock-node').value;
                     var value = parseFloat(row.querySelector('.shock-value').value);
+                    var percentNodes = ['TAX_RATE', 'CB_RATE', 'BANK_SPREAD', 'INFLATION', 'DEFECT_RATE', 'ENGAGEMENT'];
+                    if (percentNodes.indexOf(node) >= 0) value = value / 100;
                     if (node && !isNaN(value)) shocks.push({ node: node, value: value });
                 });
 
