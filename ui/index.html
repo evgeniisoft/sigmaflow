@@ -1633,8 +1633,10 @@
             }
 
             window.deleteInvestment = function (idx) {
+                if (!confirm('Удалить проект «' + (graph.investments[idx] ? graph.investments[idx].name : '') + '»?')) return;
                 graph.investments.splice(idx, 1);
-                saveInvestments();
+                saveCurrentModel();
+                window.renderInvestments();
             };
 
             document.getElementById('btn-add-investment').addEventListener('click', function () {
@@ -1750,8 +1752,10 @@
             }
 
             window.deleteCredit = function (idx) {
+                if (!confirm('Удалить кредит «' + (graph.credits[idx] ? graph.credits[idx].name : '') + '»?')) return;
                 graph.credits.splice(idx, 1);
-                saveCredits();
+                saveCurrentModel();
+                window.renderCredits();
             };
 
             document.getElementById('btn-add-credit').addEventListener('click', function () {
