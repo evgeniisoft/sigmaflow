@@ -338,21 +338,16 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var intY = 0;
     if (self.credits) {
         self.credits.forEach(function (cr) {
-            var mp = cr.monthlyPayment || 0;
             var amount = cr.amount || 0;
             var term = cr.term || 12;
-            var rate = cr.rate || 0;
-            var monthlyRate = rate / 12;
             var bodyPayment = amount / term;
 
-            // Тело кредита — погашение
             for (var j = 0; j < horizon && j < term; j++) {
                 loanSch[j] = (loanSch[j] || 0) + bodyPayment;
             }
 
-            // Новый кредит — приход в месяц получения
             var startMonth = cr.startMonth || 0;
-            if (startMonth < horizon) {
+            if (startMonth < horizon && newLoanSch[startMonth] !== undefined) {
                 newLoanSch[startMonth] = (newLoanSch[startMonth] || 0) + amount;
             }
 
