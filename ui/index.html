@@ -30,6 +30,7 @@
         <button class="nav-btn" data-panel="data">ДАННЫЕ</button>
         <button class="nav-btn" data-panel="calendar">КАЛЕНДАРЬ ДДС</button>
         <button class="nav-btn" data-panel="pnl">P&L</button>
+        <button class="nav-btn" data-panel="live">ЖИВАЯ МОДЕЛЬ</button>
         <button class="nav-btn" data-panel="scenarios">СЦЕНАРИИ</button>
         <button class="nav-btn" data-panel="company">НАСТРОЙКИ</button>
         <button class="nav-btn nav-btn-alert" data-panel="diagnostics" id="nav-diagnostics">ДИАГНОСТИКА</button>
@@ -54,6 +55,7 @@
                             <div id="dashboard-analysis-panel"
                                 style="display:none;margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border);"></div>
                         </div>
+                        <button id="btn-goto-live" style="margin-top:4px;font-size:11px;">▶ ОТКРЫТЬ ЖИВУЮ МОДЕЛЬ</button>
                         <div id="dashboard-graph-panel"
                             style="width:50%;background:var(--bg-primary);border-left:1px solid var(--border);display:flex;flex-direction:column;">
                             <div
@@ -201,7 +203,35 @@
                 </div>
             </div>
         </div>
+        <!-- ПАНЕЛЬ ЖИВАЯ МОДЕЛЬ -->
+        <div id="panel-live" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3 style="margin:0 0 16px 0;">ЖИВАЯ МОДЕЛЬ</h3>
+                <p style="color:var(--text-hint);font-size:12px;margin-bottom:16px;">Двигайте ползунки — наблюдайте каскад изменений в реальном времени</p>
+                
+                <div id="live-sliders" style="margin-bottom:24px;"></div>
+                
+                <div style="display:flex;gap:24px;">
+                    <div style="flex:1;">
+                        <div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">КАСКАД ИЗМЕНЕНИЙ</div>
+                        <div id="live-cascade" style="font-size:12px;line-height:1.8;"></div>
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">ДО / ПОСЛЕ</div>
+                        <table id="live-comparison" style="width:100%;">
+                            <thead><tr><th>ПОКАЗАТЕЛЬ</th><th>ДО</th><th>ПОСЛЕ</th><th>Δ</th></tr></thead>
+                            <tbody id="live-comparison-body"></tbody>
+                        </table>
+                    </div>
+                </div>
 
+                <div style="margin-top:16px;display:flex;gap:12px;">
+                    <button id="btn-live-apply" class="primary">ПРИМЕНИТЬ К МОДЕЛИ</button>
+                    <button id="btn-live-save-scenario">СОХРАНИТЬ КАК СЦЕНАРИЙ</button>
+                    <button id="btn-live-reset">СБРОСИТЬ</button>
+                </div>
+            </div>
+        </div>
                 <!-- ПАНЕЛЬ СЦЕНАРИИ -->
                 <div id="panel-scenarios" class="panel">
                     <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
@@ -1680,7 +1710,47 @@
                         html += '<td class="value-cell">' + (e.elasticity * 100).toFixed(1) + '%</td>';
                         html += '</tr>';
                     });
+                    document.getElementById('btn-goto-live').addEventListener('click', function() {
+    document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelector('[data-panel="live"]').classList.add('active');
+    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('panel-live').classList.add('active');
+    buildLiveModel();
+});
+                    document.getElementById('btn-live-apply').addEventListener('click', function() {
+    if (!graph) return;
+    Object.keys(graph.nodes).forEach(function(key) {
+        liveBaseValues[key] = graph.nodes[key].value;
+    });
+    saveCurrentModel();
+    notify('Изменения применены к модели');
+    renderAll();
+});
 
+document.getElementById('btn-live-save-scenario').addEventListener('click', function() {
+    if (!graph) return;
+    var shocks = [];
+    window._liveTop5.forEach(function(e) {
+        var newVal = graph.nodes[e.node].value;
+        if (newVal !== liveBaseValues[e.node]) {
+            shocks.push({ node: e.node, value: newVal });
+        }
+    });
+    if (shocks.length === 0) { notify('Нет изменений для сохранения'); return; }
+    if (!graph.scenarios) graph.scenarios = [];
+    graph.scenarios.push({ name: 'Живая модель ' + new Date().toLocaleString(), desc: '', shocks: shocks });
+    saveScenarios();
+    notify('Сценарий сохранён');
+});
+
+document.getElementById('btn-live-reset').addEventListener('click', function() {
+    Object.keys(liveBaseValues).forEach(function(key) {
+        if (graph.nodes[key]) graph.nodes[key].value = liveBaseValues[key];
+    });
+    graph.compute();
+    buildLiveModel();
+    notify('Модель сброшена');
+});
                     html += '</tbody></table>';
 
                     html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 8px;">РЕКОМЕНДАЦИИ</div>';
@@ -2324,6 +2394,117 @@
             // Загружаем демо при старте
             loadDemo();
         });
+
+        var liveBaseValues = {};
+
+function buildLiveModel() {
+    if (!graph) { notify('Сначала загрузите модель', true); return; }
+    
+    var effects = graph.getMarginalEffects();
+    var top5 = effects.slice(0, 5);
+    
+    // Сохраняем базовые значения
+    Object.keys(graph.nodes).forEach(function(key) {
+        liveBaseValues[key] = graph.nodes[key].value;
+    });
+    
+    // Ползунки
+    var slidersHtml = '';
+    top5.forEach(function(e, idx) {
+        var min = e.min !== null ? e.min : e.currentValue * 0.5;
+        var max = e.max !== null ? e.max : e.currentValue * 1.5;
+        var step = e.step || (Math.abs(e.currentValue) / 100);
+        
+        slidersHtml += '<div style="margin-bottom:12px;">';
+        slidersHtml += '<div style="display:flex;justify-content:space-between;font-size:11px;">';
+        slidersHtml += '<span>' + e.label + '</span>';
+        slidersHtml += '<span id="live-val-' + idx + '">' + formatInputValue(e.currentValue) + '</span>';
+        slidersHtml += '</div>';
+        slidersHtml += '<input type="range" id="live-slider-' + idx + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + e.currentValue + '" oninput="updateLiveModel()" style="width:100%;">';
+        slidersHtml += '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);">';
+        slidersHtml += '<span>' + formatInputValue(min) + '</span>';
+        slidersHtml += '<span>Δ при +10%: ' + formatValue(e.profitDelta10) + '</span>';
+        slidersHtml += '<span>' + formatInputValue(max) + '</span>';
+        slidersHtml += '</div>';
+        slidersHtml += '</div>';
+    });
+    
+    document.getElementById('live-sliders').innerHTML = slidersHtml;
+    
+    // Данные для каскада
+    window._liveEffects = effects;
+    window._liveTop5 = top5;
+    
+    updateLiveModel();
+}
+
+function updateLiveModel() {
+    var top5 = window._liveTop5;
+    if (!top5) return;
+    
+    // Применяем значения ползунков
+    top5.forEach(function(e, idx) {
+        var slider = document.getElementById('live-slider-' + idx);
+        if (slider && graph.nodes[e.node]) {
+            graph.nodes[e.node].value = parseFloat(slider.value);
+            document.getElementById('live-val-' + idx).textContent = formatInputValue(parseFloat(slider.value));
+        }
+    });
+    
+    graph.compute();
+    
+    // Каскад
+    var cascadeHtml = '';
+    top5.forEach(function(e) {
+        var newVal = graph.nodes[e.node].value;
+        var oldVal = liveBaseValues[e.node];
+        var delta = newVal - oldVal;
+        var pct = oldVal !== 0 ? (delta / Math.abs(oldVal) * 100).toFixed(1) : 0;
+        var color = delta >= 0 ? 'var(--ok)' : 'var(--critical)';
+        
+        if (Math.abs(pct) > 0.1) {
+            cascadeHtml += '<div style="margin-bottom:4px;">';
+            cascadeHtml += '<span style="color:' + color + ';">▌</span> ';
+            cascadeHtml += '<b>' + e.label + '</b>: ' + formatValue(oldVal) + ' → ' + formatValue(newVal);
+            cascadeHtml += ' <span style="color:' + color + ';">(' + (delta >= 0 ? '+' : '') + formatValue(delta) + ', ' + (pct >= 0 ? '+' : '') + pct + '%)</span>';
+            cascadeHtml += '</div>';
+        }
+    });
+    
+    // Добавляем итоговый эффект
+    var newProfit = graph.nodes['NET_PROFIT'].value;
+    var oldProfit = liveBaseValues['NET_PROFIT'];
+    var profitDelta = newProfit - oldProfit;
+    var profitColor = profitDelta >= 0 ? 'var(--ok)' : 'var(--critical)';
+    
+    cascadeHtml += '<div style="margin-top:8px;font-weight:500;">';
+    cascadeHtml += 'ПРИБЫЛЬ: ' + formatValue(oldProfit) + ' → <span style="color:' + profitColor + ';">' + formatValue(newProfit) + '</span>';
+    cascadeHtml += ' <span style="color:' + profitColor + ';">(' + (profitDelta >= 0 ? '+' : '') + formatValue(profitDelta) + ')</span>';
+    cascadeHtml += '</div>';
+    
+    document.getElementById('live-cascade').innerHTML = cascadeHtml || 'Двигайте ползунки';
+    
+    // Таблица ДО/ПОСЛЕ
+    var compNodes = ['REVENUE', 'COGS', 'GROSS_PROFIT', 'EBITDA', 'EBIT', 'EBT', 'NET_PROFIT', 'FCF', 'CASH'];
+    var compHtml = '';
+    compNodes.forEach(function(nid) {
+        var n = graph.nodes[nid];
+        if (!n) return;
+        var newVal = n.value;
+        var oldVal = liveBaseValues[nid] !== undefined ? liveBaseValues[nid] : newVal;
+        var delta = newVal - oldVal;
+        var dColor = delta >= 0 ? 'var(--ok)' : 'var(--critical)';
+        
+        compHtml += '<tr>';
+        compHtml += '<td>' + (n.label || n.id) + '</td>';
+        compHtml += '<td class="value-cell">' + formatValue(oldVal) + '</td>';
+        compHtml += '<td class="value-cell">' + formatValue(newVal) + '</td>';
+        compHtml += '<td class="value-cell" style="color:' + dColor + ';">' + (delta >= 0 ? '+' : '') + formatValue(delta) + '</td>';
+        compHtml += '</tr>';
+    });
+    document.getElementById('live-comparison-body').innerHTML = compHtml;
+}
+
     </script>
 
 </body>
