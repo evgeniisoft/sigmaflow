@@ -347,7 +347,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             }
 
             var startMonth = cr.startMonth || 0;
-            if (startMonth < horizon && newLoanSch[startMonth] !== undefined) {
+            if (startMonth >= 0 && startMonth < newLoanSch.length) {
                 newLoanSch[startMonth] = (newLoanSch[startMonth] || 0) + amount;
             }
 
@@ -380,7 +380,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
 
             // Новый кредит — приход в месяц получения
             var startMonth = cr.startMonth || 0;
-            if (startMonth < horizon) {
+            if (startMonth >= 0 && startMonth < newLoanSch.length) {
                 newLoanSch[startMonth] = (newLoanSch[startMonth] || 0) + amount;
             }
 
@@ -399,7 +399,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             var start = inv.start || 0;
             for (var j = 0; j < schedule.length; j++) {
                 var monthIdx = start + j;
-                if (monthIdx < horizon) {
+                if (monthIdx >= 0 && monthIdx < capexSch.length) {
                     capexSch[monthIdx] = (capexSch[monthIdx] || 0) + (schedule[j] || 0);
                 }
             }
