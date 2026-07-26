@@ -1217,16 +1217,53 @@
         // ============================================================
 
         function saveProject() {
-            if (!graph) {
-                notify('Нечего сохранять', true);
-                return;
-            }
-            var yamlText = toYAML(graph);
+            if (!graph) { notify('Нечего сохранять', true); return; }
+
+            var fullData = {
+                project: graph.name,
+                company: graph.company || {},
+                investments: graph.investments || [],
+                credits: graph.credits || [],
+                scenarios: graph.scenarios || [],
+                model: graph.toDict()
+            };
+
+            var yamlText = 'project: "' + graph.name + '"\n\n';
+            yamlText += '# Настройки компании\n';
+            yamlText += 'company:\n';
+            yamlText += '  tax_system: ' + (graph.company.tax_system || 'OSNO') + '\n';
+            yamlText += '  nds_rate: ' + (graph.company.nds_rate || 0.22) + '\n';
+            yamlText += '  profit_tax_rate: ' + (graph.company.profit_tax_rate || 0.25) + '\n';
+            yamlText += '  insurance_rate: ' + (graph.company.insurance_rate || 0.30) + '\n';
+            yamlText += '  receivables_days: ' + (graph.company.receivables_days || 30) + '\n';
+
+            yamlText += '\n# Инвестиции\n';
+            yamlText += 'investments:\n';
+            (graph.investments || []).forEach(function (inv) {
+                yamlText += '  - name: "' + inv.name + '"\n';
+                yamlText += '    cost: ' + inv.cost + '\n';
+                yamlText += '    start: ' + (inv.start || 0) + '\n';
+                yamlText += '    schedule: [' + (inv.schedule || []).join(', ') + ']\n';
+            });
+
+            yamlText += '\n# Кредиты\n';
+            yamlText += 'credits:\n';
+            (graph.credits || []).forEach(function (cr) {
+                yamlText += '  - name: "' + cr.name + '"\n';
+                yamlText += '    amount: ' + cr.amount + '\n';
+                yamlText += '    rate: ' + cr.rate + '\n';
+                yamlText += '    term: ' + cr.term + '\n';
+                yamlText += '    monthly_payment: ' + cr.monthlyPayment + '\n';
+            });
+
+            yamlText += '\n# Модель\n';
+            yamlText += toYAML(graph);
+
             var blob = new Blob([yamlText], { type: 'text/yaml;charset=utf-8' });
             var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.href = url;
-            a.download = 'project.yaml';
+            a.download = (graph.name || 'project') + '.yaml';
             a.click();
             URL.revokeObjectURL(url);
             notify('Проект сохранён');
