@@ -808,7 +808,7 @@
                             var n = graph.nodes[m.id];
                             if (!n) return;
                             var val = n.value !== null && n.value !== undefined ? n.value : 0;
-                            var formatted = formatValue(val);
+                            var formatted = formatInputValue(val);
                             var color = val >= 0 ? 'var(--ok)' : 'var(--critical)';
                             var borderColor = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
 
@@ -1083,7 +1083,7 @@
                 var color = n.type === 'EXTERNAL' ? 'var(--warning)' : 'var(--ok)';
                 var row = '<tr>';
                 row += '<td><span style="color:' + color + ';margin-right:4px;">▌</span>' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
-                row += '<td class="value-cell"><input type="number" class="table-input" data-node-id="' + n.id + '" value="' + (n.value !== null ? n.value : '') + '" step="any" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;"' + (isReadOnly ? ' readonly' : '') + '></td>';
+                row += '<td class="value-cell"><input type="text" class="table-input" data-node-id="' + n.id + '" value="' + formatInputValue(n.value) + '" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;" onfocus="this.value=unformatInputValue(this.value)" onblur="this.value=formatInputValue(this.value)">';
                 row += '<td style="text-align:center;">';
                 row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 1.1)" style="font-size:10px;padding:2px 6px;">+</button>';
                 row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 0.9)" style="font-size:10px;padding:2px 6px;margin-left:2px;">-</button>';
@@ -1493,7 +1493,7 @@
                     var nodeId = inp.dataset.nodeId;
                     var node = graph.nodes[nodeId];
                     if (node) {
-                        var newVal = parseFloat(inp.value);
+                        var newVal = parseFloat(unformatInputValue(inp.value));
                         if (!isNaN(newVal) && node.value !== newVal) {
                             node.value = newVal;
                             changed++;
