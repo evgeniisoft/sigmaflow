@@ -194,6 +194,14 @@ main {
     height: 100%;
 }
 
+#dashboard-analysis-panel table {
+    width: 100%;
+    font-size: 11px;
+}
+#dashboard-analysis-panel td {
+    word-break: break-word;
+}
+
 /* ============================================================
    ПАНЕЛЬ СВОЙСТВ (ИНСПЕКТОР)
    ============================================================ */
