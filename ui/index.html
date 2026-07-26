@@ -216,7 +216,7 @@
                     </div>
                     <div style="flex:1;">
                         <div style="font-size:13px;color:var(--text-hint);margin-bottom:12px;">ДО / ПОСЛЕ</div>
-                        <table id="live-comparison" style="width:100%;font-size:13px;">
+                        <table id="live-comparison" style="width:100%;font-size:13px;text-align:center;">
                             <thead><tr><th>ПОКАЗАТЕЛЬ</th><th>ДО</th><th>ПОСЛЕ</th><th>Δ</th></tr></thead>
                             <tbody id="live-comparison-body"></tbody>
                         </table>
@@ -2417,12 +2417,13 @@ function buildLiveModel() {
         
         slidersHtml += '<div style="margin-bottom:24px;">';
         slidersHtml += '<div style="font-size:14px;font-weight:500;margin-bottom:8px;">' + e.label + '</div>';
-        slidersHtml += '<div style="display:flex;align-items:center;gap:8px;">';
-        slidersHtml += '<span style="font-size:12px;color:var(--text-hint);min-width:70px;">' + formatInputValue(min) + '</span>';
-        slidersHtml += '<input type="range" id="live-slider-' + idx + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + e.currentValue + '" oninput="updateLiveModel()" style="flex:1;height:16px;accent-color:var(--accent);">';
-        slidersHtml += '<span style="font-size:12px;color:var(--text-hint);min-width:70px;text-align:right;">' + formatInputValue(max) + '</span>';
+        slidersHtml += '<div style="position:relative;height:36px;background:var(--bg-input);border:1px solid var(--border);border-radius:2px;overflow:hidden;">';
+        slidersHtml += '<span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text-hint);z-index:1;">' + formatInputValue(min) + '</span>';
+        slidersHtml += '<input type="range" id="live-slider-' + idx + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + e.currentValue + '" oninput="updateLiveModel()" style="position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;">';
+        slidersHtml += '<div id="live-fill-' + idx + '" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);opacity:0.3;width:' + ((e.currentValue - min) / (max - min) * 100) + '%;"></div>';
+        slidersHtml += '<span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text-hint);z-index:1;">' + formatInputValue(max) + '</span>';
         slidersHtml += '</div>';
-        slidersHtml += '<div style="text-align:center;font-size:16px;font-weight:700;margin-top:4px;" id="live-val-' + idx + '">' + formatInputValue(e.currentValue) + '</div>';
+        slidersHtml += '<div style="text-align:center;font-size:16px;font-weight:700;margin-top:6px;" id="live-val-' + idx + '">' + formatInputValue(e.currentValue) + '</div>';
         slidersHtml += '</div>';
     });
     
@@ -2449,6 +2450,18 @@ function updateLiveModel() {
     });
     
     graph.compute();
+
+      top5.forEach(function(e, idx) {
+          var slider = document.getElementById('live-slider-' + idx);
+          var fill = document.getElementById('live-fill-' + idx);
+          if (slider && fill) {
+              var min = parseFloat(slider.min);
+              var max = parseFloat(slider.max);
+              var val = parseFloat(slider.value);
+              var pct = (val - min) / (max - min) * 100;
+              fill.style.width = pct + '%';
+          }
+      });
     
     // Каскад
     var cascadeHtml = '';
@@ -2493,10 +2506,10 @@ function updateLiveModel() {
         var dColor = delta >= 0 ? 'var(--ok)' : 'var(--critical)';
         
         compHtml += '<tr>';
-        compHtml += '<td>' + (n.label || n.id) + '</td>';
-        compHtml += '<td class="value-cell">' + formatValue(oldVal) + '</td>';
-        compHtml += '<td class="value-cell">' + formatValue(newVal) + '</td>';
-        compHtml += '<td class="value-cell" style="color:' + dColor + ';">' + (delta >= 0 ? '+' : '') + formatValue(delta) + '</td>';
+        compHtml += '<td style="text-align:left;">' + (n.label || n.id) + '</td>';
+        compHtml += '<td class="value-cell" style="text-align:center;">' + formatValue(oldVal) + '</td>';
+        compHtml += '<td class="value-cell" style="text-align:center;">' + formatValue(newVal) + '</td>';
+        compHtml += '<td class="value-cell" style="text-align:center;color:' + dColor + ';">' + (delta >= 0 ? '+' : '') + formatValue(delta) + '</td>';
         compHtml += '</tr>';
     });
     document.getElementById('live-comparison-body').innerHTML = compHtml;
