@@ -433,6 +433,19 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var ndsExempt = self._company('nds_exempt', false);
     var hasNDS = !ndsExempt && ndsRate > 0;
     var monthlyRevenueForNDS = revY;
+    // Отсрочка платежей клиентов
+    var receivablesDays = self._company('receivables_days', 30);
+    var receivablesDelay = Math.round(receivablesDays / 30); // в месяцах
+    var revenueReceived = [];
+    for (var i = 0; i < horizon; i++) revenueReceived.push(0);
+    for (var i = 0; i < horizon; i++) {
+        var targetMonth = i + receivablesDelay;
+        if (targetMonth < horizon) {
+            revenueReceived[targetMonth] = (revenueReceived[targetMonth] || 0) + revY;
+        } else {
+            revenueReceived[i] = (revenueReceived[i] || 0) + revY;
+        }
+    }
     var monthlyNDSaccrued = monthlyRevenueForNDS * ndsRate / (1 + ndsRate);
     var quarterlyNDS = monthlyNDSaccrued * 3;
     var ndsMonthlyPayment = quarterlyNDS / 3;
@@ -488,7 +501,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
         cal.push({
             period: p, label: label, month: mo,
             startCash: startCashPeriod,
-            revenue: revY ,
+            revenue: revenueReceived[p],
             material: matY,
             energy: enerY,
             logistics: logY,
@@ -519,7 +532,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             isWarning: netFlow < 0 && runningCash >= 0
         });
 
-        totals.rev += revY ; totals.mat += matY; totals.ener += enerY;
+        totals.rev += revenueReceived[p]; totals.mat += matY; totals.ener += enerY;
         totals.log += logY; totals.prod += prodY; totals.adm += admY;
         totals.mark += markY; totals.rent += rentY; totals.it += (itY + rdY + trainY) / 12;
         totals.tax += taxThisMonth; totals.int += intY; totals.pen += penY;
