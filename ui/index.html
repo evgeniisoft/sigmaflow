@@ -1660,7 +1660,7 @@
                 var cost = parseFloat(document.getElementById('inv-cost').value);
                 var start = parseInt(document.getElementById('inv-start-month').value);
                 var count = parseInt(document.getElementById('inv-payments-count').value);
-                var affects = document.getElementById('inv-affects').value;
+                var affects = 'FIXED_ASSETS';
                 var schedule = [];
                 var inputs = document.querySelectorAll('.inv-schedule-input');
                 inputs.forEach(function (inp) { schedule.push(parseFloat(inp.value) || 0); });
