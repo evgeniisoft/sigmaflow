@@ -353,7 +353,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             var amount = cr.amount || 0;
             var term = cr.term || 12;
             var bodyPayment = amount / term;
-            intY += amount * (cr.rate || 0);
+            intY += amount * (cr.rate || 0) / 12;
 
             // Тело кредита — погашение
             for (var j = 0; j < horizon && j < term; j++) {
