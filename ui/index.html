@@ -47,6 +47,9 @@
                     <div id="dashboard-metrics"
                         style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
                     </div>
+                    <div id="dashboard-analysis"
+                        style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
+                    </div>
                     <button id="btn-analysis" style="margin-top:8px;">▶ АНАЛИЗ И РЕКОМЕНДАЦИИ</button>
                     <button id="btn-goto-live" style="margin-top:8px;font-size:11px;">▶ ОТКРЫТЬ ЖИВУЮ МОДЕЛЬ</button>
                     <div id="dashboard-analysis-panel"
@@ -1042,7 +1045,7 @@
             var n = graph.nodes[nodeId];
             if (!n) return;
 
-            var panel = document.getElementById('dashboard-analysis-panel');
+            var panel = document.getElementById('dashboard-analysis');
             if (!panel) return;
             panel.style.display = 'block';
 
