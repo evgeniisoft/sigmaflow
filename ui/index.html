@@ -1523,11 +1523,7 @@
                 }
                 buildCalendar();
             });
-                                // Переключение налогового режима
-            document.getElementById('company-tax-system').addEventListener('change', function () {
-                var v = this.value;
-                document.getElementById('osno-settings').style.display = (v === 'OSNO') ? 'block' : 'none';
-            });
+                                
 
             // Применить настройки компании
             document.getElementById('btn-apply-company').addEventListener('click', function () {
