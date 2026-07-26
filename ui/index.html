@@ -28,7 +28,8 @@
     <nav>
         <button class="nav-btn active" data-panel="strategy">СТРАТЕГИЯ</button>
         <button class="nav-btn" data-panel="data">ДАННЫЕ</button>
-        <button class="nav-btn" data-panel="calendar">КАЛЕНДАРЬ</button>
+        <button class="nav-btn" data-panel="calendar">КАЛЕНДАРЬ ДДС</button>
+        <button class="nav-btn" data-panel="pnl">P&L</button>
         <button class="nav-btn" data-panel="scenarios">СЦЕНАРИИ</button>
         <button class="nav-btn" data-panel="company">НАСТРОЙКИ</button>
         <button class="nav-btn nav-btn-alert" data-panel="diagnostics" id="nav-diagnostics">ДИАГНОСТИКА</button>
@@ -180,6 +181,21 @@
                 Загрузите CSV-файл с историческими данными для калибровки коэффициентов модели.
                 <br><br>
                 <input type="file" id="calibrate-file" accept=".csv" style="display:block; margin: 8px auto;">
+            </div>
+        </div>
+        <!-- ПАНЕЛЬ P&L -->
+        <div id="panel-pnl" class="panel">
+            <div style="padding:16px;overflow:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
+                    <h3 style="margin:0;">P&L — ОТЧЁТ О ПРИБЫЛЯХ И УБЫТКАХ</h3>
+                    <button id="btn-build-pnl" class="primary" style="margin-left:auto;">ПОСТРОИТЬ P&L</button>
+                </div>
+                <div style="overflow-x:auto;flex:1;">
+                    <table id="pnl-table" style="min-width:1200px;">
+                        <thead id="pnl-head"></thead>
+                        <tbody id="pnl-body"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -1454,6 +1470,67 @@
                 notify('Календарь денежного потока построен');
             }
 
+            function buildPnL() {
+                    if (!graph) { notify('Сначала загрузите модель', true); return; }
+                    graph.compute();
+
+                    var now = new Date();
+                    var startMonth = now.getMonth();
+                    var pnl = graph.getPnL(startMonth, 12);
+                    var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+
+                    // Заголовок
+                    var headHtml = '<tr><th style="position:sticky;left:0;background:var(--bg-panel);">СТАТЬЯ</th>';
+                    pnl.rows.forEach(function (r) { headHtml += '<th>' + r.label + '</th>'; });
+                    headHtml += '<th>ИТОГО</th></tr>';
+                    document.getElementById('pnl-head').innerHTML = headHtml;
+
+                    function row(label, getVal, bold, isTotal) {
+                        var html = '<tr' + (bold ? ' style="font-weight:500;"' : '') + '>';
+                        html += '<td style="position:sticky;left:0;background:var(--bg-panel);">' + label + '</td>';
+                        var sum = 0;
+                        pnl.rows.forEach(function (r) {
+                            var v = getVal(r);
+                            sum += v;
+                            var color = v >= 0 ? 'var(--ok)' : 'var(--critical)';
+                            html += '<td class="value-cell" style="color:' + color + ';">' + formatValue(v) + '</td>';
+                        });
+                        var tColor = sum >= 0 ? 'var(--ok)' : 'var(--critical)';
+                        html += '<td class="value-cell" style="font-weight:500;color:' + tColor + ';">' + formatValue(sum) + '</td>';
+                        html += '</tr>';
+                        return html;
+                    }
+
+                    function spacer(label) {
+                        return '<tr><td style="position:sticky;left:0;background:var(--bg-panel);color:var(--text-hint);font-size:10px;padding-top:8px;" colspan="' + (pnl.rows.length + 2) + '">' + label + '</td></tr>';
+                    }
+
+                    var html = '';
+                    html += row('Выручка', function (r) { return r.revenue; });
+                    html += row('Себестоимость', function (r) { return r.cogs; });
+                    html += spacer('──');
+                    html += row('Валовая прибыль', function (r) { return r.gross; }, true);
+                    html += row('Коммерческие расходы', function (r) { return r.selling; });
+                    html += row('Управленческие расходы', function (r) { return r.admin; });
+                    html += spacer('──');
+                    html += row('EBITDA', function (r) { return r.ebitda; }, true);
+                    html += row('Амортизация', function (r) { return r.da; });
+                    html += spacer('──');
+                    html += row('EBIT', function (r) { return r.ebit; }, true);
+                    html += row('Проценты', function (r) { return r.interest; });
+                    html += row('Прочие доходы/расходы', function (r) { return r.other; });
+                    html += spacer('──');
+                    html += row('EBT (до налогов)', function (r) { return r.ebt; }, true);
+                    html += row('Налог на прибыль', function (r) { return r.tax; });
+                    html += spacer('──');
+                    html += row('ЧИСТАЯ ПРИБЫЛЬ', function (r) { return r.net; }, true);
+                    html += row('Накопленная прибыль', function (r) { return r.cumulative; }, true);
+
+                    document.getElementById('pnl-body').innerHTML = html;
+                    updateStatusBar('P&L построен');
+                    notify('Отчёт о прибылях и убытках построен');
+                }
+
             // Детализация месяца
             function showMonthDetail(periodIndex) {
                     var cal = window._calendarData;
@@ -1540,6 +1617,10 @@
 
             document.getElementById('btn-save').addEventListener('click', saveProject);
             document.getElementById('btn-run-diagnostics').addEventListener('click', runDiagnostics);
+            document.getElementById('btn-build-pnl').addEventListener('click', function () {
+                if (!graph) { notify('Сначала загрузите модель', true); return; }
+                buildPnL();
+            });
             // Применить изменения из таблицы
                 document.getElementById('btn-apply-table').addEventListener('click', function () {
                 if (!graph) { notify('Сначала загрузите модель', true); return; }
