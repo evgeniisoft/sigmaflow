@@ -251,27 +251,31 @@
                                             <div class="form-group">
                                                 <label>СТАВКА НДС</label>
                                                 <select id="company-nds-rate" style="width:100%;">
-                                                    <option value="0.22">22% (общая, с 2026)</option>
-                                                    <option value="0.10">10% (пониженная)</option>
-                                                    <option value="0">0%</option>
+                                                    <option value="0.22">22% (ОСНО, основная)</option>
+                                                    <option value="0.10">10%</option>
+                                                    <option value="0.07">7% (УСН, доход 272.5-490.5 млн, без вычета)</option>
+                                                    <option value="0.05">5% (УСН, доход 20-272.5 млн, без вычета)</option>
+                                                    <option value="0">0% (экспорт, IT-ПО, УСН до 20 млн)</option>
                                                 </select>
                                             </div>
                                         </div>
                                         <div class="form-group">
                                             <label>СТАВКА НАЛОГА НА ПРИБЫЛЬ</label>
                                             <select id="company-profit-tax-rate" style="width:100%;">
-                                                <option value="0.20">20% (ОСНО)</option>
-                                                <option value="0.06">6% (УСН «Доходы»)</option>
+                                                <option value="0.25">25% (ОСНО, основная)</option>
                                                 <option value="0.15">15% (УСН «Доходы минус расходы»)</option>
-                                                <option value="0.03">3% (IT / ОЭЗ)</option>
+                                                <option value="0.06">6% (УСН «Доходы»)</option>
+                                                <option value="0.05">5% (IT-компании, аккредитованные Минцифры)</option>
+                                                <option value="0">0% (медицинские, образовательные)</option>
                                             </select>
                                         </div>
                                         <div class="form-group">
                                             <label>СТРАХОВЫЕ ВЗНОСЫ</label>
                                             <select id="company-insurance-rate" style="width:100%;">
-                                                <option value="0.30">30% (общий)</option>
-                                                <option value="0.15">15% (МСП)</option>
-                                                <option value="0.076">7.6% (IT)</option>
+                                                <option value="0.30">30% (основной тариф, до 2 979 000 руб/год)</option>
+                                                <option value="0.151">15.1% (превышение лимита 2 979 000 руб/год)</option>
+                                                <option value="0.15">15% (МСП приоритетных отраслей, выше 1.5 МРОТ)</option>
+                                                <option value="0.076">7.6% (IT-компании, резиденты ОЭЗ и ТОР)</option>
                                             </select>
                                         </div>
                                         <button id="btn-apply-company" class="primary" style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>
@@ -706,7 +710,7 @@
                                     graph.company.tax_system = taxSystem;
                                     if (taxSystem === 'OSNO') {
                                         graph.company.nds_rate = 0.22;
-                                        graph.company.profit_tax_rate = 0.20;
+                                        graph.company.profit_tax_rate = 0.25;
                                     } else {
                                         graph.company.nds_rate = 0;
                                         graph.company.nds_exempt = true;
