@@ -336,25 +336,6 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var trainY = self._val('TRAINING_EXP');
     var daY = self._val('DA');
     var intY = 0;
-    if (self.credits) {
-        self.credits.forEach(function (cr) {
-            var amount = cr.amount || 0;
-            var term = cr.term || 12;
-            var bodyPayment = amount / term;
-
-            for (var j = 0; j < horizon && j < term; j++) {
-                loanSch[j] = (loanSch[j] || 0) + bodyPayment;
-            }
-
-            var startMonth = cr.startMonth || 0;
-            if (startMonth >= 0 && startMonth < newLoanSch.length) {
-                newLoanSch[startMonth] = (newLoanSch[startMonth] || 0) + amount;
-            }
-
-            repayY += amount;
-            newLoansY += amount;
-        });
-    }
     var intIncY = self._val('INTEREST_INCOME');
     var othIncY = self._val('OTHER_INCOME');
     var othExpY = self._val('OTHER_EXP');
