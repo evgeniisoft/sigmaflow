@@ -848,6 +848,18 @@ function formatValue(v) {
     return String(v);
 }
 
+function formatInputValue(v) {
+    if (v === null || v === undefined || v === '') return '';
+    var num = parseFloat(v);
+    if (isNaN(num)) return v;
+    return num.toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+}
+
+function unformatInputValue(str) {
+    if (!str) return '';
+    return str.replace(/\s/g, '').replace(',', '.');
+}
+
 function checkConstraint(constraint, node) {
     var op = constraint.operator;
     var target = constraint.value;
