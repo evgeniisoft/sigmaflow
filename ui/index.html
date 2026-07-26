@@ -1072,67 +1072,100 @@
             var extExternal = ['PMI', 'CCI', 'SANCTIONS', 'GEO_INDEX', 'HOUSEHOLD_INCOME', 'SUPPLIER_RISK', 'TARIFFS', 'LABOR_INDEX'];
 
             function renderDataTable() {
-                if (!graph) return;
+                    if (!graph) return;
 
-                // Основные INPUT
-                var html = '';
-                mainInputs.forEach(function (nid) { html += renderInputRow(nid); });
-                document.getElementById('table-inputs-main-body').innerHTML = html;
+                    var groups = [
+                        { title: 'ПРОДАЖИ', keys: ['PRICE', 'VOLUME', 'RATE_PER', 'HOURLY_RATE', 'MONTHLY_RATE', 'UTILIZATION', 'HOURS_SOLD', 'SEASON'] },
+                        { title: 'МАРКЕТИНГ', keys: ['MARKETING', 'COMPETITION'] },
+                        { title: 'ПРОИЗВОДСТВО', keys: ['MATERIAL', 'ENERGY', 'LOGISTICS', 'DEFECT', 'PURCHASE', 'UNIT_', 'SCALE'] },
+                        { title: 'ПЕРСОНАЛ', keys: ['HEADCOUNT', 'AVG_SALARY', 'PAYROLL', 'DEV_', 'PROD_', 'ADMIN_', 'STAFF_', 'SPECIALIST_', 'ENGAGEMENT', 'SPI'] },
+                        { title: 'ОПЕРАЦИОННЫЕ', keys: ['RENT', 'IT_EXP', 'RD_EXP', 'TRAINING'] },
+                        { title: 'АКТИВЫ', keys: ['FIXED_ASSETS', 'INTANGIBLE', 'INVENTORY', 'RECEIVABLES', 'PAYABLES', 'CASH_START', 'EQUITY', 'RETAINED_START'] },
+                        { title: 'КРЕДИТЫ', keys: ['LOANS', 'LOAN_REPAYMENT', 'NEW_LOANS', 'BANK_SPREAD', 'CREDIT_RATING', 'RATE_TYPE'] },
+                        { title: 'НАЛОГИ', keys: ['TAX_RATE'] },
+                        { title: 'ПРОЧЕЕ', keys: [] }
+                    ];
 
-                // Расширенные INPUT
-                html = '';
-                extInputs.forEach(function (nid) { html += renderInputRow(nid); });
-                document.getElementById('table-inputs-ext-body').innerHTML = html;
+                    // Управляемые параметры
+                    var managedHtml = '';
+                    groups.forEach(function (group) {
+                        var nodes = [];
+                        Object.keys(graph.nodes).forEach(function (key) {
+                            var n = graph.nodes[key];
+                            if (n.type !== 'INPUT') return;
+                            var match = group.keys.length === 0;
+                            group.keys.forEach(function (kw) {
+                                if (key.indexOf(kw) >= 0) match = true;
+                            });
+                            if (match) nodes.push(n);
+                        });
 
-                // Основные EXTERNAL
-                html = '';
-                mainExternal.forEach(function (nid) { html += renderInputRow(nid); });
-                document.getElementById('table-external-main-body').innerHTML = html;
+                        if (nodes.length === 0) return;
 
-                // Расширенные EXTERNAL
-                html = '';
-                extExternal.forEach(function (nid) { html += renderInputRow(nid); });
-                document.getElementById('table-external-ext-body').innerHTML = html;
+                        managedHtml += '<tr><td colspan="5" style="color:var(--text-hint);font-size:10px;letter-spacing:1px;padding:12px 0 4px 0;">' + group.title + '</td></tr>';
+                        nodes.forEach(function (n) {
+                            managedHtml += renderInputRow(n.id);
+                        });
+                    });
 
-                // Ключевые результаты
-                var keyNodes = ['NET_PROFIT', 'REVENUE', 'EBITDA', 'FCF', 'ASSETS', 'DEBT_EBITDA'];
-                var resHtml = '';
-                keyNodes.forEach(function (nid) {
+                    document.getElementById('table-inputs-main-body').innerHTML = managedHtml;
+
+                    // Скрываем старые расширенные таблицы
+                    document.getElementById('table-inputs-ext').style.display = 'none';
+                    document.getElementById('toggle-extended').style.display = 'none';
+
+                    // Внешние факторы
+                    var externalHtml = '';
+                    Object.keys(graph.nodes).forEach(function (key) {
+                        var n = graph.nodes[key];
+                        if (n.type === 'EXTERNAL') {
+                            externalHtml += renderInputRow(n.id);
+                        }
+                    });
+                    document.getElementById('table-external-main-body').innerHTML = externalHtml;
+                    document.getElementById('table-external-ext').style.display = 'none';
+                    document.getElementById('toggle-ext-external').style.display = 'none';
+
+                    // Ключевые результаты
+                    renderKeyResults();
+                    // Полная таблица
+                    renderFullTable();
+                    // Ограничения
+                    renderComputeResults();
+                }
+
+                function renderKeyResults() {
+                    var keyNodes = ['NET_PROFIT', 'REVENUE', 'EBITDA', 'FCF', 'CASH', 'DEBT_EBITDA'];
+                    var resHtml = '';
+                    keyNodes.forEach(function (nid) {
+                        var n = graph.nodes[nid];
+                        if (n && n.value !== null) {
+                            resHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;">';
+                            resHtml += '<span>' + (n.label || n.id) + '</span>';
+                            resHtml += '<span style="font-weight:500;">' + formatValue(n.value) + '</span>';
+                            resHtml += '</div>';
+                        }
+                    });
+                    var keyEl = document.getElementById('key-results');
+                    if (keyEl) keyEl.innerHTML = resHtml || 'Нажмите ВЫЧИСЛИТЬ';
+                }
+
+                function renderInputRow(nid) {
                     var n = graph.nodes[nid];
-                    if (n && n.value !== null) {
-                        resHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;">';
-                        resHtml += '<span>' + (n.label || n.id) + '</span>';
-                        resHtml += '<span style="font-weight:500;">' + formatValue(n.value) + '</span>';
-                        resHtml += '</div>';
-                    }
-                });
-                document.getElementById('key-results').innerHTML = resHtml || 'Нажмите ВЫЧИСЛИТЬ';
-
-                // Полная таблица
-                renderFullTable();
-
-                // Ограничения
-                renderComputeResults();
-            }
-
-            function renderInputRow(nid) {
-                var n = graph.nodes[nid];
-                if (!n) return '';
-                var color = n.type === 'EXTERNAL' ? 'var(--warning)' : 'var(--ok)';
-                var row = '<tr>';
-                row += '<td><span style="color:' + color + ';margin-right:4px;">▌</span>' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
-                row += '<td class="value-cell"><input type="text" class="table-input" data-node-id="' + n.id + '" value="' + formatInputValue(n.value) + '" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;" onfocus="this.value=unformatInputValue(this.value)" onblur="this.value=formatInputValue(this.value)">';
-                row += '<td style="text-align:center;">';
-                row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 1.1)" style="font-size:10px;padding:2px 6px;">+</button>';
-                row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 0.9)" style="font-size:10px;padding:2px 6px;margin-left:2px;">-</button>';
-                row += '</td>';
-                row += '<td class="value-cell">' + formatValue(n.min) + '</td>';
-                row += '<td class="value-cell">' + formatValue(n.max) + '</td>';
-                row += '</tr>';
-                var readOnlyIds = ['TAX_RATE'];
-                var isReadOnly = readOnlyIds.indexOf(nid) >= 0;
-                return row;
-            }
+                    if (!n) return '';
+                    var color = n.type === 'EXTERNAL' ? 'var(--warning)' : 'var(--ok)';
+                    var row = '<tr>';
+                    row += '<td><span style="color:' + color + ';margin-right:4px;">▌</span>' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
+                    row += '<td class="value-cell"><input type="text" class="table-input" data-node-id="' + n.id + '" value="' + formatInputValue(n.value) + '" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;" onfocus="this.value=unformatInputValue(this.value)" onblur="this.value=formatInputValue(this.value)"></td>';
+                    row += '<td style="text-align:center;">';
+                    row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 1.1)" style="font-size:10px;padding:2px 6px;">+</button>';
+                    row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 0.9)" style="font-size:10px;padding:2px 6px;margin-left:2px;">-</button>';
+                    row += '</td>';
+                    row += '<td class="value-cell">' + formatValue(n.min) + '</td>';
+                    row += '<td class="value-cell">' + formatValue(n.max) + '</td>';
+                    row += '</tr>';
+                    return row;
+                }
 
             function deltaNode(nid, factor) {
                 var n = graph.nodes[nid];
