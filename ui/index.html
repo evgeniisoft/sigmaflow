@@ -50,11 +50,11 @@
                     <button id="btn-analysis" style="margin-top:8px;">▶ АНАЛИЗ И РЕКОМЕНДАЦИИ</button>
                     <button id="btn-goto-live" style="margin-top:8px;font-size:11px;">▶ ОТКРЫТЬ ЖИВУЮ МОДЕЛЬ</button>
                     <div id="dashboard-analysis-panel"
-                        style="display:none;margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border);max-width:100%;overflow-x:auto;">
+                        style="display:none;margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border);max-width:100%;overflow-x:auto;word-break:break-word;">
                     </div>
                 </div>
                 <div id="dashboard-graph-panel"
-                    style="width:50%;background:var(--bg-primary);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;">
+                    style="flex:1;background:var(--bg-primary);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;">
                     <div
                         style="padding:8px 12px;background:var(--bg-panel);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-hint);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
                         <span>ГРАФ МОДЕЛИ <span id="graph-selected-node"></span></span>
@@ -1724,7 +1724,7 @@
                     this.textContent = '▼ АНАЛИЗ И РЕКОМЕНДАЦИИ';
 
                     var html = '<div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">ПРЕДЕЛЬНЫЕ ЭФФЕКТЫ (изменение прибыли при +1% параметра)</div>';
-                    html += '<table><thead><tr><th>ПАРАМЕТР</th><th>ТЕКУЩЕЕ</th><th>Δ ПРИБЫЛИ</th><th>ЭЛАСТИЧНОСТЬ</th></tr></thead><tbody>';
+                    html += '<table style="width:100%;table-layout:fixed;"><thead><tr><th>ПАРАМЕТР</th><th>ТЕКУЩЕЕ</th><th>Δ ПРИБЫЛИ</th><th>ЭЛАСТИЧНОСТЬ</th></tr></thead><tbody>';
 
                     effects.slice(0, 10).forEach(function (e) {
                         var sign = e.profitDelta >= 0 ? '+' : '';
@@ -2181,13 +2181,13 @@
             });
 
             document.getElementById('btn-full-graph').addEventListener('click', function () {
-                var panel = document.getElementById('dashboard-graph-panel');
-                if (panel.style.width === '0px') {
-                    panel.style.width = '50%';
-                    this.textContent = '▶ ПОЛНЫЙ ГРАФ';
+                var container = document.getElementById('graph-container');
+                if (container.style.display === 'none') {
+                    container.style.display = 'block';
+                    this.textContent = 'СКРЫТЬ ГРАФ';
                 } else {
-                    panel.style.width = '0px';
-                    this.textContent = '◀ ГРАФ';
+                    container.style.display = 'none';
+                    this.textContent = 'ПОКАЗАТЬ ГРАФ';
                 }
             });
 
