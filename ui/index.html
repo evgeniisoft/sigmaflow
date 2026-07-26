@@ -216,8 +216,15 @@
                     </div>
                     <div style="flex:1;">
                         <div style="font-size:13px;color:var(--text-hint);margin-bottom:12px;">ДО / ПОСЛЕ</div>
-                        <table id="live-comparison" style="width:100%;font-size:13px;text-align:center;">
-                            <thead><tr><th>ПОКАЗАТЕЛЬ</th><th>ДО</th><th>ПОСЛЕ</th><th>Δ</th></tr></thead>
+                        <table id="live-comparison" style="width:100%;font-size:13px;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;">ПОКАЗАТЕЛЬ</th>
+                                    <th style="text-align:center;">ДО</th>
+                                    <th style="text-align:center;">ПОСЛЕ</th>
+                                    <th style="text-align:center;">Δ</th>
+                                </tr>
+                            </thead>
                             <tbody id="live-comparison-body"></tbody>
                         </table>
                         <div style="font-size:13px;color:var(--text-hint);margin:16px 0 8px;">КАСКАД ИЗМЕНЕНИЙ</div>
@@ -2410,20 +2417,19 @@ function buildLiveModel() {
     
     // Ползунки
     var slidersHtml = '';
-    top5.forEach(function(e, idx) {
+    top5.forEach(function (e, idx) {
         var min = e.min !== null ? e.min : e.currentValue * 0.5;
         var max = e.max !== null ? e.max : e.currentValue * 1.5;
         var step = e.step || (Math.abs(e.currentValue) / 100);
-        
-        slidersHtml += '<div style="margin-bottom:24px;">';
-        slidersHtml += '<div style="font-size:14px;font-weight:500;margin-bottom:8px;">' + e.label + '</div>';
-        slidersHtml += '<div style="position:relative;height:36px;background:var(--bg-input);border:1px solid var(--border);border-radius:2px;overflow:hidden;">';
-        slidersHtml += '<span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text-hint);z-index:1;">' + formatInputValue(min) + '</span>';
-        slidersHtml += '<input type="range" id="live-slider-' + idx + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + e.currentValue + '" oninput="updateLiveModel()" style="position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;">';
-        slidersHtml += '<div id="live-fill-' + idx + '" style="position:absolute;left:0;top:0;height:100%;background:var(--accent);opacity:0.3;width:' + ((e.currentValue - min) / (max - min) * 100) + '%;"></div>';
-        slidersHtml += '<span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text-hint);z-index:1;">' + formatInputValue(max) + '</span>';
+
+        slidersHtml += '<div style="margin-bottom:8px;">';
+        slidersHtml += '<div style="font-size:14px;font-weight:500;margin-bottom:2px;">' + e.label + '</div>';
+        slidersHtml += '<div style="display:flex;align-items:center;gap:6px;">';
+        slidersHtml += '<span style="font-size:11px;color:var(--text-hint);min-width:60px;">' + formatInputValue(min) + '</span>';
+        slidersHtml += '<input type="range" id="live-slider-' + idx + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + e.currentValue + '" oninput="updateLiveModel()" style="flex:1;height:10px;accent-color:var(--accent);">';
+        slidersHtml += '<span style="font-size:11px;color:var(--text-hint);min-width:60px;text-align:right;">' + formatInputValue(max) + '</span>';
         slidersHtml += '</div>';
-        slidersHtml += '<div style="text-align:center;font-size:16px;font-weight:700;margin-top:6px;" id="live-val-' + idx + '">' + formatInputValue(e.currentValue) + '</div>';
+        slidersHtml += '<div style="text-align:center;font-size:16px;font-weight:700;margin-top:2px;" id="live-val-' + idx + '">' + formatInputValue(e.currentValue) + '</div>';
         slidersHtml += '</div>';
     });
     
