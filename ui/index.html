@@ -1041,7 +1041,8 @@
             var n = graph.nodes[nodeId];
             if (!n) return;
 
-            var panel = document.getElementById('dashboard-analysis');
+            var panel = document.getElementById('dashboard-analysis-panel');
+            if (!panel) return;
             panel.style.display = 'block';
 
             // Находим входящие связи
