@@ -1717,6 +1717,13 @@
                 if (!graph) { notify('Сначала загрузите модель', true); return; }
                 buildPnL();
             });
+            document.getElementById('btn-goto-live').addEventListener('click', function () {
+                document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); });
+                document.querySelector('[data-panel="live"]').classList.add('active');
+                document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+                document.getElementById('panel-live').classList.add('active');
+                buildLiveModel();
+            });
             document.getElementById('btn-analysis').addEventListener('click', function () {
                 if (!graph) { notify('Сначала загрузите модель', true); return; }
                 graph.compute();
@@ -1740,13 +1747,7 @@
                         html += '<td class="value-cell">' + (e.impactPct) + '%</td>';
                         html += '</tr>';
                     });
-                    document.getElementById('btn-goto-live').addEventListener('click', function () {
-                        document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); });
-                        document.querySelector('[data-panel="live"]').classList.add('active');
-                        document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
-                        document.getElementById('panel-live').classList.add('active');
-                        buildLiveModel();
-                    });
+                    
                     document.getElementById('btn-live-apply').addEventListener('click', function () {
                         if (!graph) return;
                         Object.keys(graph.nodes).forEach(function (key) {
