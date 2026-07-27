@@ -1,445 +1,2551 @@
-/* ============================================================
-   SIGMAFLOW — Таблица стилей
-   Тёмная тема, моноширинная типографика, строгий дизайн
-   ============================================================ */
-
-*,
-*::before,
-*::after {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-:root {
-    --bg-primary: #0a0e14;
-    --bg-panel: #131820;
-    --bg-input: #1a1f2b;
-    --border: #2a3040;
-    --text-primary: #c8ccd4;
-    --text-heading: #e0e3e8;
-    --text-hint: #6a7080;
-    --accent: #5a9fd4;
-    --warning: #d4a843;
-    --critical: #d44b3c;
-    --ok: #4b8c5a;
-    --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'Courier New', monospace;
-}
-
-body {
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-family: var(--font-mono);
-    font-size: 13px;
-    line-height: 1.5;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-
-/* ============================================================
-   ЗАГОЛОВОК
-   ============================================================ */
-
-header {
-    display: flex;
-    align-items: center;
-    padding: 8px 16px;
-    background: var(--bg-panel);
-    border-bottom: 1px solid var(--border);
-    gap: 16px;
-    flex-shrink: 0;
-}
-
-.logo {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-heading);
-    letter-spacing: 2px;
-}
-
-.project-name {
-    flex: 1;
-    color: var(--text-hint);
-    font-size: 13px;
-}
-
-/* ============================================================
-   КНОПКИ
-   ============================================================ */
-
-button {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    background: var(--bg-input);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    padding: 6px 16px;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-button:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-button.active {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: #1a2a3a;
-}
-
-button.primary {
-    background: #1a3050;
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-button.primary:hover {
-    background: #1f3a5f;
-}
-
-/* ============================================================
-   НАВИГАЦИЯ
-   ============================================================ */
-
-nav {
-    display: flex;
-    background: var(--bg-panel);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-}
-
-.nav-btn {
-    border: none;
-    border-bottom: 2px solid transparent;
-    background: transparent;
-    padding: 10px 20px;
-    font-size: 12px;
-}
-
-.nav-btn.active {
-    border-bottom: 2px solid var(--accent);
-}
-
-.nav-btn-alert {
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-
-    0%,
-    100% {
-        border-color: var(--warning);
-    }
-
-    50% {
-        border-color: transparent;
-    }
-}
-
-/* ============================================================
-   ОСНОВНАЯ ОБЛАСТЬ
-   ============================================================ */
-
-main {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-}
-
-.panel {
-    display: none;
-    flex: 1;
-    flex-direction: column;
-}
-
-.panel.active {
-    display: flex;
-}
-
-/* ============================================================
-   ПАНЕЛЬ «СТРАТЕГИЯ»
-   ============================================================ */
-
-#panel-strategy {
-    flex-direction: row;
-}
-
-#strategy-left {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-#strategy-toolbar {
-    padding: 8px 12px;
-    background: var(--bg-panel);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-}
-
-#graph-container {
-    flex: 1;
-    background: var(--bg-primary);
-    position: relative;
-    overflow: hidden;
-}
-
-#graph-container svg {
-    width: 100%;
-    height: 100%;
-}
-
-#dashboard-analysis-panel table {
-    width: 100%;
-    font-size: 11px;
-}
-
-#dashboard-analysis-panel td {
-    word-break: break-word;
-}
-
-/* ============================================================
-   ПАНЕЛЬ СВОЙСТВ (ИНСПЕКТОР)
-   ============================================================ */
-
-#inspector {
-    width: 320px;
-    background: var(--bg-panel);
-    border-left: 1px solid var(--border);
-    padding: 16px;
-    overflow-y: auto;
-    flex-shrink: 0;
-}
-
-#inspector h3 {
-    font-size: 11px;
-    color: var(--text-hint);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-}
-
-#inspector-content {
-    font-size: 12px;
-    color: var(--text-hint);
-}
-
-/* ============================================================
-   ПАНЕЛЬ «ДАННЫЕ» — ТАБЛИЦА
-   ============================================================ */
-
-#panel-data {
-    padding: 16px;
-    overflow-y: auto;
-}
-
-#panel-data h3 {
-    font-size: 11px;
-    color: var(--text-hint);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 16px;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-th {
-    text-align: left;
-    font-size: 11px;
-    color: var(--text-hint);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-}
-
-td {
-    padding: 6px 12px;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-    white-space: nowrap;
-}
-
-td.id-cell {
-    color: var(--text-heading);
-    font-weight: 500;
-}
-
-tr:hover td {
-    background: rgba(90, 159, 212, 0.04);
-}
-
-/* ============================================================
-   ПАНЕЛЬ «КАЛИБРОВКА» И «СЦЕНАРИИ»
-   ============================================================ */
-
-#panel-calibrate,
-#panel-scenarios,
-#panel-optimize {
-    padding: 16px;
-    overflow-y: auto;
-}
-
-#panel-calibrate h3,
-#panel-scenarios h3,
-#panel-optimize h3 {
-    font-size: 11px;
-    color: var(--text-hint);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 16px;
-}
-
-.placeholder {
-    color: var(--text-hint);
-    font-size: 13px;
-    padding: 24px;
-    text-align: center;
-    border: 1px dashed var(--border);
-}
-
-/* ============================================================
-   ФОРМЫ
-   ============================================================ */
-
-.form-group {
-    margin-bottom: 12px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 11px;
-    color: var(--text-hint);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 4px;
-}
-
-.form-group input,
-.form-group select {
-    width: 100%;
-    font-family: var(--font-mono);
-    font-size: 13px;
-    background: var(--bg-input);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    padding: 6px 8px;
-}
-
-.form-group input:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: var(--accent);
-}
-
-.form-group input[readonly] {
-    color: var(--text-hint);
-    cursor: default;
-}
-
-.form-group select[disabled] {
-    color: var(--text-hint);
-    cursor: default;
-    opacity: 0.7;
-}
-
-/* ============================================================
-   РЕЗУЛЬТАТЫ ВЫЧИСЛЕНИЙ
-   ============================================================ */
-
-#compute-results {
-    margin-top: 16px;
-    padding: 12px;
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    font-size: 13px;
-}
-
-#compute-results h4 {
-    font-size: 11px;
-    color: var(--text-hint);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 12px;
-}
-
-.result-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 3px 0;
-}
-
-.result-row .label {
-    color: var(--text-hint);
-}
-
-.result-row .value {
-    color: var(--text-heading);
-    font-variant-numeric: tabular-nums;
-}
-
-.result-row.constraint-ok .value {
-    color: var(--ok);
-}
-
-.result-row.constraint-fail .value {
-    color: var(--critical);
-}
-
-/* ============================================================
-   СТРОКА СОСТОЯНИЯ
-   ============================================================ */
-
-footer {
-    padding: 4px 16px;
-    background: var(--bg-panel);
-    border-top: 1px solid var(--border);
-    font-size: 11px;
-    color: var(--text-hint);
-    flex-shrink: 0;
-}
-
-/* ============================================================
-   УВЕДОМЛЕНИЯ
-   ============================================================ */
-
-.notification {
-    position: fixed;
-    bottom: 40px;
-    right: 16px;
-    padding: 8px 16px;
-    background: var(--bg-panel);
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    font-size: 12px;
-    z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-.notification.show {
-    opacity: 1;
-}
-
-.notification.error {
-    border-color: var(--critical);
-    color: var(--critical);
-}
-
-table td.value-cell {
-    text-align: center !important;
-    font-variant-numeric: tabular-nums;
-}
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMAFLOW</title>
+    <link rel="stylesheet" href="sigmaflow.css">
+</head>
+
+<body>
+
+    <!-- ЗАГОЛОВОК -->
+    <header>
+        <span class="logo">SIGMAFLOW</span>
+        <span class="project-name" id="project-name">Проект не загружен</span>
+        <select id="select-company"
+            style="font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:6px 12px;cursor:pointer;max-width:300px;">
+            <option value="">Нет компаний</option>
+        </select>
+        <button id="btn-delete-company"
+            style="font-size:12px;padding:6px 12px;color:var(--critical);border-color:var(--critical);">УДАЛИТЬ</button>
+        <button id="btn-new-company" style="font-size:12px;padding:6px 12px;">+ НОВАЯ</button>
+        <button id="btn-save">СОХРАНИТЬ</button>
+    </header>
+
+    <!-- НАВИГАЦИЯ -->
+    <nav>
+        <button class="nav-btn active" data-panel="strategy">СТРАТЕГИЯ</button>
+        <button class="nav-btn" data-panel="data">ДАННЫЕ</button>
+        <button class="nav-btn" data-panel="calendar">КАЛЕНДАРЬ ДДС</button>
+        <button class="nav-btn" data-panel="pnl">P&L</button>
+        <button class="nav-btn" data-panel="live">ЖИВАЯ МОДЕЛЬ</button>
+        <button class="nav-btn" data-panel="scenarios">СЦЕНАРИИ</button>
+        <button class="nav-btn" data-panel="company">НАСТРОЙКИ</button>
+        <button class="nav-btn nav-btn-alert" data-panel="diagnostics" id="nav-diagnostics">ДИАГНОСТИКА</button>
+    </nav>
+
+    <!-- ОСНОВНАЯ ОБЛАСТЬ -->
+    <main>
+
+        <!-- ПАНЕЛЬ СТРАТЕГИЯ -->
+        <div id="panel-strategy" class="panel active">
+            <div style="display:flex;height:100%;">
+                <div style="flex:1;padding:16px;overflow-y:auto;">
+                    <h3 style="margin:0 0 16px 0;">КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ</h3>
+                    <div id="dashboard-metrics"
+                        style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+                    </div>
+                    <div id="dashboard-analysis"
+                        style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
+                    </div>
+                    <button id="btn-analysis" style="margin-top:8px;">▶ АНАЛИЗ И РЕКОМЕНДАЦИИ</button>
+                    <button id="btn-goto-live" style="margin-top:8px;font-size:11px;">▶ ОТКРЫТЬ ЖИВУЮ МОДЕЛЬ</button>
+                    <div id="dashboard-analysis-panel"
+                        style="display:none;margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border);max-width:100%;overflow-x:auto;word-break:break-word;">
+                    </div>
+                </div>
+                <div id="dashboard-graph-panel"
+                    style="flex:1;background:var(--bg-primary);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;">
+                    <div
+                        style="padding:8px 12px;background:var(--bg-panel);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-hint);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+                        <span>ГРАФ МОДЕЛИ <span id="graph-selected-node"></span></span>
+                        <button id="btn-full-graph" style="font-size:10px;padding:2px 8px;">▶ ПОЛНЫЙ ГРАФ</button>
+                    </div>
+                    <div id="graph-container" style="flex:1;min-height:400px;overflow:hidden;"></div>
+                    <div
+                        style="padding:4px 12px;background:var(--bg-panel);border-top:1px solid var(--border);font-size:10px;color:var(--text-hint);flex-shrink:0;">
+                        Глубина:
+                        <button class="graph-depth-btn active" data-depth="2">2</button>
+                        <button class="graph-depth-btn" data-depth="3">3</button>
+                        <button class="graph-depth-btn" data-depth="4">4</button>
+                        <button class="graph-depth-btn" data-depth="0">ВСЕ</button>
+                        &nbsp;| Кликните на метрику для трассировки
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ ДАННЫЕ -->
+        <div id="panel-data" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
+                    <button id="btn-compute-data" class="primary">ВЫЧИСЛИТЬ</button>
+                    <button id="btn-apply-table" class="primary">ПРИМЕНИТЬ ИЗМЕНЕНИЯ</button>
+                    <button id="btn-copy-table" style="margin-left:auto;">КОПИРОВАТЬ ТАБЛИЦУ</button>
+                </div>
+
+                <!-- Управляемые параметры -->
+                <div style="margin-bottom:16px;flex-shrink:0;">
+                    <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">
+                        УПРАВЛЯЕМЫЕ
+                        ПАРАМЕТРЫ</div>
+                    <table id="table-inputs-main">
+                        <thead>
+                            <tr>
+                                <th>НАЗВАНИЕ</th>
+                                <th>ЗНАЧЕНИЕ</th>
+                                <th>+/-10%</th>
+                                <th>МИН</th>
+                                <th>МАКС</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-inputs-main-body"></tbody>
+                    </table>
+                    <div id="toggle-extended" style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">
+                        ▶
+                        РАСШИРЕННЫЕ ПАРАМЕТРЫ</div>
+                    <table id="table-inputs-ext" style="display:none;">
+                        <thead>
+                            <tr>
+                                <th>НАЗВАНИЕ</th>
+                                <th>ЗНАЧЕНИЕ</th>
+                                <th>+/-10%</th>
+                                <th>МИН</th>
+                                <th>МАКС</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-inputs-ext-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- Внешние факторы -->
+                <div style="margin-bottom:16px;flex-shrink:0;">
+                    <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">ВНЕШНИЕ
+                        ФАКТОРЫ
+                    </div>
+                    <table id="table-external-main">
+                        <thead>
+                            <tr>
+                                <th>НАЗВАНИЕ</th>
+                                <th>ЗНАЧЕНИЕ</th>
+                                <th>+/-10%</th>
+                                <th>МИН</th>
+                                <th>МАКС</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-external-main-body"></tbody>
+                    </table>
+                    <div id="toggle-ext-external"
+                        style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">▶
+                        РАСШИРЕННЫЕ ВНЕШНИЕ</div>
+                    <table id="table-external-ext" style="display:none;">
+                        <thead>
+                            <tr>
+                                <th>НАЗВАНИЕ</th>
+                                <th>ЗНАЧЕНИЕ</th>
+                                <th>+/-10%</th>
+                                <th>МИН</th>
+                                <th>МАКС</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-external-ext-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- Ключевые результаты -->
+                <div style="margin-bottom:16px;flex-shrink:0;">
+                    <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">КЛЮЧЕВЫЕ
+                        РЕЗУЛЬТАТЫ</div>
+                    <div id="key-results"
+                        style="padding:8px;background:var(--bg-input);border:1px solid var(--border);"></div>
+                    <div id="toggle-full-table"
+                        style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">▶
+                        ПОЛНАЯ ТАБЛИЦА</div>
+                </div>
+
+                <!-- Полная таблица (скрыта) -->
+                <div id="full-table-container" style="display:none;margin-bottom:16px;">
+                    <table id="data-table">
+                        <thead>
+                            <tr>
+                                <th>НАЗВАНИЕ (ID)</th>
+                                <th>ТИП</th>
+                                <th>ЗНАЧЕНИЕ</th>
+                                <th>МИН</th>
+                                <th>МАКС</th>
+                                <th>ИСТ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-table-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- Ограничения -->
+                <div id="compute-results" style="flex-shrink:0;"></div>
+            </div>
+        </div>
+        <!-- ПАНЕЛЬ КАЛИБРОВКА -->
+        <div id="panel-calibrate" class="panel">
+            <h3>КАЛИБРОВКА МОДЕЛИ</h3>
+            <div class="placeholder">
+                Загрузите CSV-файл с историческими данными для калибровки коэффициентов модели.
+                <br><br>
+                <input type="file" id="calibrate-file" accept=".csv" style="display:block; margin: 8px auto;">
+            </div>
+        </div>
+        <!-- ПАНЕЛЬ P&L -->
+        <div id="panel-pnl" class="panel">
+            <div style="padding:16px;overflow:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
+                    <h3 style="margin:0;">P&L — ОТЧЁТ О ПРИБЫЛЯХ И УБЫТКАХ</h3>
+                    <button id="btn-build-pnl" class="primary" style="margin-left:auto;">ПОСТРОИТЬ P&L</button>
+                </div>
+                <div style="overflow-x:auto;flex:1;">
+                    <table id="pnl-table" style="min-width:1200px;">
+                        <thead id="pnl-head"></thead>
+                        <tbody id="pnl-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- ПАНЕЛЬ ЖИВАЯ МОДЕЛЬ -->
+        <div id="panel-live" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3 style="margin:0 0 16px 0;">ЖИВАЯ МОДЕЛЬ</h3>
+                <p style="color:var(--text-hint);font-size:13px;margin-bottom:24px;">Двигайте ползунки — наблюдайте
+                    каскад изменений в реальном времени</p>
+
+                <div style="display:flex;gap:32px;">
+                    <div style="flex:1;">
+                        <div style="font-size:13px;color:var(--text-hint);margin-bottom:12px;">ПАРАМЕТРЫ</div>
+                        <div id="live-sliders"></div>
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-size:13px;color:var(--text-hint);margin-bottom:12px;">ДО / ПОСЛЕ</div>
+                        <table id="live-comparison" style="width:100%;font-size:13px;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;">ПОКАЗАТЕЛЬ</th>
+                                    <th style="text-align:center;">ДО</th>
+                                    <th style="text-align:center;">ПОСЛЕ</th>
+                                    <th style="text-align:center;">Δ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="live-comparison-body"></tbody>
+                        </table>
+                        <div style="font-size:13px;color:var(--text-hint);margin:16px 0 8px;">КАСКАД ИЗМЕНЕНИЙ</div>
+                        <div id="live-cascade" style="font-size:14px;line-height:2;"></div>
+                        <div style="margin-top:24px;display:flex;gap:12px;">
+                            <button id="btn-live-apply" class="primary">ПРИМЕНИТЬ К МОДЕЛИ</button>
+                            <button id="btn-live-save-scenario">СОХРАНИТЬ КАК СЦЕНАРИЙ</button>
+                            <button id="btn-live-reset">СБРОСИТЬ</button>
+                        </div>
+                    </div>
+                </div>
+
+                
+            </div>
+        </div>
+        <!-- ПАНЕЛЬ СЦЕНАРИИ -->
+        <div id="panel-scenarios" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;">
+                    <h3 style="margin:0;">СЦЕНАРИИ</h3>
+                    <button id="btn-add-scenario" class="primary" style="margin-left:auto;">+ НОВЫЙ СЦЕНАРИЙ</button>
+                </div>
+
+                <div id="scenarios-list" style="margin-bottom:16px;"></div>
+
+                <div id="scenario-form"
+                    style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
+                    <div class="form-group">
+                        <label>НАЗВАНИЕ СЦЕНАРИЯ</label>
+                        <input type="text" id="sc-name" placeholder="Например: Рост ставки ЦБ до 25%">
+                    </div>
+                    <div class="form-group">
+                        <label>ОПИСАНИЕ</label>
+                        <input type="text" id="sc-desc" placeholder="Что моделируем">
+                    </div>
+                    <div style="color:var(--text-hint);font-size:11px;margin-bottom:8px;">ШОКИ (изменения параметров)
+                    </div>
+                    <div id="scenario-shocks"></div>
+                    <button id="btn-add-shock" style="margin-bottom:12px;">+ ДОБАВИТЬ ШОК</button>
+                    <div style="display:flex;gap:8px;">
+                        <button id="btn-save-scenario" class="primary">СОХРАНИТЬ</button>
+                        <button id="btn-cancel-scenario">ОТМЕНА</button>
+                    </div>
+                </div>
+
+                <div id="scenario-comparison" style="display:none;margin-top:16px;"></div>
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ ОПТИМИЗАЦИЯ -->
+        <div id="panel-optimize" class="panel">
+            <h3>ОПТИМИЗАЦИЯ</h3>
+            <div class="placeholder">
+                Обратный счёт от цели, многокритериальная оптимизация, подбор рычагов.
+            </div>
+        </div>
+
+
+        <!-- ПАНЕЛЬ НАСТРОЙКИ -->
+        <div id="panel-company" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3 style="margin:0 0 16px 0;">НАСТРОЙКИ</h3>
+
+                <!-- Секция: Компания -->
+                <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                        onclick="toggleSettingsSection(this)">
+                        <h4 style="margin:0;">КОМПАНИЯ И НАЛОГИ</h4>
+                        <span class="section-arrow">▼</span>
+                    </div>
+                    <div class="settings-section">
+                        <div class="form-group">
+                            <label>НАЛОГОВЫЙ РЕЖИМ</label>
+                            <select id="company-tax-system" style="width:100%;">
+                                <option value="OSNO">ОСНО (общая система)</option>
+                                <option value="USN_INCOME">УСН «Доходы»</option>
+                                <option value="USN_INCOME_MINUS">УСН «Доходы минус расходы»</option>
+                                <option value="PATENT">Патент</option>
+                            </select>
+                        </div>
+                        <div id="osno-settings">
+                            <div class="form-group">
+                                <label>СТАВКА НДС</label>
+                                <select id="company-nds-rate" style="width:100%;">
+                                    <option value="0.22">22% (ОСНО, основная)</option>
+                                    <option value="0.10">10%</option>
+                                    <option value="0.07">7% (УСН, доход 272.5-490.5 млн, без вычета)</option>
+                                    <option value="0.05">5% (УСН, доход 20-272.5 млн, без вычета)</option>
+                                    <option value="0">0% (экспорт, IT-ПО, УСН до 20 млн)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>СТАВКА НАЛОГА НА ПРИБЫЛЬ</label>
+                            <select id="company-profit-tax-rate" style="width:100%;">
+                                <option value="0.25">25% (ОСНО, основная)</option>
+                                <option value="0.15">15% (УСН «Доходы минус расходы»)</option>
+                                <option value="0.06">6% (УСН «Доходы»)</option>
+                                <option value="0.05">5% (IT-компании, аккредитованные Минцифры)</option>
+                                <option value="0">0% (медицинские, образовательные)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>СТРАХОВЫЕ ВЗНОСЫ</label>
+                            <select id="company-insurance-rate" style="width:100%;">
+                                <option value="0.30">30% (основной тариф, до 2 979 000 руб/год)</option>
+                                <option value="0.151">15.1% (превышение лимита 2 979 000 руб/год)</option>
+                                <option value="0.15">15% (МСП приоритетных отраслей, выше 1.5 МРОТ)</option>
+                                <option value="0.076">7.6% (IT-компании, резиденты ОЭЗ и ТОР)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>ОТСРОЧКА ПЛАТЕЖЕЙ КЛИЕНТОВ (дней)</label>
+                            <input type="number" id="company-receivables-days" value="30" min="0" max="180" step="1"
+                                style="width:100%;">
+                        </div>
+                        <button id="btn-apply-company" class="primary"
+                            style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>
+                    </div>
+                </div>
+
+                <!-- Секция: Инвестиции -->
+                <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                        onclick="toggleSettingsSection(this)">
+                        <h4 style="margin:0;">ИНВЕСТИЦИИ (CAPEX)</h4>
+                        <span class="section-arrow">▼</span>
+                    </div>
+                    <div class="settings-section">
+                        <div id="investments-list"></div>
+                        <button id="btn-add-investment" class="primary" style="margin-top:8px;">+ ДОБАВИТЬ
+                            ПРОЕКТ</button>
+                        <div id="investment-form"
+                            style="display:none;padding:8px;background:var(--bg-input);border:1px solid var(--border);margin-top:8px;">
+                            <div class="form-group"><label>НАЗВАНИЕ</label><input type="text" id="inv-name"></div>
+                            <div class="form-group"><label>СТОИМОСТЬ</label><input type="number" id="inv-cost"
+                                    step="10000" min="0" oninput="updateInvSchedule()"></div>
+                            <div class="form-group"><label>СТАРТ (месяц)</label><select id="inv-start-month">
+                                    <option value="0">Янв</option>
+                                    <option value="1">Фев</option>
+                                    <option value="2">Мар</option>
+                                    <option value="3">Апр</option>
+                                    <option value="4">Май</option>
+                                    <option value="5">Июн</option>
+                                    <option value="6">Июл</option>
+                                    <option value="7">Авг</option>
+                                    <option value="8">Сен</option>
+                                    <option value="9">Окт</option>
+                                    <option value="10">Ноя</option>
+                                    <option value="11">Дек</option>
+                                </select></div>
+                            <div class="form-group"><label>ПЛАТЕЖЕЙ</label><select id="inv-payments-count"
+                                    onchange="updateInvSchedule()">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="6">6</option>
+                                    <option value="12">12</option>
+                                </select></div>
+                            <div class="form-group"><label>ГРАФИК</label>
+                                <div id="inv-schedule-inputs"></div>
+                            </div>
+                            <button id="btn-save-investment" class="primary">СОХРАНИТЬ</button>
+                            <button id="btn-cancel-investment">ОТМЕНА</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Секция: Кредиты -->
+                <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                        onclick="toggleSettingsSection(this)">
+                        <h4 style="margin:0;">КРЕДИТЫ</h4>
+                        <span class="section-arrow">▼</span>
+                    </div>
+                    <div class="settings-section">
+                        <div id="credits-list"></div>
+                        <button id="btn-add-credit" class="primary" style="margin-top:8px;">+ ДОБАВИТЬ КРЕДИТ</button>
+                        <div id="credit-form"
+                            style="display:none;padding:8px;background:var(--bg-input);border:1px solid var(--border);margin-top:8px;">
+                            <div class="form-group"><label>НАЗВАНИЕ</label><input type="text" id="cr-name"></div>
+                            <div class="form-group"><label>БАНК</label><input type="text" id="cr-bank"></div>
+                            <div class="form-group"><label>СУММА</label><input type="number" id="cr-amount"
+                                    step="100000" min="0" oninput="updateCreditInfo()"></div>
+                            <div class="form-group"><label>МЕСЯЦ ПОЛУЧЕНИЯ</label><select id="cr-start-month">
+                                    <option value="0">Янв</option>
+                                    <option value="1">Фев</option>
+                                    <option value="2">Мар</option>
+                                    <option value="3">Апр</option>
+                                    <option value="4">Май</option>
+                                    <option value="5">Июн</option>
+                                    <option value="6">Июл</option>
+                                    <option value="7">Авг</option>
+                                    <option value="8">Сен</option>
+                                    <option value="9">Окт</option>
+                                    <option value="10">Ноя</option>
+                                    <option value="11">Дек</option>
+                                </select></div>
+                            <div class="form-group"><label>СТАВКА (%)</label><input type="number" id="cr-rate"
+                                    step="0.1" min="0" max="50" oninput="updateCreditInfo()"></div>
+                            <div class="form-group"><label>СРОК (МЕС)</label><input type="number" id="cr-term" step="6"
+                                    min="1" max="120" oninput="updateCreditInfo()"></div>
+                            <div class="form-group"><label>ТИП ПОГАШЕНИЯ</label><select id="cr-repayment-type"
+                                    onchange="updateCreditInfo()">
+                                    <option value="annuity">Аннуитет</option>
+                                    <option value="equal">Равное тело</option>
+                                </select></div>
+                            <div class="form-group"><label>ПЛАТЁЖ/МЕС</label><input type="number"
+                                    id="cr-monthly-payment" readonly></div>
+                            <button id="btn-save-credit" class="primary">СОХРАНИТЬ</button>
+                            <button id="btn-cancel-credit">ОТМЕНА</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ КАЛЕНДАРЬ -->
+        <div id="panel-calendar" class="panel">
+            <div style="padding:16px;overflow:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
+                    <h3 style="margin:0;">КАЛЕНДАРЬ ДВИЖЕНИЯ ДЕНЕГ</h3>
+                    <button id="btn-run-calendar" class="primary" style="margin-left:auto;">ПОСТРОИТЬ КАЛЕНДАРЬ</button>
+                </div>
+                <div id="calendar-summary" style="margin-bottom:12px;font-size:12px;color:var(--text-hint);"></div>
+                <div style="overflow-x:auto;flex:1;" id="calendar-scroll">
+                    <table id="calendar-table" style="min-width:1200px;">
+                        <thead id="calendar-head"></thead>
+                        <tbody id="calendar-table-body"></tbody>
+                    </table>
+                </div>
+                <div id="calendar-gaps" style="margin-top:12px;flex-shrink:0;"></div>
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ ДИАГНОСТИКА -->
+        <div id="panel-diagnostics" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3>ДИАГНОСТИКА МОДЕЛИ</h3>
+                <div style="margin-bottom:12px;">
+                    <button id="btn-run-diagnostics" class="primary">ЗАПУСТИТЬ ПРОВЕРКУ</button>
+                </div>
+                <div id="diagnostics-results">
+                    <div class="placeholder">Нажмите «ЗАПУСТИТЬ ПРОВЕРКУ» для анализа модели</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- СТРОКА СОСТОЯНИЯ -->
+    <footer id="status-bar">
+        SigmaFlow v2.0 | Узлов: 0 | Связей: 0 | Готов
+    </footer>
+
+    <!-- УВЕДОМЛЕНИЕ -->
+    <div id="notification" class="notification"></div>
+
+    <!-- СКРИПТЫ -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="sigmaflow.js"></script>
+    <script src="demo_full.js"></script>
+    <script src="template_production.js"></script>
+    <script src="template_retail.js"></script>
+    <script src="template_services.js"></script>
+    <script src="template_it.js"></script>
+    <script>
+        // ============================================================
+        // ГЛАВНЫЙ МОДУЛЬ ПРИЛОЖЕНИЯ
+        // ============================================================
+
+        var graph = null;
+        var selectedNodeId = null;
+
+        // DOM-элементы
+        var elProjectName = document.getElementById('project-name');
+        var elStatusBar = document.getElementById('status-bar');
+        var elDataTable = document.getElementById('data-table-body');
+        var elComputeResults = document.getElementById('compute-results');
+        var elComputeBody = document.getElementById('compute-results-body');
+        var elGraphContainer = document.getElementById('graph-container');
+        var elNotification = document.getElementById('notification');
+
+        // ============================================================
+        // ЗАГРУЗКА ДЕМО
+        // ============================================================
+        function getAllCompanies() {
+            try {
+                var data = localStorage.getItem('sigmaflow_companies');
+                return data ? JSON.parse(data) : {};
+            } catch (e) { return {}; }
+        }
+
+        function saveAllCompanies(companies) {
+            localStorage.setItem('sigmaflow_companies', JSON.stringify(companies));
+        }
+
+        function getCurrentCompanyId() {
+            return localStorage.getItem('sigmaflow_current_company') || '';
+        }
+
+        function setCurrentCompanyId(id) {
+            localStorage.setItem('sigmaflow_current_company', id);
+        }
+
+        function saveCurrentModel() {
+            if (!graph) return;
+            var companyId = getCurrentCompanyId();
+            if (!companyId) return;
+            var companies = getAllCompanies();
+            var modelData = {
+                name: graph.name,
+                industry: graph.industry || 'production',
+                nodes: {},
+                investments: graph.investments || [],
+                credits: graph.credits || [],
+                company: graph.company || {}
+            };
+            Object.keys(graph.nodes).forEach(function (key) {
+                var n = graph.nodes[key];
+                modelData.nodes[key] = {
+                    value: n.value,
+                    enabled: n.enabled,
+                    min: n.min,
+                    max: n.max
+                };
+            });
+            companies[companyId] = modelData;
+            saveAllCompanies(companies);
+        }
+
+        function loadCompany(companyId) {
+            var companies = getAllCompanies();
+            var modelData = companies[companyId];
+            if (!modelData) return false;
+
+            var yamlText;
+            switch (modelData.industry) {
+                case 'production': yamlText = TEMPLATE_PRODUCTION; break;
+                case 'retail': yamlText = TEMPLATE_RETAIL; break;
+                case 'services': yamlText = TEMPLATE_SERVICES; break;
+                case 'it': yamlText = TEMPLATE_IT; break;
+                default: return false;
+            }
+
+            var data = parseYAML(yamlText);
+            graph = Graph.fromDict(data);
+            graph.industry = modelData.industry;
+            graph.investments = modelData.investments || [];
+            graph.credits = modelData.credits || [];
+            graph.company = modelData.company || {};
+
+            if (modelData.nodes) {
+                Object.keys(modelData.nodes).forEach(function (key) {
+                    if (graph.nodes[key]) {
+                        var nd = modelData.nodes[key];
+                        if (nd.value !== undefined) graph.nodes[key].value = nd.value;
+                        if (nd.enabled !== undefined) graph.nodes[key].enabled = nd.enabled;
+                        if (nd.min !== undefined) graph.nodes[key].min = nd.min;
+                        if (nd.max !== undefined) graph.nodes[key].max = nd.max;
+                    }
+                });
+            }
+
+            graph.investments = modelData.investments || [];
+            graph.credits = modelData.credits || [];
+            graph.company = modelData.company || {};
+            graph.name = modelData.name || graph.name;
+
+            setCurrentCompanyId(companyId);
+            graph.compute();
+            elProjectName.textContent = graph.name;
+            return true;
+        }
+
+        function refreshCompanyList() {
+            var select = document.getElementById('select-company');
+            var companies = getAllCompanies();
+            var current = getCurrentCompanyId();
+
+            select.innerHTML = '';
+            var hasCompanies = false;
+            Object.keys(companies).forEach(function (id) {
+                hasCompanies = true;
+                var opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = companies[id].name + ' (' + companies[id].industry + ')';
+                if (id === current) opt.selected = true;
+                select.appendChild(opt);
+            });
+
+            if (!hasCompanies) {
+                var opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'Нет компаний';
+                select.appendChild(opt);
+            }
+        }
+
+        function loadDemo() {
+            var currentId = getCurrentCompanyId();
+            var companies = getAllCompanies();
+
+            if (!currentId || !companies[currentId]) {
+                // Нет текущей компании — показываем мастер
+                showSetupWizard();
+                return;
+            }
+
+            // Загружаем текущую компанию
+            var loaded = loadCompany(currentId);
+            if (loaded) {
+                elProjectName.textContent = graph.name;
+                updateStatusBar('Компания загружена');
+                renderAll();
+                window.renderInvestments();
+                window.renderCredits();
+                renderScenarios();
+                refreshCompanyList();
+
+                if (graph.company) {
+                    if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
+                    if (graph.company.nds_rate !== undefined) setSelectByValue('company-nds-rate', graph.company.nds_rate);
+                    if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
+                    if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
+                    if (graph.company.receivables_days !== undefined) document.getElementById('company-receivables-days').value = graph.company.receivables_days;
+                }
+            } else {
+                showSetupWizard();
+            }
+        }
+
+        function loadFromStorage() {
+            var saved = localStorage.getItem('sigmaflow_model');
+            if (!saved) {
+                notify('Нет сохранённой модели', true);
+                return;
+            }
+
+            try {
+                var modelData = JSON.parse(saved);
+                var templateName = modelData.template || 'demo_full';
+                var yamlText;
+
+                switch (templateName) {
+                    case 'production': yamlText = TEMPLATE_PRODUCTION; break;
+                    case 'retail': yamlText = TEMPLATE_RETAIL; break;
+                    case 'services': yamlText = TEMPLATE_SERVICES; break;
+                    case 'it': yamlText = TEMPLATE_IT; break;
+                    default: yamlText = DEMO_FULL;
+                }
+
+                if (!yamlText) {
+                    notify('Шаблон не найден: ' + templateName, true);
+                    return;
+                }
+
+                var data = parseYAML(yamlText);
+                graph = Graph.fromDict(data);
+                elProjectName.textContent = graph.name;
+                updateStatusBar('Модель загружена из шаблона');
+
+                loadModelFromStorage();
+                graph.compute();
+                elProjectName.textContent = graph.name + ' (сохранённая)';
+                updateStatusBar('Модель загружена из сохранённых данных');
+
+                renderAll();
+                renderInvestments();
+                renderCredits();
+
+                // Восстановление настроек компании в интерфейсе
+                if (graph.company) {
+                    if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
+                    if (graph.company.nds_rate !== undefined) document.getElementById('company-nds-rate').value = graph.company.nds_rate;
+                    if (graph.company.profit_tax_rate !== undefined) document.getElementById('company-profit-tax-rate').value = graph.company.profit_tax_rate;
+                    if (graph.company.insurance_rate !== undefined) document.getElementById('company-insurance-rate').value = graph.company.insurance_rate;
+                }
+
+            } catch (err) {
+                updateStatusBar('Ошибка загрузки');
+                notify('Ошибка: ' + err.message, true);
+                console.error(err);
+            }
+        }
+
+        function showSetupWizard() {
+            if (document.getElementById('setup-wizard')) return;
+            // Скрываем все панели, показываем мастер
+            document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+            document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); });
+
+            var main = document.querySelector('main');
+            var wizard = document.createElement('div');
+            wizard.id = 'setup-wizard';
+            wizard.style.cssText = 'padding:40px;max-width:600px;margin:0 auto;flex:1;overflow-y:auto;';
+            wizard.innerHTML = `
+                <h2 style="margin-bottom:24px;">НОВАЯ КОМПАНИЯ</h2>
+
+                <div class="form-group">
+                    <label>НАЗВАНИЕ КОМПАНИИ</label>
+                    <input type="text" id="wizard-name" placeholder="Например: ООО Ромашка" style="width:100%;">
+                </div>
+
+                <div class="form-group">
+                    <label>ОТРАСЛЬ</label>
+                    <select id="wizard-industry" style="width:100%;">
+                        <option value="production">Производство</option>
+                        <option value="retail">Торговля (розница / опт)</option>
+                        <option value="services">Услуги / Сервис</option>
+                        <option value="it">IT / Разработка ПО</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>НАЛОГОВЫЙ РЕЖИМ</label>
+                    <select id="wizard-tax-system" style="width:100%;">
+                        <option value="OSNO">ОСНО (общая система)</option>
+                        <option value="USN_INCOME">УСН «Доходы» (6%)</option>
+                        <option value="USN_INCOME_MINUS">УСН «Доходы минус расходы» (15%)</option>
+                    </select>
+                </div>
+
+                
+                <button id="btn-create-model" class="primary" style="width:100%;margin-top:16px;padding:12px;">СОЗДАТЬ КОМПАНИЮ</button>
+            `;
+
+            main.appendChild(wizard);
+
+            document.getElementById('btn-create-model').addEventListener('click', function () {
+                var industry = document.getElementById('wizard-industry').value;
+                var taxSystem = document.getElementById('wizard-tax-system').value;
+                var companyName = document.getElementById('wizard-name').value.trim() || 'Новая компания';
+
+                createModel(industry, taxSystem, companyName);
+                wizard.remove();
+            });
+        }
+
+        function createModel(industry, taxSystem, companyName) {
+            var yamlText;
+            switch (industry) {
+                case 'production': yamlText = TEMPLATE_PRODUCTION; break;
+                case 'retail': yamlText = TEMPLATE_RETAIL; break;
+                case 'services': yamlText = TEMPLATE_SERVICES; break;
+                case 'it': yamlText = TEMPLATE_IT; break;
+                default: yamlText = DEMO_FULL;
+            }
+
+            if (!yamlText) {
+                notify('Ошибка загрузки шаблона', true);
+                return;
+            }
+
+            var data = parseYAML(yamlText);
+            graph = Graph.fromDict(data);
+            graph.name = companyName || graph.name;
+            graph.industry = industry;
+
+
+            // Налоговый режим
+            if (!graph.company) graph.company = {};
+            graph.company.tax_system = taxSystem;
+            if (taxSystem === 'OSNO') {
+                graph.company.nds_rate = 0.22;
+                graph.company.profit_tax_rate = 0.25;
+            } else {
+                graph.company.nds_rate = 0;
+                graph.company.nds_exempt = true;
+                graph.company.profit_tax_rate = taxSystem === 'USN_INCOME' ? 0.06 : 0.15;
+            }
+            graph.company.insurance_rate = 0.30;
+            graph.company.has_property_tax = (industry === 'production' || industry === 'retail');
+            graph.company.property_tax_rate = 0.022;
+
+            if (graph.nodes['TAX_RATE']) {
+                graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
+            }
+
+            graph.compute();
+
+            // Сохраняем
+            var modelData = {
+                name: graph.name,
+                industry: industry,
+                nodes: {},
+                investments: [],
+                credits: [],
+                company: graph.company
+            };
+            Object.keys(graph.nodes).forEach(function (key) {
+                var n = graph.nodes[key];
+                modelData.nodes[key] = {
+                    value: n.value,
+                    enabled: n.enabled,
+                    min: n.min,
+                    max: n.max
+                };
+            });
+
+            var companies = getAllCompanies();
+            var companyId = 'company_' + Date.now();
+            companies[companyId] = modelData;
+            saveAllCompanies(companies);
+            setCurrentCompanyId(companyId);
+
+            elProjectName.textContent = graph.name;
+            updateStatusBar('Компания создана');
+            notify('Компания "' + graph.name + '" создана. Настройте параметры на вкладке КОМПАНИЯ.');
+
+            renderAll();
+            window.renderInvestments();
+            window.renderCredits();
+            renderScenarios();
+            refreshCompanyList();
+        }
+
+        // ============================================================
+        // ВЫЧИСЛЕНИЕ
+        // ============================================================
+
+        function runCompute() {
+            if (!graph) {
+                notify('Сначала загрузите проект', true);
+                return;
+            }
+
+            graph.compute();
+            updateStatusBar('Вычисления выполнены');
+            notify('Вычисления выполнены');
+            renderAll();
+
+        }
+
+        // ============================================================
+        // ОТРИСОВКА ГРАФА (D3.js)
+        // ============================================================
+
+        var svg = null;
+        var simulation = null;
+
+        var currentTracedNode = null;
+        var graphDepth = 2;
+
+        function renderDashboard() {
+            if (!graph) return;
+
+            var keyMetrics = [
+                { id: 'NET_PROFIT', label: 'Чистая прибыль' },
+                { id: 'REVENUE', label: 'Выручка' },
+                { id: 'EBITDA', label: 'EBITDA' },
+                { id: 'FCF', label: 'Денежный поток' },
+                { id: 'ASSETS', label: 'Активы' },
+                { id: 'DEBT_EBITDA', label: 'Долг/EBITDA' },
+                { id: 'CASH', label: 'Остаток денег' },
+                { id: 'GROSS_PROFIT', label: 'Валовая прибыль' }
+            ];
+
+            var html = '';
+            keyMetrics.forEach(function (m) {
+                var n = graph.nodes[m.id];
+                if (!n) return;
+                var val = n.value !== null && n.value !== undefined ? n.value : 0;
+                var formatted = formatInputValue(val);
+                var color = val >= 0 ? 'var(--ok)' : 'var(--critical)';
+                var borderColor = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
+
+                html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
+                html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
+                html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatted + '</div>';
+                html += '</div>';
+            });
+
+            document.getElementById('dashboard-metrics').innerHTML = html;
+
+            // Обработчики кликов на метриках
+            document.querySelectorAll('.metric-card').forEach(function (card) {
+                card.addEventListener('click', function () {
+                    var nodeId = card.dataset.node;
+                    currentTracedNode = nodeId;
+                    document.getElementById('graph-selected-node').textContent = ' — ' + (graph.nodes[nodeId] ? graph.nodes[nodeId].label : nodeId);
+                    renderTraceGraph(nodeId, graphDepth);
+                    renderAnalysis(nodeId);
+                    renderDashboard();
+                });
+            });
+
+            // Если был выбран узел — рисуем граф
+            if (currentTracedNode) {
+                renderTraceGraph(currentTracedNode, graphDepth);
+                renderAnalysis(currentTracedNode);
+            }
+
+            // По умолчанию показываем граф для чистой прибыли
+            if (!currentTracedNode) {
+                currentTracedNode = 'NET_PROFIT';
+                graphDepth = 2;
+                document.getElementById('graph-selected-node').textContent = ' — Чистая прибыль';
+                renderTraceGraph('NET_PROFIT', 2);
+                renderAnalysis('NET_PROFIT');
+            }
+        }
+
+        function renderTraceGraph(nodeId, depth) {
+            var container = document.getElementById('graph-container');
+            container.innerHTML = '';
+
+            if (!graph || !graph.nodes[nodeId]) return;
+
+            var width = container.clientWidth;
+            var height = container.clientHeight;
+
+            var visited = {};
+            var nodesToShow = [];
+            var linksToShow = [];
+
+            function trace(id, currentDepth) {
+                if (currentDepth > depth && depth > 0) return;
+                if (visited[id]) return;
+                visited[id] = true;
+
+                var n = graph.nodes[id];
+                if (!n) return;
+                nodesToShow.push(n);
+
+                if (depth === 0 || currentDepth < depth) {
+                    // Входящие связи из рёбер
+                    graph.edges.forEach(function (e) {
+                        if (e.to === id) {
+                            trace(e.from, currentDepth + 1);
+                            linksToShow.push({ source: e.from, target: e.to, type: e.type, coefficient: e.coefficient });
+                        }
+                    });
+
+                    // Входящие связи из формулы
+                    if (n.formula) {
+                        var expr = n.formula.replace(/MAX|MIN|ABS|SQRT|[()]/gi, '');
+                        Object.keys(graph.nodes).forEach(function (key) {
+                            if (key !== id && expr.indexOf(key) >= 0) {
+                                trace(key, currentDepth + 1);
+                                linksToShow.push({ source: key, target: id, type: 'FORMULA', coefficient: null });
+                            }
+                        });
+                    }
+                }
+            }
+
+            trace(nodeId, 0);
+
+            var svg = d3.select('#graph-container').append('svg').attr('width', width).attr('height', height);
+
+            var linkList = linksToShow.map(function (l) {
+                return { source: l.source, target: l.target, type: l.type, coefficient: l.coefficient };
+            });
+
+            var simulation = d3.forceSimulation(nodesToShow)
+                .force('link', d3.forceLink(linkList).id(function (d) { return d.id; }).distance(130))
+                .force('charge', d3.forceManyBody().strength(-400))
+                .force('center', d3.forceCenter(width / 2, height / 2));
+
+            svg.append('defs').selectAll('marker').data(['arrow']).join('marker')
+                .attr('id', 'arrow').attr('viewBox', '0 -4 8 8').attr('refX', 75).attr('refY', 0)
+                .attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto')
+                .append('path').attr('d', 'M0,-4L8,0L0,4').attr('fill', '#2a3040');
+
+            var link = svg.append('g').selectAll('line').data(linkList).join('line')
+                .attr('stroke', function (d) { return d.type === 'FORMULA' ? '#5a9fd4' : '#2a3040'; })
+                .attr('stroke-width', function (d) { return d.type === 'FORMULA' ? 2 : 1.5; })
+                .attr('stroke-dasharray', function (d) { return d.type === 'FORMULA' ? '6 3' : null; })
+                .attr('marker-end', 'url(#arrow)');
+
+            var node = svg.append('g').selectAll('g').data(nodesToShow).join('g');
+
+            node.append('rect')
+                .attr('width', 180).attr('height', 64).attr('x', -90).attr('y', -32).attr('rx', 2)
+                .attr('fill', '#131820')
+                .attr('stroke', function (d) {
+                    if (d.id === nodeId) return '#5a9fd4';
+                    switch (d.type) { case 'TARGET': return '#5a9fd4'; case 'INPUT': return '#4b8c5a'; case 'EXTERNAL': return '#d4a843'; default: return '#2a3040'; }
+                })
+                .attr('stroke-width', function (d) { return d.id === nodeId ? 3 : 1; })
+                .attr('opacity', function (d) { return d.enabled === false ? 0.4 : 1.0; });
+
+            node.append('text').attr('text-anchor', 'middle').attr('dy', -15)
+                .attr('fill', '#e0e3e8').attr('font-size', '11px').attr('font-family', "'JetBrains Mono', monospace")
+                .text(function (d) { return d.label || d.id; });
+
+            node.append('text').attr('text-anchor', 'middle').attr('dy', 8)
+                .attr('fill', '#c8ccd4').attr('font-size', '13px').attr('font-family', "'JetBrains Mono', monospace")
+                .text(function (d) { return formatValue(d.value); });
+
+            node.call(d3.drag()
+                .on('start', function (event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+                .on('drag', function (event, d) { d.fx = event.x; d.fy = event.y; })
+                .on('end', function (event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+            );
+
+            simulation.on('tick', function () {
+                link.attr('x1', function (d) { return d.source.x; }).attr('y1', function (d) { return d.source.y; })
+                    .attr('x2', function (d) { return d.target.x; }).attr('y2', function (d) { return d.target.y; });
+                node.attr('transform', function (d) {
+                    d.x = Math.max(90, Math.min(width - 90, d.x));
+                    d.y = Math.max(32, Math.min(height - 32, d.y));
+                    return 'translate(' + d.x + ',' + d.y + ')';
+                });
+            });
+        }
+
+        function renderAnalysis(nodeId) {
+            var n = graph.nodes[nodeId];
+            if (!n) return;
+
+            var panel = document.getElementById('dashboard-analysis');
+            if (!panel) return;
+            panel.style.display = 'block';
+
+            // Находим входящие связи
+            var incoming = graph.edges.filter(function (e) { return e.to === nodeId; });
+            var totalInfluence = 0;
+            var factors = [];
+
+            incoming.forEach(function (e) {
+                var fromNode = graph.nodes[e.from];
+                if (!fromNode || fromNode.value === null) return;
+                var impact = Math.abs(fromNode.value * (e.coefficient || 1));
+                totalInfluence += impact;
+                factors.push({ node: fromNode, edge: e, impact: impact });
+            });
+
+            factors.sort(function (a, b) { return b.impact - a.impact; });
+
+            var html = '<div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">ФАКТОРЫ, ВЛИЯЮЩИЕ НА «' + (n.label || n.id) + '»</div>';
+
+            if (factors.length === 0) {
+                html += '<div style="font-size:12px;">Нет входящих связей. Это входной параметр.</div>';
+            } else {
+                factors.forEach(function (f) {
+                    var pct = totalInfluence > 0 ? (f.impact / totalInfluence * 100).toFixed(1) : 0;
+                    var bar = Math.round(pct / 2);
+                    html += '<div style="margin-bottom:4px;font-size:12px;">';
+                    html += '<span>' + (f.node.label || f.node.id) + '</span>';
+                    html += '<span style="float:right;">' + pct + '%</span>';
+                    html += '<div style="background:var(--bg-primary);height:4px;margin-top:2px;"><div style="background:var(--accent);height:4px;width:' + bar + '%;"></div></div>';
+                    html += '</div>';
+                });
+            }
+
+            panel.innerHTML = html;
+        }
+
+        function renderAll() {
+            renderDashboard();
+            renderDataTable();
+            renderComputeResults();
+        }
+
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // ============================================================
+        // ИНСПЕКТОР
+        // ============================================================
+
+        function selectNode(id) {
+            // Панель свойств узла отключена
+        }
+
+        function updateInspector() {
+            // Панель свойств узла отключена
+        }
+
+        // ============================================================
+        // ТАБЛИЦА ДАННЫХ
+        // ============================================================
+
+        // Основные INPUT-узлы (всегда видны)
+        var mainInputs = ['PRICE', 'VOLUME', 'MARKETING', 'PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'CAPEX', 'LOANS'];
+        // Расширенные INPUT-узлы (скрыты)
+        var extInputs = ['SEASON', 'COMPETITION', 'BASE_MATERIAL_PRICE', 'ENERGY_RATE', 'LOGISTICS_RATE', 'DEFECT_RATE', 'RENT', 'IT_EXP', 'RD_EXP', 'TRAINING_EXP', 'BANK_SPREAD', 'RATE_TYPE', 'CREDIT_RATING', 'LOAN_REPAYMENT', 'NEW_LOANS', 'DIVIDENDS', 'PENALTIES', 'OTHER_INCOME', 'OTHER_EXP', 'INTEREST_INCOME', 'delta_RECEIVABLES', 'delta_PAYABLES', 'delta_INVENTORY', 'INVENTORY', 'RECEIVABLES', 'PAYABLES', 'EQUITY', 'RETAINED_START', 'CASH_START'];
+        // Основные EXTERNAL
+        var mainExternal = ['CB_RATE', 'INFLATION', 'FX_RATE'];
+        // Расширенные EXTERNAL
+        var extExternal = ['PMI', 'CCI', 'SANCTIONS', 'GEO_INDEX', 'HOUSEHOLD_INCOME', 'SUPPLIER_RISK', 'TARIFFS', 'LABOR_INDEX'];
+
+        function renderDataTable() {
+            if (!graph) return;
+
+            var groups = [
+                { title: 'ПРОДАЖИ', keys: ['PRICE', 'VOLUME', 'RATE_PER', 'HOURLY_RATE', 'MONTHLY_RATE', 'UTILIZATION', 'HOURS_SOLD', 'SEASON'] },
+                { title: 'МАРКЕТИНГ', keys: ['MARKETING', 'COMPETITION'] },
+                { title: 'ПРОИЗВОДСТВО', keys: ['MATERIAL', 'ENERGY', 'LOGISTICS', 'DEFECT', 'PURCHASE', 'UNIT_', 'SCALE'] },
+                { title: 'ПЕРСОНАЛ', keys: ['HEADCOUNT', 'AVG_SALARY', 'PAYROLL', 'DEV_', 'PROD_', 'ADMIN_', 'STAFF_', 'SPECIALIST_', 'ENGAGEMENT', 'SPI'] },
+                { title: 'ОПЕРАЦИОННЫЕ', keys: ['RENT', 'IT_EXP', 'RD_EXP', 'TRAINING'] },
+                { title: 'АКТИВЫ', keys: ['FIXED_ASSETS', 'INTANGIBLE', 'INVENTORY', 'RECEIVABLES', 'PAYABLES', 'CASH_START', 'EQUITY', 'RETAINED_START'] },
+                { title: 'КРЕДИТЫ', keys: ['LOANS', 'LOAN_REPAYMENT', 'NEW_LOANS', 'BANK_SPREAD', 'CREDIT_RATING', 'RATE_TYPE'] },
+                { title: 'НАЛОГИ', keys: ['TAX_RATE'] },
+                { title: 'ПРОЧЕЕ', keys: [] }
+            ];
+
+            // Управляемые параметры
+            var managedHtml = '';
+            groups.forEach(function (group) {
+                var nodes = [];
+                Object.keys(graph.nodes).forEach(function (key) {
+                    var n = graph.nodes[key];
+                    if (n.type !== 'INPUT') return;
+                    var match = group.keys.length === 0;
+                    group.keys.forEach(function (kw) {
+                        if (key.indexOf(kw) >= 0) match = true;
+                    });
+                    if (match) nodes.push(n);
+                });
+
+                if (nodes.length === 0) return;
+
+                managedHtml += '<tr><td colspan="5" style="color:var(--text-hint);font-size:10px;letter-spacing:1px;padding:12px 0 4px 0;">' + group.title + '</td></tr>';
+                nodes.forEach(function (n) {
+                    managedHtml += renderInputRow(n.id);
+                });
+            });
+
+            document.getElementById('table-inputs-main-body').innerHTML = managedHtml;
+
+            // Скрываем старые расширенные таблицы
+            document.getElementById('table-inputs-ext').style.display = 'none';
+            document.getElementById('toggle-extended').style.display = 'none';
+
+            // Внешние факторы
+            var externalHtml = '';
+            Object.keys(graph.nodes).forEach(function (key) {
+                var n = graph.nodes[key];
+                if (n.type === 'EXTERNAL') {
+                    externalHtml += renderInputRow(n.id);
+                }
+            });
+            document.getElementById('table-external-main-body').innerHTML = externalHtml;
+            document.getElementById('table-external-ext').style.display = 'none';
+            document.getElementById('toggle-ext-external').style.display = 'none';
+
+            // Ключевые результаты
+            renderKeyResults();
+            // Полная таблица
+            renderFullTable();
+            // Ограничения
+            renderComputeResults();
+        }
+
+        function renderKeyResults() {
+            var keyNodes = ['NET_PROFIT', 'REVENUE', 'EBITDA', 'FCF', 'CASH', 'DEBT_EBITDA'];
+            var resHtml = '';
+            keyNodes.forEach(function (nid) {
+                var n = graph.nodes[nid];
+                if (n && n.value !== null) {
+                    resHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;">';
+                    resHtml += '<span>' + (n.label || n.id) + '</span>';
+                    resHtml += '<span style="font-weight:500;">' + formatValue(n.value) + '</span>';
+                    resHtml += '</div>';
+                }
+            });
+            var keyEl = document.getElementById('key-results');
+            if (keyEl) keyEl.innerHTML = resHtml || 'Нажмите ВЫЧИСЛИТЬ';
+        }
+
+        function renderInputRow(nid) {
+            var n = graph.nodes[nid];
+            if (!n) return '';
+            var color = n.type === 'EXTERNAL' ? 'var(--warning)' : 'var(--ok)';
+            var row = '<tr>';
+            row += '<td><span style="color:' + color + ';margin-right:4px;">▌</span>' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
+            row += '<td class="value-cell"><input type="text" class="table-input" data-node-id="' + n.id + '" value="' + formatInputValue(n.value) + '" style="width:120px;font-family:var(--font-mono);font-size:13px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px 6px;text-align:right;" onfocus="this.value=unformatInputValue(this.value)" onblur="this.value=formatInputValue(this.value)"></td>';
+            row += '<td style="text-align:center;">';
+            row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 1.1)" style="font-size:10px;padding:2px 6px;">+</button>';
+            row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 0.9)" style="font-size:10px;padding:2px 6px;margin-left:2px;">-</button>';
+            row += '</td>';
+            row += '<td class="value-cell">' + formatValue(n.min) + '</td>';
+            row += '<td class="value-cell">' + formatValue(n.max) + '</td>';
+            row += '</tr>';
+            return row;
+        }
+
+        function deltaNode(nid, factor) {
+            var n = graph.nodes[nid];
+            if (!n) return;
+            var newVal = (n.value || 0) * factor;
+            if (n.min !== null && newVal < n.min) newVal = n.min;
+            if (n.max !== null && newVal > n.max) newVal = n.max;
+            n.value = Math.round(newVal * 100) / 100;
+            renderDataTable();
+        }
+
+        function renderFullTable() {
+            if (!graph) return;
+            var blockOrder = [
+                'NET_PROFIT', 'EBT', 'TAX', 'TAX_RATE', 'EBIT', 'EBITDA', 'GROSS_PROFIT', 'REVENUE', 'COGS',
+                'VOLUME', 'PRICE', 'SEASON', 'MARKETING', 'COMPETITION', 'BUSINESS_ACTIVITY',
+                'BASE_MATERIAL_PRICE', 'UNIT_MATERIAL', 'MATERIAL_COST', 'ENERGY_RATE', 'ENERGY_COST', 'LOGISTICS_RATE', 'LOGISTICS_COST', 'DEFECT_RATE', 'SCALE_EFFECT',
+                'PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'DIRECT_LABOR', 'ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'ADMIN_PAYROLL', 'EFFECTIVE_HEADCOUNT', 'ATTRITION', 'SPI', 'ENGAGEMENT', 'LABOR_INDEX',
+                'RENT', 'IT_EXP', 'RD_EXP', 'TRAINING_EXP', 'SELLING_EXP', 'ADMIN_EXP',
+                'FIXED_ASSETS', 'INTANGIBLE_ASSETS', 'DA_RATE', 'DA', 'WEAR', 'CAPEX', 'CAPACITY_UTIL', 'TECH_OBSOLESCENCE',
+                'LOANS', 'CB_RATE', 'BANK_SPREAD', 'LOAN_RATE', 'INTEREST', 'LOAN_REPAYMENT', 'NEW_LOANS', 'DEBT_EBITDA', 'CREDIT_RATING', 'RATE_TYPE',
+                'CASH', 'CASH_START', 'INVENTORY', 'RECEIVABLES', 'PAYABLES', 'CURRENT_ASSETS', 'ASSETS', 'EQUITY', 'RETAINED_START', 'RETAINED_EARNINGS', 'FCF',
+                'INFLATION', 'FX_RATE', 'GEO_INDEX', 'SANCTIONS', 'PMI', 'CCI', 'HOUSEHOLD_INCOME', 'SUPPLIER_RISK', 'TARIFFS',
+                'CFO', 'CFI', 'CFF', 'delta_RECEIVABLES', 'delta_PAYABLES', 'delta_INVENTORY', 'OTHER_INCOME', 'OTHER_EXP', 'PENALTIES', 'INTEREST_INCOME', 'DIVIDENDS'
+            ];
+            var html = '';
+            blockOrder.forEach(function (nid) {
+                var n = graph.nodes[nid];
+                if (!n) return;
+                html += '<tr>';
+                html += '<td class="id-cell">' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
+                html += '<td>' + n.type + '</td>';
+                html += '<td class="value-cell" style="text-align:center;">' + formatValue(n.value) + '</td>';
+                html += '<td class="value-cell" style="text-align:center;">' + formatValue(n.min) + '</td>';
+                html += '<td class="value-cell" style="text-align:center;">' + formatValue(n.max) + '</td>';
+                html += '<td>' + n.source + '</td>';
+                html += '</tr>';
+            });
+            elDataTable.innerHTML = html;
+        }
+
+        function renderComputeResults() {
+            if (!graph) return;
+            var html = '';
+            if (graph.constraints.length > 0) {
+                html += '<div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">ОГРАНИЧЕНИЯ</div>';
+                graph.constraints.forEach(function (c) {
+                    var node = graph.nodes[c.node];
+                    var ok = node ? checkConstraint(c, node) : null;
+                    html += '<div style="display:flex;justify-content:space-between;padding:3px 0;">';
+                    html += '<span>' + (node ? (node.label || node.id) : c.node) + ' ' + c.operator + ' ' + formatValue(c.value) + '</span>';
+                    if (ok === true) html += '<span style="color:var(--ok);">OK</span>';
+                    else if (ok === false) html += '<span style="color:var(--critical);">НАРУШЕНО</span>';
+                    else html += '<span style="color:var(--text-hint);">—</span>';
+                    html += '</div>';
+                });
+            }
+            elComputeResults.innerHTML = html;
+        }
+
+        // ============================================================
+        // ПОЛНАЯ ПЕРЕРИСОВКА
+        // ============================================================
+
+        function renderAll() {
+            renderDashboard();
+            renderDataTable();
+            renderComputeResults();
+        }
+
+        // ============================================================
+        // СТРОКА СОСТОЯНИЯ
+        // ============================================================
+
+        function updateStatusBar(msg) {
+            var nodesCount = graph ? Object.keys(graph.nodes).length : 0;
+            var edgesCount = graph ? graph.edges.length : 0;
+            elStatusBar.textContent =
+                'SigmaFlow v2.0 | Узлов: ' + nodesCount +
+                ' | Связей: ' + edgesCount +
+                ' | ' + (msg || 'Готов');
+        }
+
+        // ============================================================
+        // УВЕДОМЛЕНИЯ
+        // ============================================================
+
+        function notify(msg, isError) {
+            elNotification.textContent = msg;
+            elNotification.className = 'notification';
+            if (isError) elNotification.classList.add('error');
+            elNotification.classList.add('show');
+
+            setTimeout(function () {
+                elNotification.classList.remove('show');
+            }, 3000);
+        }
+
+        // ============================================================
+        // СОХРАНЕНИЕ
+        // ============================================================
+
+        function saveProject() {
+            if (!graph) { notify('Нечего сохранять', true); return; }
+
+            var fullData = {
+                project: graph.name,
+                company: graph.company || {},
+                investments: graph.investments || [],
+                credits: graph.credits || [],
+                scenarios: graph.scenarios || [],
+                model: graph.toDict()
+            };
+
+            var yamlText = 'project: "' + graph.name + '"\n\n';
+            yamlText += '# Настройки компании\n';
+            yamlText += 'company:\n';
+            yamlText += '  tax_system: ' + (graph.company.tax_system || 'OSNO') + '\n';
+            yamlText += '  nds_rate: ' + (graph.company.nds_rate || 0.22) + '\n';
+            yamlText += '  profit_tax_rate: ' + (graph.company.profit_tax_rate || 0.25) + '\n';
+            yamlText += '  insurance_rate: ' + (graph.company.insurance_rate || 0.30) + '\n';
+            yamlText += '  receivables_days: ' + (graph.company.receivables_days || 30) + '\n';
+
+            yamlText += '\n# Инвестиции\n';
+            yamlText += 'investments:\n';
+            (graph.investments || []).forEach(function (inv) {
+                yamlText += '  - name: "' + inv.name + '"\n';
+                yamlText += '    cost: ' + inv.cost + '\n';
+                yamlText += '    start: ' + (inv.start || 0) + '\n';
+                yamlText += '    schedule: [' + (inv.schedule || []).join(', ') + ']\n';
+            });
+
+            yamlText += '\n# Кредиты\n';
+            yamlText += 'credits:\n';
+            (graph.credits || []).forEach(function (cr) {
+                yamlText += '  - name: "' + cr.name + '"\n';
+                yamlText += '    amount: ' + cr.amount + '\n';
+                yamlText += '    rate: ' + cr.rate + '\n';
+                yamlText += '    term: ' + cr.term + '\n';
+                yamlText += '    monthly_payment: ' + cr.monthlyPayment + '\n';
+            });
+
+            yamlText += '\n# Модель\n';
+            yamlText += toYAML(graph);
+
+            var blob = new Blob([yamlText], { type: 'text/yaml;charset=utf-8' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = (graph.name || 'project') + '.yaml';
+            a.click();
+            URL.revokeObjectURL(url);
+            notify('Проект сохранён');
+        }
+
+        // ============================================================
+        // НАВИГАЦИЯ
+        // ============================================================
+
+        function initNavigation() {
+            document.querySelectorAll('.nav-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    var panelId = 'panel-' + btn.dataset.panel;
+                    document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+                    var panel = document.getElementById(panelId);
+                    if (panel) {
+                        panel.classList.add('active');
+                        // При переключении на СТРАТЕГИЮ — перерисовать граф
+                        if (btn.dataset.panel === 'strategy' && graph) {
+                            setTimeout(function () { renderDashboard(); }, 100);
+                        }
+                    }
+                });
+            });
+        }
+
+        // ============================================================
+        // ДИАГНОСТИКА
+        // ============================================================
+
+        function runDiagnostics() {
+            if (!graph) {
+                notify('Сначала загрузите модель', true);
+                return;
+            }
+            var diag = graph.selfCheck();
+            var container = document.getElementById('diagnostics-results');
+            if (diag.length === 0) {
+                container.innerHTML = '<div style="padding:16px;color:var(--ok);font-size:13px;">Модель не содержит ошибок или предупреждений.</div>';
+                updateStatusBar('Диагностика: ошибок не найдено');
+                return;
+            }
+            var html = '';
+            var counts = { critical: 0, warning: 0, info: 0 };
+            diag.forEach(function (d) {
+                if (d.level === 'critical') counts.critical++;
+                else if (d.level === 'warning') counts.warning++;
+                else counts.info++;
+            });
+            html += '<div style="margin-bottom:16px;font-size:12px;">';
+            html += 'Найдено: <span style="color:var(--critical);">' + counts.critical + ' критических</span>, ';
+            html += '<span style="color:var(--warning);">' + counts.warning + ' предупреждений</span>, ';
+            html += '<span style="color:var(--text-hint);">' + counts.info + ' информационных</span>';
+            html += '</div>';
+            html += '<table><thead><tr><th>КОД</th><th>УРОВЕНЬ</th><th>СООБЩЕНИЕ</th></tr></thead><tbody>';
+            diag.forEach(function (d) {
+                var color = d.level === 'critical' ? 'var(--critical)' : (d.level === 'warning' ? 'var(--warning)' : 'var(--text-hint)');
+                html += '<tr>';
+                html += '<td>' + d.code + '</td>';
+                html += '<td style="color:' + color + ';font-weight:500;">' + d.level.toUpperCase() + '</td>';
+                html += '<td>' + d.message + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+            updateStatusBar('Диагностика: ' + counts.critical + ' критических, ' + counts.warning + ' предупреждений');
+        }
+        function buildCalendar() {
+            if (!graph) return;
+            graph.compute();
+
+            var now = new Date();
+            var startMonth = now.getMonth();
+            var cal = graph.getCashFlowCalendar(startMonth, 12);
+
+            var summary = document.getElementById('calendar-summary');
+            var gapCount = cal.gapCount || 0;
+            var endCash = cal.endCash || 0;
+
+            if (gapCount > 0) {
+                summary.innerHTML = '<span style="color:var(--critical);">Обнаружено кассовых разрывов: ' + gapCount + '</span> | ' +
+                    'Остаток на конец периода: <span style="color:var(--critical);">' + formatValue(endCash) + '</span>';
+            } else {
+                summary.innerHTML = 'Кассовых разрывов: 0 | ' +
+                    'Остаток на конец периода: <span style="color:var(--ok);">' + formatValue(endCash) + '</span>';
+            }
+
+            var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+
+            // Строим заголовок
+            var headHtml = '<tr><th style="position:sticky;left:0;background:var(--bg-panel);z-index:1;">СТАТЬЯ</th>';
+            cal.periods.forEach(function (p) {
+                var style = p.isGap ? 'style="cursor:pointer;color:var(--critical);" onclick="showMonthDetail(' + p.period + ')"' :
+                    'style="cursor:pointer;" onclick="showMonthDetail(' + p.period + ')"';
+                headHtml += '<th ' + style + ' title="Кликните для детализации">' + p.label + '</th>';
+            });
+            headHtml += '<th>ИТОГО</th></tr>';
+            document.getElementById('calendar-head').innerHTML = headHtml;
+
+            // Строки данных
+            function row(label, getVal, isTotal, cls) {
+                var html = '<tr class="' + (cls || '') + '">';
+                html += '<td style="position:sticky;left:0;background:var(--bg-panel);font-weight:500;">' + label + '</td>';
+                var sum = 0;
+                cal.periods.forEach(function (p) {
+                    var v = getVal(p);
+                    sum += v;
+                    var color = v >= 0 ? 'var(--text-primary)' : 'var(--critical)';
+                    html += '<td class="value-cell" style="color:' + color + ';">' + formatValue(v) + '</td>';
+                });
+                html += '<td class="value-cell" style="font-weight:500;">' + formatValue(sum) + '</td>';
+                html += '</tr>';
+                return html;
+            }
+
+            function spacer(label) {
+                return '<tr><td style="position:sticky;left:0;background:var(--bg-panel);color:var(--text-hint);font-size:10px;letter-spacing:1px;padding-top:12px;" colspan="' + (cal.periods.length + 2) + '">' + label + '</td></tr>';
+            }
+
+            var t = cal.totals;
+            var html = '';
+
+            html += spacer('── ПРИХОДЫ ──');
+            html += row('Выручка', function (p) { return p.revenue; });
+            html += row('Новые кредиты', function (p) { return p.newLoans; });
+            html += row('Прочие доходы', function (p) { return p.otherIncome + p.interestIncome; });
+
+            html += spacer('── ОПЕРАЦИОННЫЕ РАСХОДЫ ──');
+            html += row('ФОТ произв. персонала', function (p) { return -p.payrollProd; });
+            html += row('ФОТ АУП', function (p) { return -p.payrollAdm; });
+            html += row('Материалы', function (p) { return -p.material; });
+            html += row('Энергия', function (p) { return -p.energy; });
+            html += row('Логистика', function (p) { return -p.logistics; });
+            html += row('Маркетинг', function (p) { return -p.marketing; });
+            html += row('Аренда', function (p) { return -p.rent; });
+            html += row('IT/R&D/Обучение', function (p) { return -p.itRdTraining; });
+            html += row('Амортизация (справочно)', function (p) { return -p.da; });
+
+            html += spacer('── НАЛОГИ ──');
+            html += row('НДС', function (p) { return -p.nds; });
+            html += row('Налог на прибыль', function (p) { return -p.profitTax; });
+            html += row('Страховые взносы', function (p) { return -p.insurance; });
+            html += row('НДФЛ', function (p) { return -p.ndfl; });
+
+            html += spacer('── ФИНАНСИРОВАНИЕ ──');
+            html += row('Проценты по кредитам', function (p) { return -p.interest; });
+            html += row('Погашение тела кредита', function (p) { return -p.loanRepayment; });
+            html += row('CAPEX', function (p) { return -p.capex; });
+            html += row('Дивиденды', function (p) { return -p.dividends; });
+            html += row('Штрафы', function (p) { return -p.penalties; });
+            html += row('Прочие расходы', function (p) { return -p.otherExp; });
+
+            html += spacer('── ИТОГО ──');
+            html += row('Чистый поток', function (p) { return p.netFlow; }, false, 'cal-net');
+            html += row('Остаток на конец', function (p) { return p.endCash; }, false, 'cal-end');
+
+            // Разрывы
+            html += '<tr><td style="position:sticky;left:0;background:var(--bg-panel);color:var(--critical);">[!] Кассовый разрыв</td>';
+            cal.periods.forEach(function (p) {
+                html += '<td class="value-cell" style="color:' + (p.isGap ? 'var(--critical)' : 'var(--text-hint)') + ';">' + (p.isGap ? 'ДА' : '—') + '</td>';
+            });
+            html += '<td class="value-cell">' + (gapCount > 0 ? gapCount : '—') + '</td></tr>';
+
+            document.getElementById('calendar-table-body').innerHTML = html;
+            window._calendarData = cal;
+
+            // Разрывы
+            var gapsDiv = document.getElementById('calendar-gaps');
+            if (gapCount > 0) {
+                var gapsHtml = '<div style="margin-top:8px;">';
+                cal.periods.forEach(function (p) {
+                    if (p.isGap) {
+                        gapsHtml += '<div style="padding:8px;margin-bottom:4px;border:1px solid var(--critical);background:rgba(212,75,60,0.1);">';
+                        gapsHtml += '<span style="color:var(--critical);font-weight:500;">[!] КАССОВЫЙ РАЗРЫВ: ' + p.label + '</span><br>';
+                        gapsHtml += 'Остаток на начало: ' + formatValue(p.startCash) + ' | Дефицит: ' + formatValue(Math.abs(p.endCash));
+                        gapsHtml += '</div>';
+                    }
+                });
+                gapsHtml += '</div>';
+                gapsDiv.innerHTML = gapsHtml;
+            } else {
+                gapsDiv.innerHTML = '';
+            }
+
+            updateStatusBar('Календарь построен. Разрывов: ' + gapCount);
+            notify('Календарь денежного потока построен');
+        }
+
+        function buildPnL() {
+            if (!graph) { notify('Сначала загрузите модель', true); return; }
+            graph.compute();
+
+            var now = new Date();
+            var startMonth = now.getMonth();
+            var pnl = graph.getPnL(startMonth, 12);
+            var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+
+            // Заголовок
+            var headHtml = '<tr><th style="position:sticky;left:0;background:var(--bg-panel);">СТАТЬЯ</th>';
+            pnl.rows.forEach(function (r) { headHtml += '<th>' + r.label + '</th>'; });
+            headHtml += '<th>ИТОГО</th></tr>';
+            document.getElementById('pnl-head').innerHTML = headHtml;
+
+            function row(label, getVal, bold, isTotal) {
+                var html = '<tr' + (bold ? ' style="font-weight:500;"' : '') + '>';
+                html += '<td style="position:sticky;left:0;background:var(--bg-panel);">' + label + '</td>';
+                var sum = 0;
+                pnl.rows.forEach(function (r) {
+                    var v = getVal(r);
+                    sum += v;
+                    var color = v >= 0 ? 'var(--ok)' : 'var(--critical)';
+                    html += '<td class="value-cell" style="color:' + color + ';">' + formatValue(v) + '</td>';
+                });
+                var tColor = sum >= 0 ? 'var(--ok)' : 'var(--critical)';
+                html += '<td class="value-cell" style="font-weight:500;color:' + tColor + ';">' + formatValue(sum) + '</td>';
+                html += '</tr>';
+                return html;
+            }
+
+            function spacer(label) {
+                return '<tr><td style="position:sticky;left:0;background:var(--bg-panel);color:var(--text-hint);font-size:10px;padding-top:8px;" colspan="' + (pnl.rows.length + 2) + '">' + label + '</td></tr>';
+            }
+
+            var html = '';
+            html += row('Выручка', function (r) { return r.revenue; });
+            html += row('Себестоимость', function (r) { return r.cogs; });
+            html += spacer('──');
+            html += row('Валовая прибыль', function (r) { return r.gross; }, true);
+            html += row('Коммерческие расходы', function (r) { return r.selling; });
+            html += row('Управленческие расходы', function (r) { return r.admin; });
+            html += spacer('──');
+            html += row('EBITDA', function (r) { return r.ebitda; }, true);
+            html += row('Амортизация', function (r) { return r.da; });
+            html += spacer('──');
+            html += row('EBIT', function (r) { return r.ebit; }, true);
+            html += row('Проценты', function (r) { return r.interest; });
+            html += row('Прочие доходы/расходы', function (r) { return r.other; });
+            html += spacer('──');
+            html += row('EBT (до налогов)', function (r) { return r.ebt; }, true);
+            html += row('Налог на прибыль', function (r) { return r.tax; });
+            html += spacer('──');
+            html += row('ЧИСТАЯ ПРИБЫЛЬ', function (r) { return r.net; }, true);
+            html += row('Накопленная прибыль', function (r) { return r.cumulative; }, true);
+
+            document.getElementById('pnl-body').innerHTML = html;
+            updateStatusBar('P&L построен');
+            notify('Отчёт о прибылях и убытках построен');
+        }
+
+        // Детализация месяца
+        function showMonthDetail(periodIndex) {
+            var cal = window._calendarData;
+            if (!cal || !cal.periods || periodIndex >= cal.periods.length) return;
+            var p = cal.periods[periodIndex];
+
+            var detailHtml = '<div style="padding:16px;background:var(--bg-panel);border:1px solid var(--border);margin-top:12px;">';
+            detailHtml += '<h4 style="margin:0 0 12px 0;">' + p.label + (p.isGap ? ' — <span style="color:var(--critical);">КАССОВЫЙ РАЗРЫВ</span>' : '') + '</h4>';
+
+            detailHtml += '<table><thead><tr><th>СТАТЬЯ</th><th>СУММА</th></tr></thead><tbody>';
+
+            var items = [
+                ['Остаток на начало', p.startCash],
+                ['Выручка', p.revenue],
+                ['Новые кредиты', p.newLoans],
+                ['Прочие доходы', p.otherIncome + p.interestIncome],
+                ['ФОТ произв. персонала', -p.payrollProd],
+                ['ФОТ АУП', -p.payrollAdm],
+                ['Материалы', -p.material],
+                ['Энергия', -p.energy],
+                ['Логистика', -p.logistics],
+                ['Маркетинг', -p.marketing],
+                ['Аренда', -p.rent],
+                ['IT/R&D/Обучение', -p.itRdTraining],
+                ['Амортизация (справочно)', -p.da],
+                ['НДС', -p.nds],
+                ['Налог на прибыль (аванс)', -p.profitTax],
+                ['Страховые взносы', -p.insurance],
+                ['НДФЛ', -p.ndfl],
+                ['Проценты по кредитам', -p.interest],
+                ['Погашение тела кредита', -p.loanRepayment],
+                ['CAPEX', -p.capex],
+                ['Дивиденды', -p.dividends],
+                ['Штрафы', -p.penalties],
+                ['Прочие расходы', -p.otherExp]
+            ];
+
+            var totalAbs = 0;
+            items.forEach(function (item) { totalAbs += Math.abs(item[1]); });
+
+            items.forEach(function (item) {
+                if (Math.abs(item[1]) > 0.001) {
+                    var color = item[1] >= 0 ? 'var(--ok)' : 'var(--critical)';
+                    var pct = totalAbs > 0 ? (Math.abs(item[1]) / totalAbs * 100).toFixed(1) : '0';
+                    detailHtml += '<tr><td>' + item[0] + '</td>';
+                    detailHtml += '<td class="value-cell" style="color:' + color + ';">' + formatValue(item[1]) + '</td>';
+                    detailHtml += '<td class="value-cell">' + pct + '%</td></tr>';
+                }
+            });
+
+            detailHtml += '</tbody></table>';
+
+            detailHtml += '<div style="margin-top:8px;font-size:12px;">';
+            detailHtml += 'Итого за период: <span style="color:' + (p.netFlow >= 0 ? 'var(--ok)' : 'var(--critical)') + ';font-weight:500;">' + formatValue(p.netFlow) + '</span> | ';
+            detailHtml += 'Остаток на конец: <span style="color:' + (p.endCash >= 0 ? 'var(--text-heading)' : 'var(--critical)') + ';font-weight:500;">' + formatValue(p.endCash) + '</span>';
+            detailHtml += '</div>';
+
+            if (p.isGap) {
+                detailHtml += '<div style="margin-top:8px;padding:8px;border:1px solid var(--critical);background:rgba(212,75,60,0.1);">';
+                detailHtml += '<span style="color:var(--critical);font-weight:500;">ПРИЧИНА РАЗРЫВА:</span><br>';
+                detailHtml += 'Дефицит: ' + formatValue(Math.abs(p.endCash)) + '. ';
+                detailHtml += 'Рекомендации: сократить расходы, перенести CAPEX, привлечь кредит, договориться об отсрочке налогов.';
+                detailHtml += '</div>';
+            }
+
+            detailHtml += '<button onclick="document.getElementById(\'month-detail\').style.display=\'none\'" style="margin-top:8px;">ЗАКРЫТЬ</button>';
+            detailHtml += '</div>';
+
+            var container = document.getElementById('calendar-gaps');
+            var existing = document.getElementById('month-detail');
+            if (existing) existing.remove();
+            var div = document.createElement('div');
+            div.id = 'month-detail';
+            div.innerHTML = detailHtml;
+            container.appendChild(div);
+            div.scrollIntoView({ behavior: 'smooth' });
+        }
+        // ============================================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ============================================================
+
+        document.addEventListener('DOMContentLoaded', function () {
+            initNavigation();
+
+            document.getElementById('btn-save').addEventListener('click', saveProject);
+            document.getElementById('btn-run-diagnostics').addEventListener('click', runDiagnostics);
+            document.getElementById('btn-build-pnl').addEventListener('click', function () {
+                if (!graph) { notify('Сначала загрузите модель', true); return; }
+                buildPnL();
+            });
+            document.getElementById('btn-goto-live').addEventListener('click', function () {
+                document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); });
+                document.querySelector('[data-panel="live"]').classList.add('active');
+                document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+                document.getElementById('panel-live').classList.add('active');
+                buildLiveModel();
+            });
+            document.getElementById('btn-analysis').addEventListener('click', function () {
+                if (!graph) { notify('Сначала загрузите модель', true); return; }
+                graph.compute();
+                var effects = graph.getMarginalEffects();
+                var panel = document.getElementById('dashboard-analysis-panel');
+
+                if (panel.style.display === 'none') {
+                    panel.style.display = 'block';
+                    this.textContent = '▼ АНАЛИЗ И РЕКОМЕНДАЦИИ';
+
+                    var html = '<div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">ПРЕДЕЛЬНЫЕ ЭФФЕКТЫ (изменение прибыли при +1% параметра)</div>';
+                    html += '<table style="width:100%;table-layout:fixed;font-size:11px;"><thead><tr><th style="width:45%;">ПАРАМЕТР</th><th style="width:20%;">ТЕКУЩЕЕ</th><th style="width:20%;">Δ ПРИБЫЛИ</th><th style="width:15%;">ВЛИЯНИЕ</th></tr></thead><tbody>';
+                    effects.slice(0, 10).forEach(function (e) {
+                        var sign = e.profitDelta >= 0 ? '+' : '';
+                        var color = e.profitDelta >= 0 ? 'var(--ok)' : 'var(--critical)';
+                        html += '<tr>';
+                        html += '<td style="word-break:break-word;">' + e.label + '</td>';
+                        html += '<td class="value-cell" style="text-align:center;">' + formatValue(e.currentValue) + '</td>';
+                        html += '<td class="value-cell" style="text-align:center;color:' + color + ';">' + sign + formatValue(e.profitDelta) + '</td>';
+                        html += '<td class="value-cell" style="text-align:center;">' + (e.impactPct) + '%</td>';
+                        html += '</tr>';
+                    });
+                    
+                    document.getElementById('btn-live-apply').addEventListener('click', function () {
+                        if (!graph) return;
+                        Object.keys(graph.nodes).forEach(function (key) {
+                            liveBaseValues[key] = graph.nodes[key].value;
+                        });
+                        saveCurrentModel();
+                        notify('Изменения применены к модели');
+                        renderAll();
+                    });
+
+                    document.getElementById('btn-live-save-scenario').addEventListener('click', function () {
+                        if (!graph) return;
+                        var shocks = [];
+                        window._liveTop5.forEach(function (e) {
+                            var newVal = graph.nodes[e.node].value;
+                            if (newVal !== liveBaseValues[e.node]) {
+                                shocks.push({ node: e.node, value: newVal });
+                            }
+                        });
+                        if (shocks.length === 0) { notify('Нет изменений для сохранения'); return; }
+                        if (!graph.scenarios) graph.scenarios = [];
+                        graph.scenarios.push({ name: 'Живая модель ' + new Date().toLocaleString(), desc: '', shocks: shocks });
+                        saveScenarios();
+                        notify('Сценарий сохранён');
+                    });
+
+                    document.getElementById('btn-live-reset').addEventListener('click', function () {
+                        Object.keys(liveBaseValues).forEach(function (key) {
+                            if (graph.nodes[key]) graph.nodes[key].value = liveBaseValues[key];
+                        });
+                        graph.compute();
+                        buildLiveModel();
+                        notify('Модель сброшена');
+                    });
+                    html += '</tbody></table>';
+
+                    html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 8px;">РЕКОМЕНДАЦИИ</div>';
+
+                    var topPositive = effects.filter(function (e) { return e.profitDelta > 0; }).slice(0, 3);
+                    var topNegative = effects.filter(function (e) { return e.profitDelta < 0; }).slice(0, 3);
+
+                    if (topPositive.length > 0) {
+                        html += '<div style="margin-bottom:8px;">Для увеличения прибыли:</div>';
+                        topPositive.forEach(function (e) {
+                            html += '<div style="font-size:12px;padding:2px 0;">● Увеличить <b>' + e.label + '</b> — эффект ~' + formatValue(e.profitDelta * 10) + ' при +10%</div>';
+                        });
+                    }
+
+                    if (topNegative.length > 0) {
+                        html += '<div style="margin:8px 0;">Для сокращения убытков:</div>';
+                        topNegative.forEach(function (e) {
+                            html += '<div style="font-size:12px;padding:2px 0;">● Сократить <b>' + e.label + '</b> — эффект ~' + formatValue(Math.abs(e.profitDelta) * 10) + ' при -10%</div>';
+                        });
+                    }
+
+                    panel.innerHTML = html;
+                } else {
+                    panel.style.display = 'none';
+                    this.textContent = '▶ АНАЛИЗ И РЕКОМЕНДАЦИИ';
+                }
+            });
+
+            // Применить изменения из таблицы
+            document.getElementById('btn-apply-table').addEventListener('click', function () {
+                if (!graph) { notify('Сначала загрузите модель', true); return; }
+                var inputs = document.querySelectorAll('.table-input');
+                var changed = 0;
+                inputs.forEach(function (inp) {
+                    var nodeId = inp.dataset.nodeId;
+                    var node = graph.nodes[nodeId];
+                    if (node) {
+                        var newVal = parseFloat(unformatInputValue(inp.value));
+                        if (!isNaN(newVal) && node.value !== newVal) {
+                            node.value = newVal;
+                            changed++;
+                        }
+                    }
+                });
+                if (changed > 0) {
+                    graph.compute();
+                    updateStatusBar('Применено ' + changed + ' изменений, модель пересчитана');
+                    notify('Применено ' + changed + ' изменений');
+                    renderAll();
+                    saveCurrentModel();
+                } else {
+                    notify('Нет изменений для применения');
+                }
+            });
+
+            // Кнопка ВЫЧИСЛИТЬ на вкладке ДАННЫЕ
+            document.getElementById('btn-compute-data').addEventListener('click', runCompute);
+
+
+            // Календарь денежного потока
+            document.getElementById('btn-run-calendar').addEventListener('click', function () {
+                if (!graph) {
+                    notify('Сначала загрузите модель', true);
+                    return;
+                }
+                buildCalendar();
+            });
+
+
+            // Применить настройки компании
+            document.getElementById('btn-apply-company').addEventListener('click', function () {
+                if (!graph) { notify('Сначала загрузите модель', true); return; }
+                if (!graph.company) graph.company = {};
+
+                var taxSystem = document.getElementById('company-tax-system').value;
+                graph.company.tax_system = taxSystem;
+                graph.company.nds_rate = parseFloat(document.getElementById('company-nds-rate').value);
+                graph.company.profit_tax_rate = parseFloat(document.getElementById('company-profit-tax-rate').value);
+                graph.company.insurance_rate = parseFloat(document.getElementById('company-insurance-rate').value);
+                graph.company.receivables_days = parseInt(document.getElementById('company-receivables-days').value) || 30;
+
+                if (graph.nodes['TAX_RATE']) {
+                    graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
+                }
+
+                saveCurrentModel();
+                var statusEl = document.getElementById('company-status');
+                if (statusEl) statusEl.textContent = 'Настройки применены.';
+                notify('Параметры компании сохранены');
+                updateStatusBar('Настройки компании обновлены');
+                notify('Параметры компании сохранены');
+            });
+            // Сворачивание расширенных параметров
+            document.getElementById('toggle-extended').addEventListener('click', function () {
+                var el = document.getElementById('table-inputs-ext');
+                var tog = document.getElementById('toggle-extended');
+                if (el.style.display === 'none') { el.style.display = ''; tog.textContent = '▼ РАСШИРЕННЫЕ ПАРАМЕТРЫ'; }
+                else { el.style.display = 'none'; tog.textContent = '▶ РАСШИРЕННЫЕ ПАРАМЕТРЫ'; }
+            });
+            document.getElementById('toggle-ext-external').addEventListener('click', function () {
+                var el = document.getElementById('table-external-ext');
+                var tog = document.getElementById('toggle-ext-external');
+                if (el.style.display === 'none') { el.style.display = ''; tog.textContent = '▼ РАСШИРЕННЫЕ ВНЕШНИЕ'; }
+                else { el.style.display = 'none'; tog.textContent = '▶ РАСШИРЕННЫЕ ВНЕШНИЕ'; }
+            });
+            document.getElementById('toggle-full-table').addEventListener('click', function () {
+                var el = document.getElementById('full-table-container');
+                var tog = document.getElementById('toggle-full-table');
+                if (el.style.display === 'none') { el.style.display = ''; tog.textContent = '▼ ПОЛНАЯ ТАБЛИЦА'; }
+                else { el.style.display = 'none'; tog.textContent = '▶ ПОЛНАЯ ТАБЛИЦА'; }
+            });
+
+            // Копировать таблицу
+            document.getElementById('btn-copy-table').addEventListener('click', function () {
+                var text = '';
+                document.querySelectorAll('#panel-data table').forEach(function (t) {
+                    t.querySelectorAll('tr').forEach(function (tr) {
+                        var row = [];
+                        tr.querySelectorAll('th,td').forEach(function (td) { row.push(td.textContent.trim()); });
+                        text += row.join('\t') + '\n';
+                    });
+                    text += '\n';
+                });
+                navigator.clipboard.writeText(text).then(function () {
+                    notify('Таблица скопирована в буфер обмена');
+                });
+            });
+            // ==================== ИНВЕСТИЦИИ ====================
+            var savedInvestments = null;
+            try {
+                savedInvestments = localStorage.getItem('sigmaflow_investments');
+            } catch (e) { }
+
+            function initInvestments() {
+                if (!graph) return;
+                if (!graph.investments) graph.investments = [];
+                if (savedInvestments && graph.investments.length === 0) {
+                    try { graph.investments = JSON.parse(savedInvestments); } catch (e) { }
+                }
+                renderInvestments();
+            }
+
+            function saveInvestments() {
+                localStorage.setItem('sigmaflow_investments', JSON.stringify(graph.investments || []));
+                // Обновить узел CAPEX в модели
+                if (graph && graph.nodes['CAPEX']) {
+                    var total = 0;
+                    (graph.investments || []).forEach(function (inv) { total += inv.cost; });
+                    graph.nodes['CAPEX'].value = total;
+                }
+                renderInvestments();
+                saveCurrentModel();
+            }
+
+
+            window.renderInvestments = function () {
+                var list = document.getElementById('investments-list');
+                var total = 0;
+                var html = '<table><thead><tr><th>ПРОЕКТ</th><th>СТОИМОСТЬ</th><th>СТАРТ</th><th>ГРАФИК</th><th>СТАТУС</th><th></th></tr></thead><tbody>';
+                var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+                (graph.investments || []).forEach(function (inv, idx) {
+                    total += inv.cost;
+                    html += '<tr>';
+                    html += '<td>' + inv.name + '</td>';
+                    html += '<td class="value-cell" style="text-align:center;">' + formatValue(inv.cost) + '</td>';
+                    html += '<td style="text-align:center;">' + months[inv.start || 0] + '</td>';
+                    html += '<td style="text-align:center;">' + (inv.schedule || []).map(function (v) { return formatValue(v); }).join(' / ') + '</td>';
+                    html += '<td>' + (inv.status || 'plan') + '</td>';
+                    html += '<td><button onclick="deleteInvestment(' + idx + ')" style="font-size:10px;padding:2px 6px;">X</button></td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                list.innerHTML = html || 'Нет инвестиционных проектов';
+                var capexEl = document.getElementById('capex-total');
+                if (capexEl) capexEl.textContent = formatValue(total);
+            }
+
+            window.deleteInvestment = function (idx) {
+                if (!confirm('Удалить проект «' + (graph.investments[idx] ? graph.investments[idx].name : '') + '»?')) return;
+                graph.investments.splice(idx, 1);
+                saveCurrentModel();
+                window.renderInvestments();
+            };
+
+            document.getElementById('btn-add-investment').addEventListener('click', function () {
+                document.getElementById('investment-form').style.display = 'block';
+                document.getElementById('inv-name').value = '';
+                document.getElementById('inv-cost').value = '';
+                document.getElementById('inv-payments-count').value = 1;
+                updateInvSchedule();
+            });
+
+            document.getElementById('btn-cancel-investment').addEventListener('click', function () {
+                document.getElementById('investment-form').style.display = 'none';
+            });
+
+            document.getElementById('inv-cost').addEventListener('input', function () {
+                updateInvSchedule();
+            });
+
+            document.getElementById('btn-save-investment').addEventListener('click', function () {
+                var name = document.getElementById('inv-name').value;
+                var cost = parseFloat(document.getElementById('inv-cost').value);
+                var start = parseInt(document.getElementById('inv-start-month').value);
+                var count = parseInt(document.getElementById('inv-payments-count').value);
+                var affects = 'FIXED_ASSETS';
+                var schedule = [];
+                var inputs = document.querySelectorAll('.inv-schedule-input');
+                inputs.forEach(function (inp) { schedule.push(parseFloat(inp.value) || 0); });
+                if (!name || isNaN(cost)) { notify('Заполните название и стоимость', true); return; }
+                if (!graph) { notify('Модель не загружена', true); return; }
+                if (!graph.investments) graph.investments = [];
+                graph.investments.push({ name: name, cost: cost, start: start, schedule: schedule, affects: affects, status: 'planned' });
+                saveInvestments();
+                document.getElementById('investment-form').style.display = 'none';
+                notify('Проект добавлен');
+            });
+
+            window.updateInvSchedule = function () {
+                var count = parseInt(document.getElementById('inv-payments-count').value);
+                var cost = parseFloat(document.getElementById('inv-cost').value) || 0;
+                var perPayment = Math.round(cost / count);
+                var html = '';
+                for (var i = 0; i < count; i++) {
+                    html += '<input type="number" class="inv-schedule-input" value="' + perPayment + '" step="1000" style="width:100px;margin-right:4px;">';
+                }
+                document.getElementById('inv-schedule-inputs').innerHTML = html;
+            };
+
+            // ==================== КРЕДИТЫ ====================
+            var savedCredits = null;
+            try {
+                savedCredits = localStorage.getItem('sigmaflow_credits');
+            } catch (e) { }
+
+            function initCredits() {
+                if (!graph) return;
+                if (!graph.credits) graph.credits = [];
+                if (savedCredits && graph.credits.length === 0) {
+                    try { graph.credits = JSON.parse(savedCredits); } catch (e) { }
+                }
+                renderCredits();
+            }
+
+            function saveCredits() {
+                localStorage.setItem('sigmaflow_credits', JSON.stringify(graph.credits || []));
+                // Обновить узлы модели
+                if (graph) {
+                    var total = 0, monthly = 0;
+                    (graph.credits || []).forEach(function (cr) {
+                        total += cr.amount;
+                        monthly += cr.monthlyPayment || 0;
+                    });
+                    if (graph.nodes['LOANS']) graph.nodes['LOANS'].value = total;
+                    if (graph.nodes['LOAN_REPAYMENT']) graph.nodes['LOAN_REPAYMENT'].value = monthly;
+                    // Обновить INTEREST — годовые проценты
+                    var yearlyInterest = 0;
+                    (graph.credits || []).forEach(function (cr) {
+                        yearlyInterest += cr.amount * cr.rate;
+                    });
+                    if (graph.nodes['INTEREST']) {
+                        // INTEREST вычисляется формулой LOANS * LOAN_RATE — её не трогаем
+                        // Но если формулы нет — зададим вручную
+                    }
+                }
+                renderCredits();
+                saveCurrentModel();
+            }
+
+            window.renderCredits = function () {
+                var list = document.getElementById('credits-list');
+                var total = 0;
+                var monthly = 0;
+                var html = '<table><thead><tr><th>КРЕДИТ</th><th>БАНК</th><th>СУММА</th><th>СТАВКА</th><th>ПЛАТЁЖ/МЕС</th><th></th></tr></thead><tbody>';
+                (graph.credits || []).forEach(function (cr, idx) {
+                    total += cr.amount;
+                    monthly += cr.monthlyPayment || 0;
+                    html += '<tr>';
+                    html += '<td>' + cr.name + '</td>';
+                    html += '<td>' + (cr.bank || '') + '</td>';
+                    html += '<td class="value-cell" style="text-align:center;">' + formatValue(cr.amount) + '</td>';
+                    html += '<td class="value-cell" style="text-align:center;">' + (cr.rate ? (cr.rate * 100).toFixed(1) + '%' : '') + '</td>';
+                    html += '<td class="value-cell" style="text-align:center;">' + formatValue(cr.monthlyPayment) + '</td>';
+                    html += '<td><button onclick="deleteCredit(' + idx + ')" style="font-size:10px;padding:2px 6px;">X</button></td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                list.innerHTML = html || 'Нет кредитов';
+                var loansEl = document.getElementById('loans-total');
+                if (loansEl) loansEl.textContent = formatValue(total);
+                var monthlyEl = document.getElementById('loans-monthly');
+                if (monthlyEl) monthlyEl.textContent = formatValue(monthly);
+                if (graph.nodes['LOANS']) graph.nodes['LOANS'].value = total;
+                if (graph.nodes['LOAN_REPAYMENT']) graph.nodes['LOAN_REPAYMENT'].value = monthly;
+            }
+
+            window.deleteCredit = function (idx) {
+                if (!confirm('Удалить кредит «' + (graph.credits[idx] ? graph.credits[idx].name : '') + '»?')) return;
+                graph.credits.splice(idx, 1);
+                saveCurrentModel();
+                window.renderCredits();
+            };
+
+            document.getElementById('btn-add-credit').addEventListener('click', function () {
+                document.getElementById('credit-form').style.display = 'block';
+                document.getElementById('cr-name').value = '';
+                document.getElementById('cr-bank').value = '';
+                document.getElementById('cr-amount').value = '';
+                document.getElementById('cr-rate').value = '';
+                document.getElementById('cr-term').value = '';
+                document.getElementById('cr-monthly-payment').value = '';
+            });
+
+            document.getElementById('btn-cancel-credit').addEventListener('click', function () {
+                document.getElementById('credit-form').style.display = 'none';
+            });
+
+            document.getElementById('btn-save-credit').addEventListener('click', function () {
+                var name = document.getElementById('cr-name').value;
+                var bank = document.getElementById('cr-bank').value;
+                var amount = parseFloat(document.getElementById('cr-amount').value);
+                var rate = parseFloat(document.getElementById('cr-rate').value) / 100;
+                var term = parseInt(document.getElementById('cr-term').value);
+                var rateType = 'fixed';
+                var repaymentType = document.getElementById('cr-repayment-type').value;
+                if (!name || isNaN(amount) || isNaN(rate) || isNaN(term)) { notify('Заполните все поля', true); return; }
+                if (!graph) { notify('Модель не загружена', true); return; }
+                if (!graph.credits) graph.credits = [];
+                var monthlyRate = rate / 12;
+                var monthlyPayment;
+                if (repaymentType === 'annuity') {
+                    monthlyPayment = amount * (monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1);
+                } else {
+                    monthlyPayment = amount / term + amount * monthlyRate;
+                }
+                var startMonth = parseInt(document.getElementById('cr-start-month').value) || 0;
+                graph.credits.push({
+                    name: name, bank: bank, amount: amount, rate: rate, term: term,
+                    rateType: rateType, repaymentType: repaymentType,
+                    monthlyPayment: Math.round(monthlyPayment),
+                    startMonth: startMonth
+                });
+                saveCredits();
+                document.getElementById('credit-form').style.display = 'none';
+                notify('Кредит добавлен');
+            });
+
+            window.updateCreditInfo = function () {
+                var amount = parseFloat(unformatInputValue(document.getElementById('cr-amount').value)) || 0;
+                var rate = (parseFloat(unformatInputValue(document.getElementById('cr-rate').value)) || 0) / 100;
+                var term = parseInt(document.getElementById('cr-term').value) || 1;
+                var type = document.getElementById('cr-repayment-type').value;
+                var monthlyRate = rate / 12;
+                var payment;
+                if (type === 'annuity') {
+                    if (monthlyRate > 0 && term > 0) {
+                        payment = amount * (monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1);
+                    } else {
+                        payment = amount / term;
+                    }
+                } else {
+                    payment = amount / term + amount * monthlyRate;
+                }
+                document.getElementById('cr-monthly-payment').value = Math.round(payment) || 0;
+            };
+
+            document.getElementById('select-company').addEventListener('change', function () {
+                var id = this.value;
+                if (!id) return;
+                if (loadCompany(id)) {
+                    graph.compute();
+                    elProjectName.textContent = graph.name;
+                    renderAll();
+                    window.renderInvestments();
+                    window.renderCredits();
+                    refreshCompanyList();
+                    // Обновить интерфейс НАСТРОЕК
+                    if (graph.company) {
+                        if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
+                        if (graph.company.nds_rate !== undefined) setSelectByValue('company-nds-rate', graph.company.nds_rate);
+                        if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
+                        if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
+                        if (graph.company.receivables_days !== undefined) document.getElementById('company-receivables-days').value = graph.company.receivables_days;
+                    }
+                    updateStatusBar('Компания загружена');
+                }
+            });
+
+            document.getElementById('btn-new-company').addEventListener('click', function () {
+                showSetupWizard();
+            });
+
+            document.addEventListener('click', function (e) {
+                if (e.target.classList.contains('graph-depth-btn')) {
+                    document.querySelectorAll('.graph-depth-btn').forEach(function (b) { b.classList.remove('active'); });
+                    e.target.classList.add('active');
+                    graphDepth = parseInt(e.target.dataset.depth);
+                    if (currentTracedNode && graph) {
+                        renderTraceGraph(currentTracedNode, graphDepth);
+                    }
+                }
+            });
+
+            document.getElementById('btn-full-graph').addEventListener('click', function () {
+                var container = document.getElementById('graph-container');
+                if (container.style.display === 'none') {
+                    container.style.display = 'block';
+                    this.textContent = 'СКРЫТЬ ГРАФ';
+                } else {
+                    container.style.display = 'none';
+                    this.textContent = 'ПОКАЗАТЬ ГРАФ';
+                }
+            });
+
+            // ==================== СЦЕНАРИИ ====================
+            if (!graph) graph = {};
+            if (!graph.scenarios) graph.scenarios = [];
+
+            function saveScenarios() {
+                if (graph && graph.scenarios) {
+                    localStorage.setItem('sigmaflow_scenarios_' + getCurrentCompanyId(), JSON.stringify(graph.scenarios));
+                }
+            }
+
+            function loadScenarios() {
+                var saved = localStorage.getItem('sigmaflow_scenarios_' + getCurrentCompanyId());
+                if (saved && graph) {
+                    graph.scenarios = JSON.parse(saved);
+                }
+            }
+
+            window.renderScenarios = function () {
+                loadScenarios();
+                if (!graph || !graph.scenarios) { graph.scenarios = []; }
+                var list = document.getElementById('scenarios-list');
+
+                // Считаем базовую прибыль
+                var baseProfit = (graph && graph.nodes && graph.nodes['NET_PROFIT']) ? graph.nodes['NET_PROFIT'].value : null;
+
+                var html = '<div style="margin-bottom:8px;font-size:12px;">Базовая прибыль: <span style="color:' + (baseProfit >= 0 ? 'var(--ok)' : 'var(--critical)') + ';font-weight:500;">' + formatValue(baseProfit) + '</span></div>';
+                html += '<table><thead><tr><th>СЦЕНАРИЙ</th><th>ОПИСАНИЕ</th><th>ПРИБЫЛЬ</th><th>ОТКЛ. ОТ БАЗЫ</th><th></th></tr></thead><tbody>';
+
+                (graph.scenarios || []).forEach(function (sc, idx) {
+                    var profit = computeScenario(sc);
+                    var diff = (profit !== null && baseProfit !== null) ? profit - baseProfit : null;
+                    var diffColor = diff === null ? 'var(--text-hint)' : (diff >= 0 ? 'var(--ok)' : 'var(--critical)');
+                    var diffText = diff === null ? '—' : (diff >= 0 ? '+' : '') + formatValue(diff);
+
+                    html += '<tr>';
+                    html += '<td>' + sc.name + '</td>';
+                    html += '<td>' + (sc.desc || '') + '</td>';
+                    html += '<td class="value-cell" style="color:' + (profit >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(profit) + '</td>';
+                    html += '<td class="value-cell" style="color:' + diffColor + ';">' + diffText + '</td>';
+                    html += '<td>';
+                    html += '<button onclick="applyScenario(' + idx + ')" style="font-size:10px;padding:2px 6px;">▶</button>';
+                    html += '<button onclick="deleteScenario(' + idx + ')" style="font-size:10px;padding:2px 6px;margin-left:2px;">X</button>';
+                    html += '</td>';
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                html += '<button id="btn-reset-scenario" style="margin-top:8px;font-size:11px;padding:4px 12px;">↺ СБРОСИТЬ К БАЗОВОЙ МОДЕЛИ</button>';
+                list.innerHTML = html || 'Нет сценариев. Создайте новый сценарий для стресс-теста.';
+
+                // Обработчик сброса
+                var resetBtn = document.getElementById('btn-reset-scenario');
+                if (resetBtn) {
+                    resetBtn.addEventListener('click', function () {
+                        loadCompany(getCurrentCompanyId());
+                        graph.compute();
+                        renderAll();
+                        window.renderInvestments();
+                        window.renderCredits();
+                        renderScenarios();
+                        refreshCompanyList();
+                        updateStatusBar('Модель сброшена к базовой');
+                        notify('Базовая модель восстановлена');
+                    });
+                }
+            };
+
+            function computeScenario(sc) {
+                if (!graph || !graph.nodes || !sc) return null;
+                // Сохраняем оригинальные значения
+                var saved = {};
+                (sc.shocks || []).forEach(function (shock) {
+                    var n = graph.nodes[shock.node];
+                    if (n) {
+                        saved[shock.node] = n.value;
+                        n.value = shock.value;
+                    }
+                });
+                // Пересчитываем
+                graph.compute();
+                var profit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : null;
+                // Возвращаем оригинальные значения
+                Object.keys(saved).forEach(function (key) {
+                    if (graph.nodes[key]) graph.nodes[key].value = saved[key];
+                });
+                graph.compute();
+                return profit;
+            }
+
+            window.applyScenario = function (idx) {
+                var sc = graph.scenarios[idx];
+                if (!sc) return;
+                (sc.shocks || []).forEach(function (shock) {
+                    var n = graph.nodes[shock.node];
+                    if (n) n.value = shock.value;
+                });
+                graph.compute();
+                renderAll();
+                updateStatusBar('Применён сценарий: ' + sc.name);
+                notify('Сценарий «' + sc.name + '» применён');
+            };
+
+            window.deleteScenario = function (idx) {
+                if (!confirm('Удалить сценарий «' + (graph.scenarios[idx] ? graph.scenarios[idx].name : '') + '»?')) return;
+                graph.scenarios.splice(idx, 1);
+                saveScenarios();
+                renderScenarios();
+            };
+
+            document.getElementById('btn-add-scenario').addEventListener('click', function () {
+                document.getElementById('scenario-form').style.display = 'block';
+                document.getElementById('sc-name').value = '';
+                document.getElementById('sc-desc').value = '';
+                document.getElementById('scenario-shocks').innerHTML = '';
+                addShockRow();
+            });
+
+            document.getElementById('btn-cancel-scenario').addEventListener('click', function () {
+                document.getElementById('scenario-form').style.display = 'none';
+            });
+
+            document.getElementById('btn-add-shock').addEventListener('click', function () {
+                addShockRow();
+            });
+
+            function addShockRow() {
+                var container = document.getElementById('scenario-shocks');
+                var html = '<div class="shock-row" style="display:flex;gap:8px;margin-bottom:4px;">';
+                html += '<select class="shock-node" style="flex:1;font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">';
+                if (graph && graph.nodes) {
+                    var nodeIds = Object.keys(graph.nodes).filter(function (k) {
+                        return graph.nodes[k].type === 'INPUT' || graph.nodes[k].type === 'EXTERNAL';
+                    }).sort();
+                    nodeIds.forEach(function (id) {
+                        html += '<option value="' + id + '">' + (graph.nodes[id].label || id) + ' (' + id + ')</option>';
+                    });
+                }
+                html += '</select>';
+                html += '<input type="number" class="shock-value" placeholder="Новое значение" step="any" style="width:150px;font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">';
+                html += '<button class="btn-remove-shock" style="font-size:10px;padding:2px 6px;">X</button>';
+                html += '</div>';
+                container.insertAdjacentHTML('beforeend', html);
+
+                container.lastElementChild.querySelector('.btn-remove-shock').addEventListener('click', function () {
+                    this.parentElement.remove();
+                });
+            }
+
+            document.getElementById('btn-save-scenario').addEventListener('click', function () {
+                var name = document.getElementById('sc-name').value.trim();
+                var desc = document.getElementById('sc-desc').value.trim();
+                if (!name) { notify('Введите название сценария', true); return; }
+
+                var shocks = [];
+                document.querySelectorAll('.shock-row').forEach(function (row) {
+                    var node = row.querySelector('.shock-node').value;
+                    var value = parseFloat(row.querySelector('.shock-value').value);
+                    var percentNodes = ['TAX_RATE', 'CB_RATE', 'BANK_SPREAD', 'INFLATION', 'DEFECT_RATE', 'ENGAGEMENT'];
+                    if (percentNodes.indexOf(node) >= 0) value = value / 100;
+                    if (node && !isNaN(value)) shocks.push({ node: node, value: value });
+                });
+
+                if (!graph.scenarios) graph.scenarios = [];
+                graph.scenarios.push({ name: name, desc: desc, shocks: shocks });
+                saveScenarios();
+                document.getElementById('scenario-form').style.display = 'none';
+                renderScenarios();
+                notify('Сценарий «' + name + '» сохранён');
+            });
+
+            function toggleSettingsSection(header) {
+                var arrow = header.querySelector('.section-arrow');
+                var section = header.nextElementSibling;
+                if (section.style.display === 'none') {
+                    section.style.display = 'block';
+                    arrow.textContent = '▼';
+                } else {
+                    section.style.display = 'none';
+                    arrow.textContent = '▶';
+                }
+            }
+
+            window.setSelectByValue = function (selectId, value) {
+                var el = document.getElementById(selectId);
+                if (!el) return;
+                var options = el.querySelectorAll('option');
+                var found = false;
+                options.forEach(function (o) {
+                    if (parseFloat(o.value) === value) {
+                        el.value = o.value;
+                        found = true;
+                    }
+                });
+                if (!found && value === 0) {
+                    options.forEach(function (o) {
+                        if (o.value === '0' || o.value === '0.0' || o.value === '0.00') {
+                            el.value = o.value;
+                        }
+                    });
+                }
+            }
+
+            // Загружаем сценарии при старте
+            loadScenarios();
+            window.renderScenarios();
+
+            document.getElementById('btn-delete-company').addEventListener('click', function () {
+                var currentId = getCurrentCompanyId();
+                if (!currentId) return;
+                if (!confirm('Удалить компанию «' + (graph ? graph.name : '') + '»? Все данные будут потеряны.')) return;
+
+                var companies = getAllCompanies();
+                delete companies[currentId];
+                saveAllCompanies(companies);
+
+                // Переключиться на другую компанию или показать мастер
+                var remaining = Object.keys(companies);
+                if (remaining.length > 0) {
+                    setCurrentCompanyId(remaining[0]);
+                    location.reload();
+                } else {
+                    localStorage.removeItem('sigmaflow_current_company');
+                    location.reload();
+                }
+            });
+
+            // Загружаем демо при старте
+            loadDemo();
+        });
+
+        var liveBaseValues = {};
+
+        function buildLiveModel() {
+            if (!graph) { notify('Сначала загрузите модель', true); return; }
+
+            var effects = graph.getMarginalEffects();
+            var top5 = effects.slice(0, 5);
+
+            // Сохраняем базовые значения
+            Object.keys(graph.nodes).forEach(function (key) {
+                liveBaseValues[key] = graph.nodes[key].value;
+            });
+
+            // Ползунки
+            var slidersHtml = '';
+            top5.forEach(function (e, idx) {
+                var min = e.min !== null ? e.min : e.currentValue * 0.5;
+                var max = e.max !== null ? e.max : e.currentValue * 1.5;
+                var step = e.step || (Math.abs(e.currentValue) / 100);
+
+                slidersHtml += '<div style="margin-bottom:8px;">';
+                slidersHtml += '<div style="font-size:14px;font-weight:500;margin-bottom:2px;">' + e.label + '</div>';
+                slidersHtml += '<div style="display:flex;align-items:center;gap:6px;">';
+                slidersHtml += '<span style="font-size:11px;color:var(--text-hint);min-width:60px;">' + formatInputValue(min) + '</span>';
+                slidersHtml += '<input type="range" id="live-slider-' + idx + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + e.currentValue + '" oninput="updateLiveModel()" style="flex:1;height:10px;accent-color:var(--accent);">';
+                slidersHtml += '<span style="font-size:11px;color:var(--text-hint);min-width:60px;text-align:right;">' + formatInputValue(max) + '</span>';
+                slidersHtml += '</div>';
+                slidersHtml += '<div style="text-align:center;font-size:16px;font-weight:700;margin-top:2px;" id="live-val-' + idx + '">' + formatInputValue(e.currentValue) + '</div>';
+                slidersHtml += '</div>';
+            });
+
+            document.getElementById('live-sliders').innerHTML = slidersHtml;
+
+            // Данные для каскада
+            window._liveEffects = effects;
+            window._liveTop5 = top5;
+
+            updateLiveModel();
+        }
+
+        function updateLiveModel() {
+            var top5 = window._liveTop5;
+            if (!top5) return;
+
+            // Применяем значения ползунков
+            top5.forEach(function (e, idx) {
+                var slider = document.getElementById('live-slider-' + idx);
+                if (slider && graph.nodes[e.node]) {
+                    graph.nodes[e.node].value = parseFloat(slider.value);
+                    document.getElementById('live-val-' + idx).textContent = formatInputValue(parseFloat(slider.value));
+                }
+            });
+
+            graph.compute();
+
+            top5.forEach(function (e, idx) {
+                var slider = document.getElementById('live-slider-' + idx);
+                var fill = document.getElementById('live-fill-' + idx);
+                if (slider && fill) {
+                    var min = parseFloat(slider.min);
+                    var max = parseFloat(slider.max);
+                    var val = parseFloat(slider.value);
+                    var pct = (val - min) / (max - min) * 100;
+                    fill.style.width = pct + '%';
+                }
+            });
+
+            // Каскад
+            var cascadeHtml = '';
+            top5.forEach(function (e) {
+                var newVal = graph.nodes[e.node].value;
+                var oldVal = liveBaseValues[e.node];
+                var delta = newVal - oldVal;
+                var pct = oldVal !== 0 ? (delta / Math.abs(oldVal) * 100).toFixed(1) : 0;
+                var color = delta >= 0 ? 'var(--ok)' : 'var(--critical)';
+
+                if (Math.abs(pct) > 0.1) {
+                    cascadeHtml += '<div style="margin-bottom:4px;">';
+                    cascadeHtml += '<span style="color:' + color + ';">▌</span> ';
+                    cascadeHtml += '<b>' + e.label + '</b>: ' + formatValue(oldVal) + ' → ' + formatValue(newVal);
+                    cascadeHtml += ' <span style="color:' + color + ';">(' + (delta >= 0 ? '+' : '') + formatValue(delta) + ', ' + (pct >= 0 ? '+' : '') + pct + '%)</span>';
+                    cascadeHtml += '</div>';
+                }
+            });
+
+            // Добавляем итоговый эффект
+            var newProfit = graph.nodes['NET_PROFIT'].value;
+            var oldProfit = liveBaseValues['NET_PROFIT'];
+            var profitDelta = newProfit - oldProfit;
+            var profitColor = profitDelta >= 0 ? 'var(--ok)' : 'var(--critical)';
+
+            cascadeHtml += '<div style="margin-top:8px;font-weight:500;">';
+            cascadeHtml += 'ПРИБЫЛЬ: ' + formatValue(oldProfit) + ' → <span style="color:' + profitColor + ';">' + formatValue(newProfit) + '</span>';
+            cascadeHtml += ' <span style="color:' + profitColor + ';">(' + (profitDelta >= 0 ? '+' : '') + formatValue(profitDelta) + ')</span>';
+            cascadeHtml += '</div>';
+
+            document.getElementById('live-cascade').innerHTML = cascadeHtml || 'Двигайте ползунки';
+
+            // Таблица ДО/ПОСЛЕ
+            var compNodes = ['REVENUE', 'COGS', 'GROSS_PROFIT', 'EBITDA', 'EBIT', 'EBT', 'NET_PROFIT', 'FCF', 'CASH'];
+            var compHtml = '';
+            compNodes.forEach(function (nid) {
+                var n = graph.nodes[nid];
+                if (!n) return;
+                var newVal = n.value;
+                var oldVal = liveBaseValues[nid] !== undefined ? liveBaseValues[nid] : newVal;
+                var delta = newVal - oldVal;
+                var dColor = delta >= 0 ? 'var(--ok)' : 'var(--critical)';
+
+                compHtml += '<tr>';
+                compHtml += '<td style="text-align:left;">' + (n.label || n.id) + '</td>';
+                compHtml += '<td class="value-cell" style="text-align:center;">' + formatValue(oldVal) + '</td>';
+                compHtml += '<td class="value-cell" style="text-align:center;">' + formatValue(newVal) + '</td>';
+                compHtml += '<td class="value-cell" style="text-align:center;color:' + dColor + ';">' + (delta >= 0 ? '+' : '') + formatValue(delta) + '</td>';
+                compHtml += '</tr>';
+            });
+            document.getElementById('live-comparison-body').innerHTML = compHtml;
+        }
+
+    </script>
+
+</body>
+
+</html>
