@@ -1258,9 +1258,9 @@
                 html += '<tr>';
                 html += '<td class="id-cell">' + (n.label || n.id) + ' <span style="color:var(--text-hint);font-size:10px;">(' + n.id + ')</span></td>';
                 html += '<td>' + n.type + '</td>';
-                html += '<td class="value-cell">' + formatValue(n.value) + '</td>';
-                html += '<td class="value-cell">' + formatValue(n.min) + '</td>';
-                html += '<td class="value-cell">' + formatValue(n.max) + '</td>';
+                html += '<td class="value-cell" style="text-align:center;">' + formatValue(n.value) + '</td>';
+                html += '<td class="value-cell" style="text-align:center;">' + formatValue(n.min) + '</td>';
+                html += '<td class="value-cell" style="text-align:center;">' + formatValue(n.max) + '</td>';
                 html += '<td>' + n.source + '</td>';
                 html += '</tr>';
             });
@@ -1735,16 +1735,15 @@
                     this.textContent = '▼ АНАЛИЗ И РЕКОМЕНДАЦИИ';
 
                     var html = '<div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">ПРЕДЕЛЬНЫЕ ЭФФЕКТЫ (изменение прибыли при +1% параметра)</div>';
-                    html += '<table style="width:100%;table-layout:fixed;"><thead><tr><th>ПАРАМЕТР</th><th>ТЕКУЩЕЕ</th><th>Δ ПРИБЫЛИ</th><th>ЭЛАСТИЧНОСТЬ</th></tr></thead><tbody>';
-
+                    html += '<table style="width:100%;table-layout:fixed;font-size:11px;"><thead><tr><th style="width:45%;">ПАРАМЕТР</th><th style="width:20%;">ТЕКУЩЕЕ</th><th style="width:20%;">Δ ПРИБЫЛИ</th><th style="width:15%;">ВЛИЯНИЕ</th></tr></thead><tbody>';
                     effects.slice(0, 10).forEach(function (e) {
                         var sign = e.profitDelta >= 0 ? '+' : '';
                         var color = e.profitDelta >= 0 ? 'var(--ok)' : 'var(--critical)';
                         html += '<tr>';
-                        html += '<td>' + e.label + '</td>';
-                        html += '<td class="value-cell">' + formatValue(e.currentValue) + '</td>';
-                        html += '<td class="value-cell" style="color:' + color + ';">' + sign + formatValue(e.profitDelta) + '</td>';
-                        html += '<td class="value-cell">' + (e.impactPct) + '%</td>';
+                        html += '<td style="word-break:break-word;">' + e.label + '</td>';
+                        html += '<td class="value-cell" style="text-align:center;">' + formatValue(e.currentValue) + '</td>';
+                        html += '<td class="value-cell" style="text-align:center;color:' + color + ';">' + sign + formatValue(e.profitDelta) + '</td>';
+                        html += '<td class="value-cell" style="text-align:center;">' + (e.impactPct) + '%</td>';
                         html += '</tr>';
                     });
                     
@@ -1946,9 +1945,9 @@
                     total += inv.cost;
                     html += '<tr>';
                     html += '<td>' + inv.name + '</td>';
-                    html += '<td class="value-cell">' + formatValue(inv.cost) + '</td>';
-                    html += '<td>' + months[inv.start] + '</td>';
-                    html += '<td>' + (inv.schedule || []).map(function (v) { return formatValue(v); }).join(' / ') + '</td>';
+                    html += '<td class="value-cell" style="text-align:center;">' + formatValue(inv.cost) + '</td>';
+                    html += '<td style="text-align:center;">' + months[inv.start || 0] + '</td>';
+                    html += '<td style="text-align:center;">' + (inv.schedule || []).map(function (v) { return formatValue(v); }).join(' / ') + '</td>';
                     html += '<td>' + (inv.status || 'plan') + '</td>';
                     html += '<td><button onclick="deleteInvestment(' + idx + ')" style="font-size:10px;padding:2px 6px;">X</button></td>';
                     html += '</tr>';
@@ -2062,9 +2061,9 @@
                     html += '<tr>';
                     html += '<td>' + cr.name + '</td>';
                     html += '<td>' + (cr.bank || '') + '</td>';
-                    html += '<td class="value-cell">' + formatValue(cr.amount) + '</td>';
-                    html += '<td class="value-cell">' + (cr.rate * 100).toFixed(1) + '%</td>';
-                    html += '<td class="value-cell">' + formatValue(cr.monthlyPayment) + '</td>';
+                    html += '<td class="value-cell" style="text-align:center;">' + formatValue(cr.amount) + '</td>';
+                    html += '<td class="value-cell" style="text-align:center;">' + (cr.rate ? (cr.rate * 100).toFixed(1) + '%' : '') + '</td>';
+                    html += '<td class="value-cell" style="text-align:center;">' + formatValue(cr.monthlyPayment) + '</td>';
                     html += '<td><button onclick="deleteCredit(' + idx + ')" style="font-size:10px;padding:2px 6px;">X</button></td>';
                     html += '</tr>';
                 });
