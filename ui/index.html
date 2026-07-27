@@ -1761,6 +1761,11 @@
                     document.getElementById('planfact-periods').innerHTML = 'Нет загруженных данных.';
                     return;
                 }
+                if (!graph || !graph.history || graph.history.length === 0) {
+                    document.getElementById('planfact-periods').innerHTML = '';
+                    document.getElementById('planfact-comparison').innerHTML = '<div style="color:var(--text-hint);padding:24px;text-align:center;">Загрузите CSV-файл с фактическими данными для сравнения с планом.<br><br>1. Скачайте шаблон<br>2. Заполните данные<br>3. Загрузите файл</div>';
+                    return;
+                }
 
                 // Список периодов
                 var ph = '<select id="planfact-period-select" onchange="showPlanFactComparison()" style="font-size:13px;padding:4px 8px;">';
