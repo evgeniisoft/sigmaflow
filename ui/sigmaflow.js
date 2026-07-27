@@ -667,8 +667,10 @@ Graph.prototype.importFactFromCSV = function (csvText) {
             periodIndex = i;
         } else {
             // Извлекаем ID из формата "REVENUE (Выручка)" или просто "REVENUE"
-            var match = h.match(/^(\w+)/);
-            var nodeId = match ? match[1] : h;
+            // Извлекаем ID: "NET_PROFIT (...)" или NET_PROFIT (...)
+            var cleanH = h.replace(/^"|"$/g, '').replace(/""/g, '"');
+            var match = cleanH.match(/^(\w+)/);
+            var nodeId = match ? match[1] : cleanH;
             if (self.nodes[nodeId]) {
                 columnMap[i] = nodeId;
             }
@@ -741,7 +743,8 @@ Graph.prototype.generateCSVTemplate = function () {
     Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
         if (n.type === 'INPUT' || n.type === 'EXTERNAL' || n.type === 'TARGET' || n.id === 'REVENUE' || n.id === 'COGS' || n.id === 'EBITDA' || n.id === 'NET_PROFIT') {
-            headers.push(n.id + ' (' + (n.label || n.id) + ')');
+            var cleanLabel = (n.label || n.id).replace(/"/g, '');
+            headers.push(n.id + ' (' + cleanLabel + ')');
             inputIds.push(n.id);
             // Пример значения: текущее значение узла, если есть
             var v = n.value !== null && n.value !== undefined ? n.value : 0;
