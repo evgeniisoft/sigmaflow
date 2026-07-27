@@ -735,6 +735,7 @@ Graph.prototype.generateCSVTemplate = function () {
     var self = this;
     var sep = ';';
     var headers = ['period'];
+    var example = ['2026-07'];
     var inputIds = [];
 
     Object.keys(self.nodes).forEach(function (key) {
@@ -742,10 +743,17 @@ Graph.prototype.generateCSVTemplate = function () {
         if (n.type === 'INPUT' || n.type === 'EXTERNAL' || n.type === 'TARGET' || n.id === 'REVENUE' || n.id === 'COGS' || n.id === 'EBITDA' || n.id === 'NET_PROFIT') {
             headers.push(n.id + ' (' + (n.label || n.id) + ')');
             inputIds.push(n.id);
+            // Пример значения: текущее значение узла, если есть
+            var v = n.value !== null && n.value !== undefined ? n.value : 0;
+            if (typeof v === 'number') {
+                example.push(v % 1 === 0 ? v.toString() : v.toFixed(2));
+            } else {
+                example.push('0');
+            }
         }
     });
 
-    return headers.join(sep) + '\n';
+    return '\uFEFF' + headers.join(sep) + '\n' + example.join(sep) + '\n';
 };
 
 Graph.prototype.getPlanFactComparison = function (period) {
