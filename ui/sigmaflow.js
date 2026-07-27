@@ -647,6 +647,135 @@ Graph.prototype.getMarginalEffects = function() {
     return effects;
 };
 
+Graph.prototype.importFactFromCSV = function (csvText) {
+    var self = this;
+    var lines = csvText.split('\n').filter(function (l) { return l.trim(); });
+    if (lines.length < 2) return { error: 'Файл пуст или содержит только заголовки' };
+
+    // Определяем разделитель
+    var sep = ',';
+    if (lines[0].indexOf(';') >= 0) sep = ';';
+    if (lines[0].indexOf('\t') >= 0) sep = '\t';
+
+    // Парсим заголовки
+    var headers = lines[0].split(sep).map(function (h) { return h.trim(); });
+    var columnMap = {}; // index -> nodeId
+    var periodIndex = -1;
+
+    headers.forEach(function (h, i) {
+        if (h.toLowerCase() === 'period') {
+            periodIndex = i;
+        } else {
+            // Извлекаем ID из формата "REVENUE (Выручка)" или просто "REVENUE"
+            var match = h.match(/^(\w+)/);
+            var nodeId = match ? match[1] : h;
+            if (self.nodes[nodeId]) {
+                columnMap[i] = nodeId;
+            }
+        }
+    });
+
+    if (periodIndex === -1) return { error: 'Не найден столбец period' };
+    if (Object.keys(columnMap).length === 0) return { error: 'Не найдено ни одного узла модели в заголовках' };
+
+    // Инициализируем history
+    if (!self.history) self.history = [];
+
+    var imported = 0;
+    for (var l = 1; l < lines.length; l++) {
+        var values = lines[l].split(sep).map(function (v) { return v.trim(); });
+        var period = values[periodIndex];
+        if (!period) continue;
+
+        // Сохраняем план (текущие значения модели)
+        var planEntry = {};
+        Object.keys(columnMap).forEach(function (ci) {
+            var nodeId = columnMap[ci];
+            var node = self.nodes[nodeId];
+            if (node && values[ci] !== '') {
+                planEntry[nodeId] = node.value;
+            }
+        });
+
+        // Применяем фактические значения
+        var factEntry = {};
+        Object.keys(columnMap).forEach(function (ci) {
+            var nodeId = columnMap[ci];
+            var node = self.nodes[nodeId];
+            if (node && values[ci] !== '' && values[ci] !== undefined) {
+                var v = parseFloat(values[ci].replace(',', '.'));
+                if (!isNaN(v)) {
+                    factEntry[nodeId] = v;
+                }
+            }
+        });
+
+        // Сохраняем в историю
+        var existing = self.history.filter(function (h) { return h.period === period; })[0];
+        if (existing) {
+            // Обновляем факт
+            Object.keys(factEntry).forEach(function (k) { existing.fact[k] = factEntry[k]; });
+        } else {
+            self.history.push({
+                period: period,
+                plan: planEntry,
+                fact: factEntry
+            });
+        }
+        imported++;
+    }
+
+    // Сортируем историю по периодам
+    self.history.sort(function (a, b) { return a.period.localeCompare(b.period); });
+
+    return { imported: imported, history: self.history };
+};
+
+Graph.prototype.generateCSVTemplate = function () {
+    var self = this;
+    var sep = ';';
+    var headers = ['period'];
+    var inputIds = [];
+
+    Object.keys(self.nodes).forEach(function (key) {
+        var n = self.nodes[key];
+        if (n.type === 'INPUT' || n.type === 'EXTERNAL' || n.type === 'TARGET' || n.id === 'REVENUE' || n.id === 'COGS' || n.id === 'EBITDA' || n.id === 'NET_PROFIT') {
+            headers.push(n.id + ' (' + (n.label || n.id) + ')');
+            inputIds.push(n.id);
+        }
+    });
+
+    return headers.join(sep) + '\n';
+};
+
+Graph.prototype.getPlanFactComparison = function (period) {
+    var self = this;
+    if (!self.history) return null;
+
+    var entry = self.history.filter(function (h) { return h.period === period; })[0];
+    if (!entry) return null;
+
+    var comparison = [];
+    Object.keys(entry.plan).forEach(function (nodeId) {
+        var n = self.nodes[nodeId];
+        var planVal = entry.plan[nodeId];
+        var factVal = entry.fact[nodeId] !== undefined ? entry.fact[nodeId] : null;
+        var delta = factVal !== null && planVal !== null ? factVal - planVal : null;
+        var deltaPct = delta !== null && planVal !== 0 ? (delta / Math.abs(planVal) * 100) : null;
+
+        comparison.push({
+            node: nodeId,
+            label: n ? n.label : nodeId,
+            plan: planVal,
+            fact: factVal,
+            delta: delta,
+            deltaPct: deltaPct
+        });
+    });
+
+    return comparison;
+};
+
 // Вспомогательные методы
 Graph.prototype._val = function (id) {
     var n = this.nodes[id];
