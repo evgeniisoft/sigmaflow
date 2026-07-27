@@ -278,11 +278,6 @@ td.id-cell {
     font-weight: 500;
 }
 
-td.value-cell {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-}
-
 tr:hover td {
     background: rgba(90, 159, 212, 0.04);
 }
@@ -444,6 +439,7 @@ footer {
     color: var(--critical);
 }
 
-.value-cell {
+td.value-cell {
     text-align: center;
+    font-variant-numeric: tabular-nums;
 }
