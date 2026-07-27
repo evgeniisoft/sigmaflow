@@ -439,7 +439,3 @@ footer {
     color: var(--critical);
 }
 
-table td.value-cell {
-    text-align: center !important;
-    font-variant-numeric: tabular-nums;
-}
