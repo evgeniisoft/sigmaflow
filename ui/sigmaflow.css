@@ -3,7 +3,9 @@
    Тёмная тема, моноширинная типографика, строгий дизайн
    ============================================================ */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -198,6 +200,7 @@ main {
     width: 100%;
     font-size: 11px;
 }
+
 #dashboard-analysis-panel td {
     word-break: break-word;
 }
@@ -439,4 +442,8 @@ footer {
 .notification.error {
     border-color: var(--critical);
     color: var(--critical);
+}
+
+.value-cell {
+    text-align: center;
 }
