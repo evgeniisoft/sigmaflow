@@ -257,6 +257,7 @@
                     <button id="btn-download-template" class="primary">СКАЧАТЬ ШАБЛОН CSV</button>
                     <input type="file" id="file-fact-import" accept=".csv" style="display:none;">
                     <button id="btn-import-fact" class="primary">ЗАГРУЗИТЬ ФАКТ</button>
+                    <button id="btn-calibrate" class="primary" style="margin-left:12px;">КАЛИБРОВАТЬ</button>
                 </div>
                 <div id="planfact-periods" style="margin-bottom:16px;"></div>
                 <div id="planfact-comparison"></div>
@@ -1736,6 +1737,47 @@
 
             document.getElementById('btn-save').addEventListener('click', saveProject);
             document.getElementById('btn-run-diagnostics').addEventListener('click', runDiagnostics);
+            document.getElementById('btn-calibrate').addEventListener('click', function () {
+                if (!graph) return;
+                var results = graph.calibrate();
+                if (results.error) { notify(results.error, true); return; }
+
+                var html = '<table><thead><tr><th>СВЯЗЬ</th><th>БЫЛО</th><th>СТАЛО</th><th>R²</th><th>ТОЧЕК</th><th>ПРИМЕНИТЬ</th></tr></thead><tbody>';
+                results.forEach(function (r, idx) {
+                    var color = r.r2 >= 0.5 ? 'var(--ok)' : 'var(--warning)';
+                    html += '<tr>';
+                    html += '<td>' + r.from + ' → ' + r.to + '</td>';
+                    html += '<td class="value-cell">' + r.oldCoefficient.toFixed(2) + '</td>';
+                    html += '<td class="value-cell" style="color:' + color + ';">' + r.newCoefficient.toFixed(4) + '</td>';
+                    html += '<td class="value-cell">' + r.r2.toFixed(2) + '</td>';
+                    html += '<td class="value-cell">' + r.dataPoints + '</td>';
+                    html += '<td><input type="checkbox" class="calibrate-check" data-idx="' + idx + '" ' + (r.r2 >= 0.5 ? 'checked' : '') + '></td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table><button id="btn-apply-calibration" class="primary" style="margin-top:8px;">ПРИМЕНИТЬ ВЫБРАННЫЕ</button>';
+
+                document.getElementById('planfact-comparison').innerHTML = html;
+                window._calibrationResults = results;
+
+                document.getElementById('btn-apply-calibration').addEventListener('click', function () {
+                    var checkboxes = document.querySelectorAll('.calibrate-check');
+                    checkboxes.forEach(function (cb) {
+                        if (cb.checked) {
+                            var r = window._calibrationResults[parseInt(cb.dataset.idx)];
+                            // Найти ребро и обновить коэффициент
+                            graph.edges.forEach(function (edge) {
+                                if (edge.from === r.from && edge.to === r.to) {
+                                    edge.coefficient = r.newCoefficient;
+                                }
+                            });
+                        }
+                    });
+                    graph.compute();
+                    saveCurrentModel();
+                    renderAll();
+                    notify('Калибровка применена');
+                });
+            });
             document.getElementById('btn-download-template').addEventListener('click', function () {
                 if (!graph) return;
                 var csv = graph.generateCSVTemplate();
