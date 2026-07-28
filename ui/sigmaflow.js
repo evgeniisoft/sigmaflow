@@ -145,6 +145,8 @@ Graph.prototype.compute = function (iterations) {
         this._computeOnce();
     }
     this._savePlanForecast();
+    this.updateBalanceFromInvestments();
+    this.updateBalanceFromCredits();
 };
 
 Graph.prototype._savePlanForecast = function () {
@@ -168,6 +170,41 @@ Graph.prototype._savePlanForecast = function () {
                 self.planForecast.periods[period][key] = n.value;
             }
         });
+    }
+};
+
+Graph.prototype.updateBalanceFromInvestments = function () {
+    var self = this;
+    if (!self.investments) return;
+
+    var totalCapex = 0;
+    self.investments.forEach(function (inv) {
+        totalCapex += inv.cost || 0;
+    });
+
+    if (self.nodes['FIXED_ASSETS']) {
+        // FIXED_ASSETS = начальная стоимость + сумма инвестиций
+        var baseFA = self.nodes['FIXED_ASSETS_START'] ? self.nodes['FIXED_ASSETS_START'].value : (self.nodes['FIXED_ASSETS'].value || 0);
+        self.nodes['FIXED_ASSETS'].value = baseFA + totalCapex;
+    }
+};
+
+Graph.prototype.updateBalanceFromCredits = function () {
+    var self = this;
+    if (!self.credits) return;
+
+    var totalLoans = 0;
+    var totalRepayment = 0;
+    self.credits.forEach(function (cr) {
+        totalLoans += cr.amount || 0;
+        totalRepayment += (cr.amount || 0) / (cr.term || 12);
+    });
+
+    if (self.nodes['LOANS']) {
+        self.nodes['LOANS'].value = totalLoans;
+    }
+    if (self.nodes['LOAN_REPAYMENT']) {
+        self.nodes['LOAN_REPAYMENT'].value = totalRepayment;
     }
 };
 
