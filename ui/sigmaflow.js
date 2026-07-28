@@ -392,7 +392,7 @@ Graph.prototype.auditInvariants = function () {
     var ebit = self._val('EBIT');
     var da = self._val('DA');
     if (ebit && ebitda && da) {
-        check('I04', 'EBIT = EBITDA − DA', ebitda - da, ebit);
+        check('I04', 'EBIT = EBITDA + DA', ebitda + da, ebit);
     }
 
     // I05: NET_PROFIT = EBT - TAX
