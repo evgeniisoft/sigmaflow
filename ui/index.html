@@ -1844,41 +1844,61 @@
                     return;
                 }
 
-                // Список периодов
-                var ph = '<select id="planfact-period-select" onchange="showPlanFactComparison()" style="font-size:13px;padding:4px 8px;">';
-                graph.history.forEach(function (h) {
-                    ph += '<option value="' + h.period + '">' + h.period + '</option>';
-                });
-                ph += '</select>';
-                document.getElementById('planfact-periods').innerHTML = ph;
-                showPlanFactComparison();
-            }
+                // Сводная таблица по всем периодам с планом
+                var forecastHistory = graph.history.filter(function (h) { return h.plan !== null; });
+                var historicalCount = graph.history.length - forecastHistory.length;
 
-            function showPlanFactComparison() {
-                var sel = document.getElementById('planfact-period-select');
-                if (!sel) return;
-                var period = sel.value;
-                var comp = graph.getPlanFactComparison(period);
-                if (!comp) return;
+                var html = '';
 
-                var html = '<table><thead><tr><th>ПОКАЗАТЕЛЬ</th><th>ПЛАН</th><th>ФАКТ</th><th>Δ</th><th>Δ%</th></tr></thead><tbody>';
-                comp.forEach(function (r) {
-                    if (r.fact === null) return;
-                    var dColor = r.delta >= 0 ? 'var(--ok)' : 'var(--critical)';
-                    html += '<tr>';
-                    html += '<td>' + r.label + '</td>';
-                    html += '<td class="value-cell">' + formatValue(r.plan) + '</td>';
-                    html += '<td class="value-cell">' + formatValue(r.fact) + '</td>';
-                    html += '<td class="value-cell" style="color:' + dColor + ';">' + (r.delta >= 0 ? '+' : '') + formatValue(r.delta) + '</td>';
-                    html += '<td class="value-cell" style="color:' + dColor + ';">' + (r.deltaPct !== null ? (r.deltaPct >= 0 ? '+' : '') + r.deltaPct.toFixed(1) + '%' : '—') + '</td>';
-                    html += '</tr>';
-                });
-                html += '</tbody></table>';
+                // Исторические данные
+                if (historicalCount > 0) {
+                    html += '<div style="margin-bottom:8px;font-size:12px;color:var(--text-hint);">Исторические данные: ' + historicalCount + ' периодов (используйте для калибровки на вкладке КАЛИБРОВКА)</div>';
+                }
+
+                // Сводная таблица forecast-периодов
+                if (forecastHistory.length > 0) {
+                    html += '<div style="margin-bottom:8px;font-size:12px;">Сравнение план/факт (' + forecastHistory.length + ' периодов)</div>';
+                    html += '<div style="overflow-x:auto;"><table style="min-width:800px;"><thead><tr><th>ПЕРИОД</th><th>ПОКАЗАТЕЛЬ</th><th>ПЛАН</th><th>ФАКТ</th><th>Δ</th><th>Δ%</th></tr></thead><tbody>';
+
+                    var keyMetrics = ['REVENUE', 'COGS', 'NET_PROFIT', 'EBITDA', 'FCF', 'CASH'];
+
+                    forecastHistory.forEach(function (h) {
+                        var first = true;
+                        keyMetrics.forEach(function (nodeId) {
+                            var planVal = h.plan[nodeId];
+                            var factVal = h.fact[nodeId] !== undefined ? h.fact[nodeId] : null;
+                            if (planVal === undefined && factVal === null) return;
+
+                            var delta = factVal !== null && planVal !== undefined ? factVal - planVal : null;
+                            var deltaPct = delta !== null && planVal !== 0 ? (delta / Math.abs(planVal) * 100) : null;
+                            var dColor = delta === null ? 'var(--text-hint)' : (delta >= 0 ? 'var(--ok)' : 'var(--critical)');
+                            var n = graph.nodes[nodeId];
+                            var label = n ? (n.label || n.id) : nodeId;
+
+                            html += '<tr>';
+                            if (first) {
+                                html += '<td rowspan="' + keyMetrics.length + '" style="font-weight:500;">' + h.period + '</td>';
+                                first = false;
+                            }
+                            html += '<td>' + label + '</td>';
+                            html += '<td class="value-cell">' + formatValue(planVal) + '</td>';
+                            html += '<td class="value-cell">' + (factVal !== null ? formatValue(factVal) : '—') + '</td>';
+                            html += '<td class="value-cell" style="color:' + dColor + ';">' + (delta !== null ? (delta >= 0 ? '+' : '') + formatValue(delta) : '—') + '</td>';
+                            html += '<td class="value-cell" style="color:' + dColor + ';">' + (deltaPct !== null ? (deltaPct >= 0 ? '+' : '') + deltaPct.toFixed(1) + '%' : '—') + '</td>';
+                            html += '</tr>';
+                        });
+                    });
+
+                    html += '</tbody></table></div>';
+                } else {
+                    html += '<div style="color:var(--text-hint);padding:12px;">Нет периодов с плановыми значениями. Нажмите ВЫЧИСЛИТЬ для сохранения плана, затем загрузите факт.</div>';
+                }
+
+                document.getElementById('planfact-periods').innerHTML = '';
                 document.getElementById('planfact-comparison').innerHTML = html;
             }
-
+            
             window.renderPlanFact = renderPlanFact;
-            window.showPlanFactComparison = showPlanFactComparison;
             document.getElementById('btn-build-pnl').addEventListener('click', function () {
                 if (!graph) { notify('Сначала загрузите модель', true); return; }
                 buildPnL();
