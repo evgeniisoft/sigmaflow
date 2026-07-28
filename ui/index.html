@@ -383,8 +383,9 @@
                                 <div class="form-group"><label>НОРМА АМОРТИЗАЦИИ (%)</label><input type="number"
                                         id="fa-da-rate" value="10" step="0.5" min="1" max="50" style="width:100%;">
                                 </div>
-                                <div class="form-group"><label>ОСТАВШИЙСЯ СРОК АМОРТИЗАЦИИ (мес)</label><input type="number" id="fa-remaining-months"
-                                        value="60" step="1" min="1" max="360" style="width:100%;"></div>
+                                <div class="form-group"><label>ОСТАВШИЙСЯ СРОК АМОРТИЗАЦИИ (мес)</label><input
+                                        type="number" id="fa-remaining-months" value="60" step="1" min="1" max="360"
+                                        style="width:100%;"></div>
                             </div>
                         </div>
                         <button id="btn-apply-company" class="primary"
@@ -496,10 +497,24 @@
                             <div class="form-group"><label>ПЛАТЁЖ/МЕС</label><input type="number"
                                     id="cr-monthly-payment" readonly></div>
                             <div style="font-size:11px;color:var(--text-hint);margin-top:8px;">КОВЕНАНТЫ</div>
-                            <div class="form-group"><label>Debt/EBITDA &lt;</label><input type="number"
-                                    id="cr-covenant-debt-ebitda" value="3.0" step="0.1" style="width:100%;"></div>
-                            <div class="form-group"><label>Interest Coverage &gt;</label><input type="number"
-                                    id="cr-covenant-icr" value="2.0" step="0.1" style="width:100%;"></div>
+                            <div id="cr-covenants-container">
+                                <div class="cr-covenant-row" style="display:flex;gap:8px;margin-bottom:4px;">
+                                    <select class="cr-covenant-type"
+                                        style="flex:1;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">
+                                        <option value="debtEbitda">Debt/EBITDA &lt;</option>
+                                        <option value="icr">Interest Coverage &gt;</option>
+                                        <option value="currentRatio">Текущая ликвидность &gt;</option>
+                                        <option value="maxCapex">Макс CAPEX/год &lt;</option>
+                                        <option value="minRevenue">Мин выручка/квартал &gt;</option>
+                                    </select>
+                                    <input type="number" class="cr-covenant-value" value="3.0" step="0.1"
+                                        style="width:100px;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">
+                                    <button class="btn-remove-covenant"
+                                        style="font-size:10px;padding:2px 6px;">X</button>
+                                </div>
+                            </div>
+                            <button id="btn-add-covenant" style="font-size:11px;margin-top:4px;">+ ДОБАВИТЬ
+                                КОВЕНАНТ</button>
                             <button id="btn-save-credit" class="primary">СОХРАНИТЬ</button><button
                                 id="btn-cancel-credit">ОТМЕНА</button>
                         </div>
@@ -1807,6 +1822,15 @@
 
             document.getElementById('btn-save').addEventListener('click', saveProject);
             document.getElementById('btn-run-diagnostics').addEventListener('click', runDiagnostics);
+            document.getElementById('btn-add-covenant').addEventListener('click', function () {
+                var container = document.getElementById('cr-covenants-container');
+                var row = document.createElement('div');
+                row.className = 'cr-covenant-row';
+                row.style.cssText = 'display:flex;gap:8px;margin-bottom:4px;';
+                row.innerHTML = '<select class="cr-covenant-type" style="flex:1;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;"><option value="debtEbitda">Debt/EBITDA &lt;</option><option value="icr">Interest Coverage &gt;</option><option value="currentRatio">Текущая ликвидность &gt;</option><option value="maxCapex">Макс CAPEX/год &lt;</option><option value="minRevenue">Мин выручка/квартал &gt;</option></select><input type="number" class="cr-covenant-value" value="3.0" step="0.1" style="width:100px;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;"><button class="btn-remove-covenant" style="font-size:10px;padding:2px 6px;">X</button>';
+                container.appendChild(row);
+                row.querySelector('.btn-remove-covenant').addEventListener('click', function () { row.remove(); });
+            });
             document.getElementById('btn-run-calibration').addEventListener('click', function () {
                 if (!graph) return;
                 if (!graph.history || graph.history.length === 0) {
@@ -2417,15 +2441,18 @@
                     monthlyPayment = amount / term + amount * monthlyRate;
                 }
                 var startMonth = parseInt(document.getElementById('cr-start-month').value) || 0;
+                var covenants = [];
+                document.querySelectorAll('.cr-covenant-row').forEach(function (row) {
+                    var type = row.querySelector('.cr-covenant-type').value;
+                    var value = parseFloat(row.querySelector('.cr-covenant-value').value) || 0;
+                    covenants.push({ type: type, value: value });
+                });
                 graph.credits.push({
                     name: name, bank: bank, amount: amount, rate: rate, term: term,
                     rateType: rateType, repaymentType: repaymentType,
                     monthlyPayment: Math.round(monthlyPayment),
                     startMonth: startMonth,
-                    covenants: {
-                        debtEbitda: parseFloat(document.getElementById('cr-covenant-debt-ebitda').value) || 3.0,
-                        icr: parseFloat(document.getElementById('cr-covenant-icr').value) || 2.0
-                    }
+                    covenants: covenants
                 });
                 saveCredits();
                 document.getElementById('credit-form').style.display = 'none';
