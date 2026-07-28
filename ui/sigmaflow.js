@@ -412,29 +412,29 @@ Graph.prototype.auditInvariants = function () {
     }
 
     // I07: FCF = CFO + CFI + CFF
-    var fcf = self._valSigned('FCF');
-    var cfo = self._valSigned('CFO');
-    var cfi = self._valSigned('CFI');
-    var cff = self._valSigned('CFF');
-    if (fcf !== null && cfo !== null && cfi !== null && cff !== null) {
-        check('I07', 'FCF = CFO + CFI + CFF', cfo + cfi + cff, fcf);
+    if (self.nodes['FCF'] && self.nodes['CFO'] && self.nodes['CFI'] && self.nodes['CFF']) {
+        var fcf7 = self._valSigned('FCF');
+        var cfo7 = self._valSigned('CFO');
+        var cfi7 = self._valSigned('CFI');
+        var cff7 = self._valSigned('CFF');
+        check('I07', 'FCF = CFO + CFI + CFF', cfo7 + cfi7 + cff7, fcf7);
     }
 
     // I08: INTEREST = LOANS * LOAN_RATE (если формула)
-    var interest = self._valSigned('INTEREST');
-    var loans = self._valSigned('LOANS');
-    var loanRate = self._valSigned('LOAN_RATE');
-    if (interest !== null && loans !== null && loanRate !== null && self.nodes['INTEREST'].formula) {
-        check('I08', 'INTEREST = LOANS × LOAN_RATE', loans * loanRate, interest);
+    if (self.nodes['INTEREST'] && self.nodes['LOANS'] && self.nodes['LOAN_RATE'] && self.nodes['INTEREST'].formula) {
+        var interest8 = self._valSigned('INTEREST');
+        var loans8 = self._valSigned('LOANS');
+        var loanRate8 = self._valSigned('LOAN_RATE');
+        check('I08', 'INTEREST = LOANS × LOAN_RATE', loans8 * loanRate8, interest8);
     }
 
     // I09: DA = (FIXED_ASSETS + INTANGIBLE) * DA_RATE (если формула)
-    var da = self._valSigned('DA');
-    var fa = self._valSigned('FIXED_ASSETS');
-    var ia = self._valSigned('INTANGIBLE_ASSETS');
-    var daRate = self._valSigned('DA_RATE');
-    if (da !== null && fa !== null && ia !== null && daRate !== null && self.nodes['DA'] && self.nodes['DA'].formula) {
-        check('I09', 'DA = (FIXED + INTANGIBLE) × DA_RATE', (fa + ia) * daRate, da);
+    if (self.nodes['DA'] && self.nodes['FIXED_ASSETS'] && self.nodes['INTANGIBLE_ASSETS'] && self.nodes['DA_RATE'] && self.nodes['DA'].formula) {
+        var da9 = self._valSigned('DA');
+        var fa9 = self._valSigned('FIXED_ASSETS');
+        var ia9 = self._valSigned('INTANGIBLE_ASSETS');
+        var daRate9 = self._valSigned('DA_RATE');
+        check('I09', 'DA = (FIXED + INTANGIBLE) × DA_RATE', (fa9 + ia9) * daRate9, da9);
     }
 
     return results;
