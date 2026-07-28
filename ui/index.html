@@ -1521,6 +1521,22 @@
                 else if (d.level === 'warning') counts.warning++;
                 else counts.info++;
             });
+            // Инварианты
+            var invariants = graph.auditInvariants();
+            var invHtml = '<div style="margin-top:16px;font-size:11px;color:var(--text-hint);">ИНВАРИАНТЫ</div>';
+            invHtml += '<table><thead><tr><th>КОД</th><th>ПРОВЕРКА</th><th>ОЖИДАЛОСЬ</th><th>ФАКТ</th><th>Δ</th></tr></thead><tbody>';
+            invariants.forEach(function (inv) {
+                var color = inv.passed ? 'var(--ok)' : 'var(--critical)';
+                invHtml += '<tr>';
+                invHtml += '<td>' + inv.code + '</td>';
+                invHtml += '<td>' + inv.label + '</td>';
+                invHtml += '<td class="value-cell">' + formatValue(inv.expected) + '</td>';
+                invHtml += '<td class="value-cell" style="color:' + color + ';">' + formatValue(inv.actual) + '</td>';
+                invHtml += '<td class="value-cell">' + formatValue(inv.diff) + '</td>';
+                invHtml += '</tr>';
+            });
+            invHtml += '</tbody></table>';
+            document.getElementById('diagnostics-results').innerHTML += invHtml;
             var balance = graph.checkBalance();
             if (!balance.balanced) {
                 diag.push({ code: 'B01', level: 'warning', message: 'Баланс не сходится: активы ' + formatValue(balance.assets) + ', пассивы ' + formatValue(balance.liabilities) + ', расхождение ' + balance.pct.toFixed(1) + '%' });
