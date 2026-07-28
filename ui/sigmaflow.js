@@ -144,6 +144,31 @@ Graph.prototype.compute = function (iterations) {
     for (var iter = 0; iter < iterations; iter++) {
         this._computeOnce();
     }
+    this._savePlanForecast();
+};
+
+Graph.prototype._savePlanForecast = function () {
+    var self = this;
+    if (!self.planForecast) self.planForecast = { generated: '', periods: {} };
+    self.planForecast.generated = new Date().toISOString();
+
+    var now = new Date();
+    var startMonth = now.getMonth();
+    var horizon = 12;
+
+    for (var p = 0; p < horizon; p++) {
+        var mo = (startMonth + p) % 12;
+        var yr = now.getFullYear() + Math.floor((startMonth + p) / 12);
+        var period = yr + '-' + String(mo + 1).padStart(2, '0');
+
+        self.planForecast.periods[period] = {};
+        Object.keys(self.nodes).forEach(function (key) {
+            var n = self.nodes[key];
+            if (n.value !== null && n.value !== undefined) {
+                self.planForecast.periods[period][key] = n.value;
+            }
+        });
+    }
 };
 
 Graph.prototype._computeOnce = function () {
