@@ -970,22 +970,30 @@
 
             var keyMetrics = [
                 { id: 'NET_PROFIT', label: 'Чистая прибыль' },
+                { id: 'ROS', label: 'Рентабельность (ROS)', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], p = graph.nodes['NET_PROFIT']; return (r && p && r.value) ? (p.value / r.value * 100) : null; } },
                 { id: 'REVENUE', label: 'Выручка' },
+                { id: 'EBITDA_MARGIN', label: 'Операц. рентаб.', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], e = graph.nodes['EBITDA']; return (r && e && r.value) ? (e.value / r.value * 100) : null; } },
                 { id: 'EBITDA', label: 'EBITDA' },
+                { id: 'DEBT_EBITDA', label: 'Долг/EBITDA', format: 'num', compute: function () { var l = graph.nodes['LOANS'], e = graph.nodes['EBITDA']; return (l && e && e.value) ? (l.value / e.value) : null; } },
                 { id: 'FCF', label: 'Денежный поток' },
-                { id: 'ASSETS', label: 'Активы' },
-                { id: 'DEBT_EBITDA', label: 'Долг/EBITDA' },
+                { id: 'PAYROLL_SHARE', label: 'Доля ФОТ', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], pl = graph.nodes['DIRECT_LABOR'] || graph.nodes['DEV_PAYROLL'] || graph.nodes['STAFF_PAYROLL'] || graph.nodes['SPECIALIST_PAYROLL'], adm = graph.nodes['ADMIN_PAYROLL']; var total = (pl ? Math.abs(pl.value) : 0) + (adm ? Math.abs(adm.value) : 0); return (r && r.value) ? (total / r.value * 100) : null; } },
                 { id: 'CASH', label: 'Остаток денег' },
-                { id: 'GROSS_PROFIT', label: 'Валовая прибыль' }
+                { id: 'INTEREST_COVERAGE', label: 'Покрытие проц.', format: 'num', compute: function () { var e = graph.nodes['EBIT'], i = graph.nodes['INTEREST']; return (e && i && i.value) ? (e.value / i.value) : null; } },
+                { id: 'GROSS_PROFIT', label: 'Валовая прибыль' },
+                { id: 'ASSETS', label: 'Активы' }
             ];
 
             var html = '';
             keyMetrics.forEach(function (m) {
-                var n = graph.nodes[m.id];
-                if (!n) return;
-                var val = n.value !== null && n.value !== undefined ? n.value : 0;
-                var formatted = formatInputValue(val);
+                var val = m.compute ? m.compute() : (graph.nodes[m.id] ? graph.nodes[m.id].value : null);
+                if (val === null || val === undefined) return;
+
                 var color = val >= 0 ? 'var(--ok)' : 'var(--critical)';
+                var formatted;
+                if (m.format === 'pct') formatted = val.toFixed(1) + '%';
+                else if (m.format === 'num') formatted = val.toFixed(1);
+                else formatted = formatInputValue(val);
+
                 var borderColor = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
 
                 html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
@@ -996,7 +1004,6 @@
 
             document.getElementById('dashboard-metrics').innerHTML = html;
 
-            // Обработчики кликов на метриках
             document.querySelectorAll('.metric-card').forEach(function (card) {
                 card.addEventListener('click', function () {
                     var nodeId = card.dataset.node;
@@ -1008,13 +1015,11 @@
                 });
             });
 
-            // Если был выбран узел — рисуем граф
             if (currentTracedNode) {
                 renderTraceGraph(currentTracedNode, graphDepth);
                 renderAnalysis(currentTracedNode);
             }
 
-            // По умолчанию показываем граф для чистой прибыли
             if (!currentTracedNode) {
                 currentTracedNode = 'NET_PROFIT';
                 graphDepth = 2;
