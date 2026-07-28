@@ -581,6 +581,8 @@
                 company: graph.company || {},
                 history: graph.history || [],
                 planForecast: graph.planForecast || null,
+                calibrationLog: graph.calibrationLog || [],
+                edges: graph.edges.map(function (e) { return { from: e.from, to: e.to, coefficient: e.coefficient }; })
             };
             Object.keys(graph.nodes).forEach(function (key) {
                 var n = graph.nodes[key];
@@ -617,16 +619,16 @@
             graph.company = modelData.company || {};
             graph.history = modelData.history || [];
             graph.planForecast = modelData.planForecast || null;
+            graph.calibrationLog = modelData.calibrationLog || [];
 
-            if (modelData.nodes) {
-                Object.keys(modelData.nodes).forEach(function (key) {
-                    if (graph.nodes[key]) {
-                        var nd = modelData.nodes[key];
-                        if (nd.value !== undefined) graph.nodes[key].value = nd.value;
-                        if (nd.enabled !== undefined) graph.nodes[key].enabled = nd.enabled;
-                        if (nd.min !== undefined) graph.nodes[key].min = nd.min;
-                        if (nd.max !== undefined) graph.nodes[key].max = nd.max;
-                    }
+            // Восстановление откалиброванных коэффициентов
+            if (modelData.edges) {
+                modelData.edges.forEach(function (savedEdge) {
+                    graph.edges.forEach(function (edge) {
+                        if (edge.from === savedEdge.from && edge.to === savedEdge.to) {
+                            edge.coefficient = savedEdge.coefficient;
+                        }
+                    });
                 });
             }
 
@@ -1796,6 +1798,13 @@
                     graph.compute();
                     saveCurrentModel();
                     renderAll();
+                    if (!graph.calibrationLog) graph.calibrationLog = [];
+                    graph.calibrationLog.push({
+                        date: new Date().toISOString(),
+                        applied: window._calibrationResults.filter(function (r, idx) {
+                            return document.querySelector('.calibrate-check[data-idx="' + idx + '"]').checked;
+                        })
+                    });
                     notify('Калибровка применена');
                 });
             });
