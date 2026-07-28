@@ -803,6 +803,7 @@ Graph.prototype.getPlanFactComparison = function (period) {
 
     var entry = self.history.filter(function (h) { return h.period === period; })[0];
     if (!entry) return null;
+    if (!entry.plan) return null; // нет плана — не с чем сравнивать
 
     var comparison = [];
     Object.keys(entry.plan).forEach(function (nodeId) {
