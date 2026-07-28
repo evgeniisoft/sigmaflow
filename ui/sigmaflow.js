@@ -223,6 +223,45 @@ Graph.prototype.getMonthlyDA = function (startMonth, horizon) {
     return daSch;
 };
 
+Graph.prototype.checkCovenants = function () {
+    var self = this;
+    var warnings = [];
+    if (!self.credits) return warnings;
+
+    self.credits.forEach(function (cr) {
+        if (!cr.covenants) return;
+        var ebitda = self.nodes['EBITDA'] ? Math.abs(self.nodes['EBITDA'].value) : 0;
+        var ebit = self.nodes['EBIT'] ? Math.abs(self.nodes['EBIT'].value) : 0;
+        var interest = self.nodes['INTEREST'] ? Math.abs(self.nodes['INTEREST'].value) : 0;
+        var loans = cr.amount || 0;
+        var debtEbitda = ebitda > 0 ? loans / ebitda : 999;
+        var icr = interest > 0 ? ebit / interest : 0;
+
+        if (cr.covenants.debtEbitda && debtEbitda > cr.covenants.debtEbitda) {
+            warnings.push({ credit: cr.name, covenant: 'Debt/EBITDA', threshold: '< ' + cr.covenants.debtEbitda, actual: debtEbitda.toFixed(1), violated: true });
+        }
+        if (cr.covenants.icr && icr < cr.covenants.icr) {
+            warnings.push({ credit: cr.name, covenant: 'Interest Coverage', threshold: '> ' + cr.covenants.icr, actual: icr.toFixed(1), violated: true });
+        }
+    });
+    return warnings;
+};
+
+Graph.prototype.checkBalance = function () {
+    var self = this;
+    var fixedAssets = self._val('FIXED_ASSETS');
+    var currentAssets = self._val('CURRENT_ASSETS');
+    var loans = self._val('LOANS');
+    var payables = self._val('PAYABLES');
+    var equity = self._val('EQUITY');
+    var retained = self._val('RETAINED_EARNINGS');
+    var assets = fixedAssets + currentAssets;
+    var liabilities = loans + payables + equity + retained;
+    var diff = assets - liabilities;
+    var pct = assets > 0 ? Math.abs(diff) / assets * 100 : 0;
+    return { assets: assets, liabilities: liabilities, diff: diff, pct: pct, balanced: pct < 1 };
+};
+
 Graph.prototype.updateBalanceFromCredits = function () {
     var self = this;
     if (!self.credits) return;
