@@ -1779,6 +1779,19 @@
             container.appendChild(div);
             div.scrollIntoView({ behavior: 'smooth' });
         }
+
+        function toggleSettingsSection(header) {
+            var arrow = header.querySelector('.section-arrow');
+            var section = header.nextElementSibling;
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                arrow.textContent = '▼';
+            } else {
+                section.style.display = 'none';
+                arrow.textContent = '▶';
+            }
+        }
+
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
         // ============================================================
@@ -2482,17 +2495,7 @@
                 }
             });
 
-            function toggleSettingsSection(header) {
-                var arrow = header.querySelector('.section-arrow');
-                var section = header.nextElementSibling;
-                if (section.style.display === 'none') {
-                    section.style.display = 'block';
-                    arrow.textContent = '▼';
-                } else {
-                    section.style.display = 'none';
-                    arrow.textContent = '▶';
-                }
-            }
+
 
             // ==================== СЦЕНАРИИ ====================
             if (!graph) graph = {};
@@ -2664,17 +2667,6 @@
                 notify('Сценарий «' + name + '» сохранён');
             });
 
-            function toggleSettingsSection(header) {
-                var arrow = header.querySelector('.section-arrow');
-                var section = header.nextElementSibling;
-                if (section.style.display === 'none') {
-                    section.style.display = 'block';
-                    arrow.textContent = '▼';
-                } else {
-                    section.style.display = 'none';
-                    arrow.textContent = '▶';
-                }
-            }
 
             window.setSelectByValue = function (selectId, value) {
                 var el = document.getElementById(selectId);
