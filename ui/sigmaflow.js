@@ -397,7 +397,6 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var rdY = self._val('RD_EXP');
     var trainY = self._val('TRAINING_EXP');
     var daY = self._val('DA');
-    var intY = 0;
     var intIncY = self._val('INTEREST_INCOME');
     var othIncY = self._val('OTHER_INCOME');
     var othExpY = self._val('OTHER_EXP');
@@ -409,23 +408,37 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var newLoansY = 0;
     var loanSch = [];
     var newLoanSch = [];
-    for (var i = 0; i < horizon; i++) { loanSch.push(0); newLoanSch.push(0); }
+    var intSch = [];
+    for (var i = 0; i < horizon; i++) { loanSch.push(0); newLoanSch.push(0); intSch.push(0); }
     if (self.credits) {
         self.credits.forEach(function (cr) {
             var amount = cr.amount || 0;
             var term = cr.term || 12;
             var bodyPayment = amount / term;
-            intY += amount * (cr.rate || 0) / 12;
+            var monthlyInterest = amount * (cr.rate || 0) / 12;
 
-            // Тело кредита — погашение
-            for (var j = 0; j < horizon && j < term; j++) {
-                loanSch[j] = (loanSch[j] || 0) + bodyPayment;
-            }
+            var crStartMonth = (cr.startMonth || 0) - startMonth;
+            if (crStartMonth < 0) crStartMonth += 12;
 
             // Новый кредит — приход в месяц получения
-            var startMonth = cr.startMonth || 0;
-            if (startMonth >= 0 && startMonth < newLoanSch.length) {
-                newLoanSch[startMonth] = (newLoanSch[startMonth] || 0) + amount;
+            if (crStartMonth >= 0 && crStartMonth < newLoanSch.length) {
+                newLoanSch[crStartMonth] = (newLoanSch[crStartMonth] || 0) + amount;
+            }
+
+            // Тело кредита — погашение со следующего месяца
+            for (var j = 1; j < horizon && j <= term; j++) {
+                var idx = crStartMonth + j;
+                if (idx >= 0 && idx < loanSch.length) {
+                    loanSch[idx] = (loanSch[idx] || 0) + bodyPayment;
+                }
+            }
+
+            // Проценты — со следующего месяца
+            for (var j = 1; j < horizon && j <= term; j++) {
+                var idx = crStartMonth + j;
+                if (idx >= 0 && idx < intSch.length) {
+                    intSch[idx] = (intSch[idx] || 0) + monthlyInterest;
+                }
             }
 
             repayY += amount;
@@ -557,7 +570,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             ndfl: monthlyNDFL,
             propertyTax: monthlyPropertyTax,
             totalTax: taxThisMonth,
-            interest: intY,
+            interest: intSch[p],
             interestIncome: intIncY ,
             otherIncome: othIncY,
             otherExp: othExpY,
@@ -575,7 +588,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
         totals.rev += revenueReceived[p]; totals.mat += matY; totals.ener += enerY;
         totals.log += logY; totals.prod += prodY; totals.adm += admY;
         totals.mark += markY; totals.rent += rentY; totals.it += (itY + rdY + trainY) / 12;
-        totals.tax += taxThisMonth; totals.int += intY; totals.pen += penY;
+        totals.tax += taxThisMonth; totals.int += intSch[p]; totals.pen += penY;
         totals.repay += loanSch[p]; totals.newLoan += newLoanSch[p];
         totals.capex += capexSch[p]; totals.div += divY;
     }
