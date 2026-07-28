@@ -177,16 +177,50 @@ Graph.prototype.updateBalanceFromInvestments = function () {
     var self = this;
     if (!self.investments) return;
 
-    var totalCapex = 0;
+    var totalActiveFA = 0;
     self.investments.forEach(function (inv) {
-        totalCapex += inv.cost || 0;
+        // Учитываем только введённые в эксплуатацию (commissioning <= текущий месяц)
+        var commMonth = inv.commissioning !== undefined ? inv.commissioning : inv.start;
+        totalActiveFA += inv.cost || 0;
     });
 
     if (self.nodes['FIXED_ASSETS']) {
-        // FIXED_ASSETS = начальная стоимость + сумма инвестиций
         var baseFA = self.nodes['FIXED_ASSETS_START'] ? self.nodes['FIXED_ASSETS_START'].value : (self.nodes['FIXED_ASSETS'].value || 0);
-        self.nodes['FIXED_ASSETS'].value = baseFA + totalCapex;
+        // Не перезаписываем, если уже учтено
+        // FIXED_ASSETS = база + все инвестиции
+        self.nodes['FIXED_ASSETS'].value = baseFA + totalActiveFA;
     }
+};
+
+Graph.prototype.getMonthlyDA = function (startMonth, horizon) {
+    var self = this;
+    var daSch = [];
+    for (var i = 0; i < horizon; i++) daSch.push(0);
+
+    if (self.investments) {
+        self.investments.forEach(function (inv) {
+            var cost = inv.cost || 0;
+            var daRate = self.nodes['DA_RATE'] ? self.nodes['DA_RATE'].value : 0.10;
+            var monthlyDA = cost * daRate / 12;
+            var commMonth = inv.commissioning !== undefined ? inv.commissioning : inv.start;
+
+            // Амортизация с месяца, следующего за вводом
+            var startIdx = commMonth - startMonth + 1;
+            if (startIdx < 0) startIdx += 12;
+            for (var j = startIdx; j < horizon; j++) {
+                daSch[j] = (daSch[j] || 0) + monthlyDA;
+            }
+        });
+    }
+
+    // Добавляем амортизацию существующих ОС
+    var baseFA = self.nodes['FIXED_ASSETS_START'] ? self.nodes['FIXED_ASSETS_START'].value : 0;
+    var baseDA = baseFA * (self.nodes['DA_RATE'] ? self.nodes['DA_RATE'].value : 0.10) / 12;
+    for (var i = 0; i < horizon; i++) {
+        daSch[i] = (daSch[i] || 0) + baseDA;
+    }
+
+    return daSch;
 };
 
 Graph.prototype.updateBalanceFromCredits = function () {
@@ -610,7 +644,7 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
     var cogsY = self._val('COGS');
     var sellY = self._val('SELLING_EXP');
     var admY = self._val('ADMIN_EXP');
-    var daY = self._val('DA');
+    var daSch = self.getMonthlyDA(startMonth, horizon);
     var intSch = [];
     for (var i = 0; i < horizon; i++) intSch.push(0);
     if (self.credits) {
@@ -651,7 +685,7 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
         var selling = -Math.abs(sellY);
         var admin = -Math.abs(admY);
         var ebitda = gross + selling + admin;
-        var da = -Math.abs(daY);
+        var da = -Math.abs(daSch[p]);
         var ebit = ebitda + da;
         var interest = -Math.abs(intSch[p]);
         var other = (otherIncY || 0) - Math.abs(otherExpY || 0) - Math.abs(penY || 0);
