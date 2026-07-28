@@ -262,6 +262,73 @@ Graph.prototype.checkCovenants = function () {
     return warnings;
 };
 
+Graph.prototype.checkCovenantsMonthly = function (startMonth, horizon) {
+    var self = this;
+    var result = [];
+    if (!self.credits || self.credits.length === 0) return result;
+
+    // Сохраняем текущие значения
+    var saved = {};
+    Object.keys(self.nodes).forEach(function (k) { saved[k] = self.nodes[k].value; });
+
+    // Для каждого месяца
+    for (var p = 0; p < horizon; p++) {
+        var violations = [];
+
+        self.credits.forEach(function (cr) {
+            (cr.covenants || []).forEach(function (cov) {
+                var actual = 0;
+                var violated = false;
+
+                if (cov.type === 'debtEbitda') {
+                    var ebitda = self._val('EBITDA');
+                    actual = ebitda > 0 ? (cr.amount || 0) / ebitda : 999;
+                    violated = actual > cov.value;
+                } else if (cov.type === 'icr') {
+                    var ebit = self._val('EBIT');
+                    var interest = self._val('INTEREST');
+                    actual = interest > 0 ? ebit / interest : 0;
+                    violated = actual < cov.value;
+                } else if (cov.type === 'currentRatio') {
+                    var ca = self._val('CURRENT_ASSETS');
+                    var cl = self._val('PAYABLES') + self._val('LOANS');
+                    actual = cl > 0 ? ca / cl : 0;
+                    violated = actual < cov.value;
+                } else if (cov.type === 'maxCapex') {
+                    var capexY = self._val('CAPEX');
+                    actual = capexY;
+                    violated = actual > cov.value;
+                } else if (cov.type === 'minRevenue') {
+                    var rev = self._val('REVENUE');
+                    actual = rev;
+                    violated = actual < cov.value;
+                }
+
+                if (violated) {
+                    violations.push({
+                        credit: cr.name,
+                        covenant: cov.type,
+                        threshold: cov.value,
+                        actual: actual
+                    });
+                }
+            });
+        });
+
+        result.push({
+            period: p,
+            violations: violations,
+            hasViolation: violations.length > 0
+        });
+    }
+
+    // Восстанавливаем значения
+    Object.keys(saved).forEach(function (k) { if (self.nodes[k]) self.nodes[k].value = saved[k]; });
+    self.compute();
+
+    return result;
+};
+
 Graph.prototype.checkBalance = function () {
     var self = this;
     var fixedAssets = self._val('FIXED_ASSETS');
