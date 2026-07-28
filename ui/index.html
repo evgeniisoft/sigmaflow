@@ -1788,7 +1788,7 @@
                 var results = graph.calibrate();
                 if (results.error) { notify(results.error, true); return; }
 
-                var html = '<table><thead><tr><th>СВЯЗЬ</th><th>БЫЛО</th><th>СТАЛО</th><th>R²</th><th>ТОЧЕК</th><th>ПРИМЕНИТЬ</th></tr></thead><tbody>';
+                var html = '<table><thead><tr><th>СВЯЗЬ</th><th>БЫЛО</th><th>СТАЛО</th><th>R²</th><th>SE</th><th>p-value</th><th>ТОЧЕК</th><th>ПРИМЕНИТЬ</th></tr></thead><tbody>';
                 results.forEach(function (r, idx) {
                     var rowColor = '';
                     if (!r.signOk) rowColor = 'style="background:rgba(212,75,60,0.1);"';
@@ -1802,8 +1802,11 @@
                     html += '<td class="value-cell">' + (r.oldCoefficient || 0).toFixed(2) + '</td>';
                     html += '<td class="value-cell" style="color:' + coeffColor + ';">' + r.newCoefficient.toFixed(4) + '</td>';
                     html += '<td class="value-cell">' + r.r2.toFixed(2) + '</td>';
+                    html += '<td class="value-cell">' + (r.se !== null ? r.se.toFixed(4) : '—') + '</td>';
+                    html += '<td class="value-cell" style="color:' + (r.pValue !== null && r.pValue < 0.05 ? 'var(--ok)' : 'var(--warning)') + ';">' + (r.pValue !== null ? r.pValue.toFixed(3) : '—') + '</td>';
                     html += '<td class="value-cell">' + r.dataPoints + '</td>';
                     html += '<td><input type="checkbox" class="calibrate-check" data-idx="' + idx + '" ' + (r.r2 >= 0.5 && r.signOk ? 'checked' : '') + '></td>';
+                    html += '<td style="color:' + (r.stable ? 'var(--ok)' : 'var(--warning)') + ';">' + (r.stable ? '✓' : '!') + '</td>';
                     html += '</tr>';
                 });
                 html += '</tbody></table><button id="btn-apply-calibration" class="primary" style="margin-top:8px;">ПРИМЕНИТЬ ВЫБРАННЫЕ</button>';
