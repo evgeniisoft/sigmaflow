@@ -214,7 +214,9 @@ Graph.prototype.getMonthlyDA = function (startMonth, horizon) {
     }
 
     // Добавляем амортизацию существующих ОС
-    var baseFA = self.nodes['FIXED_ASSETS_START'] ? self.nodes['FIXED_ASSETS_START'].value : 0;
+    var baseFA = (self.nodes['FIXED_ASSETS_START'] ? self.nodes['FIXED_ASSETS_START'].value : 0)
+        - (self.company ? (self.company.fa_start_da || 0) : 0);
+    if (baseFA < 0) baseFA = 0;
     var baseDA = baseFA * (self.nodes['DA_RATE'] ? self.nodes['DA_RATE'].value : 0.10) / 12;
     for (var i = 0; i < horizon; i++) {
         daSch[i] = (daSch[i] || 0) + baseDA;
