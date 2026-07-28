@@ -344,6 +344,76 @@ Graph.prototype.checkBalance = function () {
     return { assets: assets, liabilities: liabilities, diff: diff, pct: pct, balanced: pct < 1 };
 };
 
+Graph.prototype.auditInvariants = function () {
+    var self = this;
+    var results = [];
+
+    function check(code, label, expected, actual, tolerance) {
+        tolerance = tolerance || 0.01;
+        var diff = Math.abs(expected - actual);
+        var maxVal = Math.max(Math.abs(expected), Math.abs(actual), 1);
+        var passed = diff / maxVal < tolerance;
+        results.push({
+            code: code,
+            label: label,
+            expected: expected,
+            actual: actual,
+            diff: diff,
+            passed: passed
+        });
+    }
+
+    // I01: REVENUE = VOLUME * PRICE * SEASON (если формула)
+    var rev = self._val('REVENUE');
+    var vol = self._val('VOLUME');
+    var price = self._val('PRICE');
+    var season = self._val('SEASON');
+    if (rev && vol && price) {
+        var expectedRev = vol * price * (season || 1);
+        check('I01', 'REVENUE = VOLUME × PRICE × SEASON', expectedRev, rev);
+    }
+
+    // I02: GROSS_PROFIT = REVENUE - COGS
+    var gp = self._val('GROSS_PROFIT');
+    var cogs = self._val('COGS');
+    if (gp && rev && cogs) {
+        check('I02', 'GROSS_PROFIT = REVENUE − COGS', rev - cogs, gp);
+    }
+
+    // I03: EBITDA = GROSS_PROFIT - SELLING_EXP - ADMIN_EXP
+    var ebitda = self._val('EBITDA');
+    var sell = self._val('SELLING_EXP');
+    var adm = self._val('ADMIN_EXP');
+    if (ebitda && gp && sell && adm) {
+        check('I03', 'EBITDA = GP − SELLING − ADMIN', gp - sell - adm, ebitda);
+    }
+
+    // I04: EBIT = EBITDA - DA
+    var ebit = self._val('EBIT');
+    var da = self._val('DA');
+    if (ebit && ebitda && da) {
+        check('I04', 'EBIT = EBITDA − DA', ebitda - da, ebit);
+    }
+
+    // I05: NET_PROFIT = EBT - TAX
+    var np = self._val('NET_PROFIT');
+    var ebt = self._val('EBT');
+    var tax = self._val('TAX');
+    if (np && ebt && tax) {
+        check('I05', 'NET_PROFIT = EBT − TAX', ebt - tax, np);
+    }
+
+    // I06: CASH = CASH_START + FCF
+    var cash = self._val('CASH');
+    var cashStart = self._val('CASH_START');
+    var fcf = self._val('FCF');
+    if (cash && cashStart && fcf) {
+        check('I06', 'CASH = CASH_START + FCF', cashStart + fcf, cash);
+    }
+
+    return results;
+};
+
 Graph.prototype.updateBalanceFromCredits = function () {
     var self = this;
     if (!self.credits) return;
