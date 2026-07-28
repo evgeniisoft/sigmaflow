@@ -802,7 +802,7 @@ function invert2x2(m) {
 
 function linearRegression(X, y) {
     var n = X.length;
-    if (n < 2) return null;
+    if (n < 3) return null;
     var p = X[0].length;
 
     // XtX
@@ -813,36 +813,74 @@ function linearRegression(X, y) {
     var Xty = [];
     for (var i = 0; i < p; i++) { Xty[i] = 0; for (var k = 0; k < n; k++) Xty[i] += X[k][i] * y[k]; }
 
-    // Решение для p=2 через аналитическую формулу
+    // Решение
+    var beta = null;
     if (p === 2) {
         var inv = invert2x2(XtX);
         if (!inv) return null;
-        var beta = [inv[0][0] * Xty[0] + inv[0][1] * Xty[1], inv[1][0] * Xty[0] + inv[1][1] * Xty[1]];
-
-        // R²
-        var yMean = mean(y);
-        var ssRes = 0, ssTot = 0;
-        for (var i = 0; i < n; i++) { var pred = beta[0] * X[i][0] + beta[1] * X[i][1]; ssRes += (y[i] - pred) * (y[i] - pred); ssTot += (y[i] - yMean) * (y[i] - yMean); }
-        var r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
-
-        return { coefficients: beta, r2: r2 };
-    }
-
-    // Для p=1 — парная регрессия
-    if (p === 1) {
+        beta = [inv[0][0] * Xty[0] + inv[0][1] * Xty[1], inv[1][0] * Xty[0] + inv[1][1] * Xty[1]];
+    } else if (p === 1) {
         var xMean = mean(X.map(function (r) { return r[0]; }));
-        var numerator = 0, denominator = 0;
-        for (var i = 0; i < n; i++) { var dx = X[i][0] - xMean; numerator += dx * (y[i] - yMean); denominator += dx * dx; }
-        if (denominator === 0) return null;
-        var slope = numerator / denominator;
-        var intercept = yMean - slope * xMean;
-        var ssRes = 0, ssTot = 0;
-        for (var i = 0; i < n; i++) { var pred = intercept + slope * X[i][0]; ssRes += (y[i] - pred) * (y[i] - pred); ssTot += (y[i] - yMean) * (y[i] - yMean); }
-        var r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
-        return { coefficients: [intercept, slope], r2: r2 };
+        var yMean = mean(y);
+        var num = 0, den = 0;
+        for (var i = 0; i < n; i++) { var dx = X[i][0] - xMean; num += dx * (y[i] - yMean); den += dx * dx; }
+        if (den === 0) return null;
+        beta = [yMean - (num / den) * xMean, num / den];
+    } else { return null; }
+
+    // R² и стандартная ошибка
+    var yMean = mean(y);
+    var ssRes = 0, ssTot = 0;
+    var residuals = [];
+    for (var i = 0; i < n; i++) {
+        var pred = beta[0];
+        for (var j = 1; j < p; j++) pred += beta[j] * X[i][j];
+        var res = y[i] - pred;
+        residuals.push(res);
+        ssRes += res * res;
+        ssTot += (y[i] - yMean) * (y[i] - yMean);
+    }
+    var r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+
+    // Стандартная ошибка коэффициентов
+    var mse = ssRes / (n - p); // mean squared error
+    var se = [];
+    if (p === 2) {
+        var inv = invert2x2(XtX);
+        if (inv) {
+            se = [Math.sqrt(mse * Math.abs(inv[0][0])), Math.sqrt(mse * Math.abs(inv[1][1]))];
+        }
+    } else {
+        se = [Math.sqrt(mse / n), Math.sqrt(mse / (den || 1))];
     }
 
-    return null;
+    // t-статистика и p-value (аппроксимация)
+    var tStats = [];
+    var pValues = [];
+    for (var j = 0; j < p; j++) {
+        var t = se[j] > 0 ? Math.abs(beta[j]) / se[j] : 0;
+        tStats.push(t);
+        // Аппроксимация p-value через нормальное распределение
+        var pVal = t > 0 ? 2 * (1 - normCDF(t, n - p)) : 1;
+        pValues.push(Math.min(pVal, 1));
+    }
+
+    return { coefficients: beta, r2: r2, se: se, tStats: tStats, pValues: pValues, dataPoints: n };
+}
+
+// Нормальное распределение (аппроксимация)
+function normCDF(x, df) {
+    // Аппроксимация t-распределения Стьюдента через нормальное
+    var z = x;
+    return 0.5 * (1 + erf(z / Math.sqrt(2)));
+}
+
+function erf(x) {
+    var sign = x >= 0 ? 1 : -1;
+    x = Math.abs(x);
+    var t = 1 / (1 + 0.3275911 * x);
+    var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+    return sign * y;
 }
 
 Graph.prototype.calibrate = function () {
@@ -894,15 +932,37 @@ Graph.prototype.calibrate = function () {
         var signOk = true;
         var actualSign = newCoeff > 0 ? 'positive' : (newCoeff < 0 ? 'negative' : 'zero');
 
+        var se = reg.se ? reg.se[1] : null;
+        var pValue = reg.pValues ? reg.pValues[1] : null;
+
+        // Проверка стабильности (упрощённо — сравнение первой и второй половины данных)
+        var half = Math.floor(xData.length / 2);
+        var stable = true;
+        if (half >= 3) {
+            var X1 = xData.slice(0, half).map(function (x) { return [1, x]; });
+            var y1 = yData.slice(0, half);
+            var X2 = xData.slice(half).map(function (x) { return [1, x]; });
+            var y2 = yData.slice(half);
+            var reg1 = linearRegression(X1, y1);
+            var reg2 = linearRegression(X2, y2);
+            if (reg1 && reg2 && reg1.coefficients[1] !== 0) {
+                var change = Math.abs(reg2.coefficients[1] - reg1.coefficients[1]) / Math.abs(reg1.coefficients[1]);
+                stable = change < 0.5; // изменение менее 50% = стабильно
+            }
+        }
+
         results.push({
             from: edge.from,
             to: edge.to,
             oldCoefficient: oldCoeff,
             newCoefficient: Math.round(newCoeff * 10000) / 10000,
             r2: Math.round(reg.r2 * 100) / 100,
-            dataPoints: xData.length,
+            dataPoints: reg.dataPoints || xData.length,
+            se: se !== null ? Math.round(se * 10000) / 10000 : null,
+            pValue: pValue !== null ? Math.round(pValue * 1000) / 1000 : null,
             signOk: signOk,
-            actualSign: actualSign
+            actualSign: actualSign,
+            stable: stable
         });
     });
 
