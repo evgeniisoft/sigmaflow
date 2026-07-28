@@ -31,6 +31,7 @@
         <button class="nav-btn" data-panel="calendar">КАЛЕНДАРЬ ДДС</button>
         <button class="nav-btn" data-panel="pnl">P&L</button>
         <button class="nav-btn" data-panel="planfact">ПЛАН/ФАКТ</button>
+        <button class="nav-btn" data-panel="calibrate">КАЛИБРОВКА</button>
         <button class="nav-btn" data-panel="live">ЖИВАЯ МОДЕЛЬ</button>
         <button class="nav-btn" data-panel="scenarios">СЦЕНАРИИ</button>
         <button class="nav-btn" data-panel="company">НАСТРОЙКИ</button>
@@ -249,6 +250,18 @@
 
             </div>
         </div>
+        <!-- ПАНЕЛЬ КАЛИБРОВКА -->
+        <div id="panel-calibrate" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3 style="margin:0 0 16px 0;">КАЛИБРОВКА МОДЕЛИ</h3>
+                <p style="color:var(--text-hint);font-size:12px;margin-bottom:12px;">Загрузите исторические данные на
+                    вкладке
+                    ПЛАН/ФАКТ, затем запустите калибровку.</p>
+                <button id="btn-run-calibration" class="primary" style="margin-bottom:16px;">ЗАПУСТИТЬ
+                    КАЛИБРОВКУ</button>
+                <div id="calibrate-results"></div>
+            </div>
+        </div>
         <!-- ПАНЕЛЬ ПЛАН/ФАКТ -->
         <div id="panel-planfact" class="panel">
             <div style="padding:16px;overflow-y:auto;flex:1;">
@@ -257,7 +270,6 @@
                     <button id="btn-download-template" class="primary">СКАЧАТЬ ШАБЛОН CSV</button>
                     <input type="file" id="file-fact-import" accept=".csv" style="display:none;">
                     <button id="btn-import-fact" class="primary">ЗАГРУЗИТЬ ФАКТ</button>
-                    <button id="btn-calibrate" class="primary" style="margin-left:12px;">КАЛИБРОВАТЬ</button>
                 </div>
                 <div id="planfact-periods" style="margin-bottom:16px;"></div>
                 <div id="planfact-comparison"></div>
@@ -1737,34 +1749,42 @@
 
             document.getElementById('btn-save').addEventListener('click', saveProject);
             document.getElementById('btn-run-diagnostics').addEventListener('click', runDiagnostics);
-            document.getElementById('btn-calibrate').addEventListener('click', function () {
+            document.getElementById('btn-run-calibration').addEventListener('click', function () {
                 if (!graph) return;
+                if (!graph.history || graph.history.length === 0) {
+                    notify('Нет данных. Загрузите историю на вкладке ПЛАН/ФАКТ.', true);
+                    return;
+                }
                 var results = graph.calibrate();
                 if (results.error) { notify(results.error, true); return; }
 
                 var html = '<table><thead><tr><th>СВЯЗЬ</th><th>БЫЛО</th><th>СТАЛО</th><th>R²</th><th>ТОЧЕК</th><th>ПРИМЕНИТЬ</th></tr></thead><tbody>';
                 results.forEach(function (r, idx) {
-                    var color = r.r2 >= 0.5 ? 'var(--ok)' : 'var(--warning)';
-                    html += '<tr>';
-                    html += '<td>' + r.from + ' → ' + r.to + '</td>';
-                    html += '<td class="value-cell">' + r.oldCoefficient.toFixed(2) + '</td>';
-                    html += '<td class="value-cell" style="color:' + color + ';">' + r.newCoefficient.toFixed(4) + '</td>';
+                    var rowColor = '';
+                    if (!r.signOk) rowColor = 'style="background:rgba(212,75,60,0.1);"';
+                    else if (r.r2 < 0.5) rowColor = 'style="background:rgba(212,168,67,0.1);"';
+                    var coeffColor = r.r2 >= 0.5 ? 'var(--ok)' : 'var(--warning)';
+                    if (!r.signOk) coeffColor = 'var(--critical)';
+                    var signWarn = !r.signOk ? ' ⚠' : '';
+
+                    html += '<tr ' + rowColor + '>';
+                    html += '<td>' + r.from + ' → ' + r.to + signWarn + '</td>';
+                    html += '<td class="value-cell">' + (r.oldCoefficient || 0).toFixed(2) + '</td>';
+                    html += '<td class="value-cell" style="color:' + coeffColor + ';">' + r.newCoefficient.toFixed(4) + '</td>';
                     html += '<td class="value-cell">' + r.r2.toFixed(2) + '</td>';
                     html += '<td class="value-cell">' + r.dataPoints + '</td>';
-                    html += '<td><input type="checkbox" class="calibrate-check" data-idx="' + idx + '" ' + (r.r2 >= 0.5 ? 'checked' : '') + '></td>';
+                    html += '<td><input type="checkbox" class="calibrate-check" data-idx="' + idx + '" ' + (r.r2 >= 0.5 && r.signOk ? 'checked' : '') + '></td>';
                     html += '</tr>';
                 });
                 html += '</tbody></table><button id="btn-apply-calibration" class="primary" style="margin-top:8px;">ПРИМЕНИТЬ ВЫБРАННЫЕ</button>';
 
-                document.getElementById('planfact-comparison').innerHTML = html;
+                document.getElementById('calibrate-results').innerHTML = html;
                 window._calibrationResults = results;
 
                 document.getElementById('btn-apply-calibration').addEventListener('click', function () {
-                    var checkboxes = document.querySelectorAll('.calibrate-check');
-                    checkboxes.forEach(function (cb) {
+                    document.querySelectorAll('.calibrate-check').forEach(function (cb) {
                         if (cb.checked) {
                             var r = window._calibrationResults[parseInt(cb.dataset.idx)];
-                            // Найти ребро и обновить коэффициент
                             graph.edges.forEach(function (edge) {
                                 if (edge.from === r.from && edge.to === r.to) {
                                     edge.coefficient = r.newCoefficient;
