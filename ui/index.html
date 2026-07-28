@@ -564,7 +564,9 @@
                 nodes: {},
                 investments: graph.investments || [],
                 credits: graph.credits || [],
-                company: graph.company || {}
+                company: graph.company || {},
+                history: graph.history || [],
+                planForecast: graph.planForecast || null,
             };
             Object.keys(graph.nodes).forEach(function (key) {
                 var n = graph.nodes[key];
@@ -599,6 +601,8 @@
             graph.investments = modelData.investments || [];
             graph.credits = modelData.credits || [];
             graph.company = modelData.company || {};
+            graph.history = modelData.history || [];
+            graph.planForecast = modelData.planForecast || null;
 
             if (modelData.nodes) {
                 Object.keys(modelData.nodes).forEach(function (key) {
@@ -837,7 +841,9 @@
                 nodes: {},
                 investments: [],
                 credits: [],
-                company: graph.company
+                company: graph.company,
+                history: [],
+                planForecast: null,
             };
             Object.keys(graph.nodes).forEach(function (key) {
                 var n = graph.nodes[key];
