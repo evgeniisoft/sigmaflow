@@ -332,75 +332,61 @@
                 <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
                         onclick="toggleSettingsSection(this)">
-                        <h4 style="margin:0;">КОМПАНИЯ И НАЛОГИ</h4>
-                        <span class="section-arrow">▼</span>
+                        <h4 style="margin:0;">КОМПАНИЯ И НАЛОГИ</h4><span class="section-arrow">▼</span>
                     </div>
                     <div class="settings-section">
-                        <div class="form-group">
-                            <label>НАЛОГОВЫЙ РЕЖИМ</label>
-                            <select id="company-tax-system" style="width:100%;">
-                                <option value="OSNO">ОСНО (общая система)</option>
+                        <div class="form-group"><label>НАЛОГОВЫЙ РЕЖИМ</label><select id="company-tax-system"
+                                style="width:100%;">
+                                <option value="OSNO">ОСНО</option>
                                 <option value="USN_INCOME">УСН «Доходы»</option>
                                 <option value="USN_INCOME_MINUS">УСН «Доходы минус расходы»</option>
                                 <option value="PATENT">Патент</option>
-                            </select>
-                        </div>
+                            </select></div>
                         <div id="osno-settings">
-                            <div class="form-group">
-                                <label>СТАВКА НДС</label>
-                                <select id="company-nds-rate" style="width:100%;">
-                                    <option value="0.22">22% (ОСНО, основная)</option>
+                            <div class="form-group"><label>СТАВКА НДС</label><select id="company-nds-rate"
+                                    style="width:100%;">
+                                    <option value="0.22">22% (ОСНО)</option>
                                     <option value="0.10">10%</option>
-                                    <option value="0.07">7% (УСН, доход 272.5-490.5 млн, без вычета)</option>
-                                    <option value="0.05">5% (УСН, доход 20-272.5 млн, без вычета)</option>
-                                    <option value="0">0% (экспорт, IT-ПО, УСН до 20 млн)</option>
-                                </select>
-                            </div>
+                                    <option value="0.07">7% (УСН)</option>
+                                    <option value="0.05">5% (УСН)</option>
+                                    <option value="0">0%</option>
+                                </select></div>
                         </div>
-                        <div class="form-group">
-                            <label>СТАВКА НАЛОГА НА ПРИБЫЛЬ</label>
-                            <select id="company-profit-tax-rate" style="width:100%;">
-                                <option value="0.25">25% (ОСНО, основная)</option>
-                                <option value="0.15">15% (УСН «Доходы минус расходы»)</option>
-                                <option value="0.06">6% (УСН «Доходы»)</option>
-                                <option value="0.05">5% (IT-компании, аккредитованные Минцифры)</option>
-                                <option value="0">0% (медицинские, образовательные)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>СТРАХОВЫЕ ВЗНОСЫ</label>
-                            <select id="company-insurance-rate" style="width:100%;">
-                                <option value="0.30">30% (основной тариф, до 2 979 000 руб/год)</option>
-                                <option value="0.151">15.1% (превышение лимита 2 979 000 руб/год)</option>
-                                <option value="0.15">15% (МСП приоритетных отраслей, выше 1.5 МРОТ)</option>
-                                <option value="0.076">7.6% (IT-компании, резиденты ОЭЗ и ТОР)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>ОТСРОЧКА ПЛАТЕЖЕЙ КЛИЕНТОВ (дней)</label>
-                            <input type="number" id="company-receivables-days" value="30" min="0" max="180" step="1"
+                        <div class="form-group"><label>НАЛОГ НА ПРИБЫЛЬ</label><select id="company-profit-tax-rate"
                                 style="width:100%;">
-                        </div>
-                        <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
-                                onclick="toggleSettingsSection(this)">
-                                <h4 style="margin:0;">ОСНОВНЫЕ СРЕДСТВА</h4><span class="section-arrow">▼</span>
-                            </div>
-                            <div class="settings-section">
-                                <div class="form-group"><label>СТОИМОСТЬ ОС НА СТАРТЕ</label><input type="number"
-                                        id="fa-start-value" value="4000000" step="100000" style="width:100%;"></div>
-                                <div class="form-group"><label>НАКОПЛЕННАЯ АМОРТИЗАЦИЯ НА СТАРТЕ</label><input
-                                        type="number" id="fa-start-da" value="1000000" step="10000" style="width:100%;">
-                                </div>
-                                <div class="form-group"><label>НОРМА АМОРТИЗАЦИИ (%)</label><input type="number"
-                                        id="fa-da-rate" value="10" step="0.5" min="1" max="50" style="width:100%;">
-                                </div>
-                                <button id="btn-apply-fa" class="primary"
-                                    style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>
-                            </div>
-                        </div>
+                                <option value="0.25">25% (ОСНО)</option>
+                                <option value="0.15">15% (УСН)</option>
+                                <option value="0.06">6% (УСН)</option>
+                                <option value="0.05">5% (IT)</option>
+                                <option value="0">0%</option>
+                            </select></div>
+                        <div class="form-group"><label>СТРАХОВЫЕ ВЗНОСЫ</label><select id="company-insurance-rate"
+                                style="width:100%;">
+                                <option value="0.30">30%</option>
+                                <option value="0.151">15.1%</option>
+                                <option value="0.15">15% (МСП)</option>
+                                <option value="0.076">7.6% (IT)</option>
+                            </select></div>
+                        <div class="form-group"><label>ОТСРОЧКА ПЛАТЕЖЕЙ (дней)</label><input type="number"
+                                id="company-receivables-days" value="30" min="0" max="180" style="width:100%;"></div>
                         <button id="btn-apply-company" class="primary"
                             style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>
+                    </div>
+                </div>
+
+                <!-- Секция: Основные средства -->
+                <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                        onclick="toggleSettingsSection(this)">
+                        <h4 style="margin:0;">ОСНОВНЫЕ СРЕДСТВА</h4><span class="section-arrow">▼</span>
+                    </div>
+                    <div class="settings-section">
+                        <div class="form-group"><label>СТОИМОСТЬ ОС НА СТАРТЕ</label><input type="number"
+                                id="fa-start-value" value="4000000" step="100000" style="width:100%;"></div>
+                        <div class="form-group"><label>НАКОПЛЕННАЯ АМОРТИЗАЦИЯ</label><input type="number"
+                                id="fa-start-da" value="1000000" step="10000" style="width:100%;"></div>
+                        <div class="form-group"><label>НОРМА АМОРТИЗАЦИИ (%)</label><input type="number" id="fa-da-rate"
+                                value="10" step="0.5" min="1" max="50" style="width:100%;"></div>
                     </div>
                 </div>
 
@@ -408,8 +394,7 @@
                 <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
                         onclick="toggleSettingsSection(this)">
-                        <h4 style="margin:0;">ИНВЕСТИЦИИ (CAPEX)</h4>
-                        <span class="section-arrow">▼</span>
+                        <h4 style="margin:0;">ИНВЕСТИЦИИ (CAPEX)</h4><span class="section-arrow">▼</span>
                     </div>
                     <div class="settings-section">
                         <div id="investments-list"></div>
@@ -420,7 +405,7 @@
                             <div class="form-group"><label>НАЗВАНИЕ</label><input type="text" id="inv-name"></div>
                             <div class="form-group"><label>СТОИМОСТЬ</label><input type="number" id="inv-cost"
                                     step="10000" min="0" oninput="updateInvSchedule()"></div>
-                            <div class="form-group"><label>СТАРТ (месяц)</label><select id="inv-start-month">
+                            <div class="form-group"><label>МЕСЯЦ ПЛАТЕЖА</label><select id="inv-start-month">
                                     <option value="0">Янв</option>
                                     <option value="1">Фев</option>
                                     <option value="2">Мар</option>
@@ -460,8 +445,8 @@
                             <div class="form-group"><label>ГРАФИК</label>
                                 <div id="inv-schedule-inputs"></div>
                             </div>
-                            <button id="btn-save-investment" class="primary">СОХРАНИТЬ</button>
-                            <button id="btn-cancel-investment">ОТМЕНА</button>
+                            <button id="btn-save-investment" class="primary">СОХРАНИТЬ</button><button
+                                id="btn-cancel-investment">ОТМЕНА</button>
                         </div>
                     </div>
                 </div>
@@ -470,8 +455,7 @@
                 <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
                         onclick="toggleSettingsSection(this)">
-                        <h4 style="margin:0;">КРЕДИТЫ</h4>
-                        <span class="section-arrow">▼</span>
+                        <h4 style="margin:0;">КРЕДИТЫ</h4><span class="section-arrow">▼</span>
                     </div>
                     <div class="settings-section">
                         <div id="credits-list"></div>
@@ -512,8 +496,8 @@
                                     id="cr-covenant-debt-ebitda" value="3.0" step="0.1" style="width:100%;"></div>
                             <div class="form-group"><label>Interest Coverage &gt;</label><input type="number"
                                     id="cr-covenant-icr" value="2.0" step="0.1" style="width:100%;"></div>
-                            <button id="btn-save-credit" class="primary">СОХРАНИТЬ</button>
-                            <button id="btn-cancel-credit">ОТМЕНА</button>
+                            <button id="btn-save-credit" class="primary">СОХРАНИТЬ</button><button
+                                id="btn-cancel-credit">ОТМЕНА</button>
                         </div>
                     </div>
                 </div>
@@ -1510,7 +1494,7 @@
                 else if (d.level === 'warning') counts.warning++;
                 else counts.info++;
             });
-                var balance = graph.checkBalance();
+            var balance = graph.checkBalance();
             if (!balance.balanced) {
                 diag.push({ code: 'B01', level: 'warning', message: 'Баланс не сходится: активы ' + formatValue(balance.assets) + ', пассивы ' + formatValue(balance.liabilities) + ', расхождение ' + balance.pct.toFixed(1) + '%' });
             }
