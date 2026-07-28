@@ -676,6 +676,17 @@
             graph.investments = modelData.investments || [];
             graph.credits = modelData.credits || [];
             graph.company = modelData.company || {};
+            if (modelData.nodes) {
+                Object.keys(modelData.nodes).forEach(function (key) {
+                    if (graph.nodes[key]) {
+                        var nd = modelData.nodes[key];
+                        if (nd.value !== undefined) graph.nodes[key].value = nd.value;
+                        if (nd.enabled !== undefined) graph.nodes[key].enabled = nd.enabled;
+                        if (nd.min !== undefined) graph.nodes[key].min = nd.min;
+                        if (nd.max !== undefined) graph.nodes[key].max = nd.max;
+                    }
+                });
+            }
             graph.name = modelData.name || graph.name;
 
             setCurrentCompanyId(companyId);
