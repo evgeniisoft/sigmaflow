@@ -1765,6 +1765,10 @@
                     date: new Date().toISOString(),
                     edges: graph.edges.map(function (e) { return { from: e.from, to: e.to, coefficient: e.coefficient }; })
                 };
+                window._calibrationSnapshot = {
+                    date: new Date().toISOString(),
+                    edges: graph.edges.map(function (e) { return { from: e.from, to: e.to, coefficient: e.coefficient }; })
+                };
                 var results = graph.calibrate();
                 if (results.error) { notify(results.error, true); return; }
 
@@ -1823,12 +1827,15 @@
                     saveCurrentModel();
                     renderAll();
                     if (!graph.calibrationLog) graph.calibrationLog = [];
-                    graph.calibrationLog.push({
-                        date: new Date().toISOString(),
-                        applied: window._calibrationResults.filter(function (r, idx) {
-                            return document.querySelector('.calibrate-check[data-idx="' + idx + '"]').checked;
-                        })
-                    });
+                                        if (window._calibrationSnapshot) {
+                        window._calibrationSnapshot.applied = window._calibrationResults.filter(function (r, idx) {
+                            var cb = document.querySelector('.calibrate-check[data-idx="' + idx + '"]');
+                            return cb && cb.checked;
+                        });
+                        window._calibrationSnapshot.appliedCount = window._calibrationSnapshot.applied.length;
+                        graph.calibrationLog.push(window._calibrationSnapshot);
+                        window._calibrationSnapshot = null;
+                    }
                     notify('Калибровка применена');
                     // Сохраняем в лог
                     snapshot.applied = window._calibrationResults.filter(function (r, idx) {
