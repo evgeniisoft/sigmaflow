@@ -2765,9 +2765,13 @@
         }
         window.rollbackCalibration = function (idx) {
             if (!graph || !graph.calibrationLog || idx >= graph.calibrationLog.length) return;
-            if (!confirm('Откатить калибровку #' + (idx + 1) + ' от ' + new Date(graph.calibrationLog[idx].date).toLocaleString('ru-RU') + '?')) return;
-
             var snapshot = graph.calibrationLog[idx];
+            if (!snapshot.edges || !snapshot.edges.length) {
+                notify('Невозможно откатить: нет сохранённых данных.', true);
+                return;
+            }
+            if (!confirm('Откатить калибровку #' + (idx + 1) + ' от ' + new Date(snapshot.date).toLocaleString('ru-RU') + '?')) return;
+
             snapshot.edges.forEach(function (savedEdge) {
                 graph.edges.forEach(function (edge) {
                     if (edge.from === savedEdge.from && edge.to === savedEdge.to) {
@@ -2776,7 +2780,6 @@
                 });
             });
 
-            // Удаляем эту и все более поздние калибровки из лога
             graph.calibrationLog = graph.calibrationLog.slice(0, idx);
             graph.compute();
             saveCurrentModel();
