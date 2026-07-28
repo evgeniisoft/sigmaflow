@@ -1866,10 +1866,28 @@
             document.getElementById('btn-run-diagnostics').addEventListener('click', runDiagnostics);
             document.getElementById('btn-add-covenant').addEventListener('click', function () {
                 var container = document.getElementById('cr-covenants-container');
+                // Проверяем существующие типы
+                var existingTypes = [];
+                container.querySelectorAll('.cr-covenant-type').forEach(function (sel) {
+                    existingTypes.push(sel.value);
+                });
+
+                var allTypes = [
+                    { value: 'debtEbitda', label: 'Debt/EBITDA <' },
+                    { value: 'icr', label: 'Interest Coverage >' },
+                    { value: 'currentRatio', label: 'Текущая ликвидность >' },
+                    { value: 'maxCapex', label: 'Макс CAPEX/год <' },
+                    { value: 'minRevenue', label: 'Мин выручка/квартал >' }
+                ];
+
+                var available = allTypes.filter(function (t) { return existingTypes.indexOf(t.value) === -1; });
+                if (available.length === 0) { notify('Все типы ковенантов уже добавлены', true); return; }
+
                 var row = document.createElement('div');
                 row.className = 'cr-covenant-row';
                 row.style.cssText = 'display:flex;gap:8px;margin-bottom:4px;';
-                row.innerHTML = '<select class="cr-covenant-type" style="flex:1;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;"><option value="debtEbitda">Debt/EBITDA &lt;</option><option value="icr">Interest Coverage &gt;</option><option value="currentRatio">Текущая ликвидность &gt;</option><option value="maxCapex">Макс CAPEX/год &lt;</option><option value="minRevenue">Мин выручка/квартал &gt;</option></select><input type="number" class="cr-covenant-value" value="3.0" step="0.1" style="width:100px;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;"><button class="btn-remove-covenant" style="font-size:10px;padding:2px 6px;">X</button>';
+                var optionsHtml = available.map(function (t) { return '<option value="' + t.value + '">' + t.label + '</option>'; }).join('');
+                row.innerHTML = '<select class="cr-covenant-type" style="flex:1;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">' + optionsHtml + '</select><input type="number" class="cr-covenant-value" value="3.0" step="0.1" style="width:100px;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;"><button class="btn-remove-covenant" style="font-size:10px;padding:2px 6px;">X</button>';
                 container.appendChild(row);
                 row.querySelector('.btn-remove-covenant').addEventListener('click', function () { row.remove(); });
             });
