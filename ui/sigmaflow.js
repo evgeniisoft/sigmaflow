@@ -544,7 +544,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
         // Расходы
         var outflow = (matY) + (enerY) + (logY) + (prodY) + (admY)
             + (markY) + (rentY) + ((itY + rdY + trainY) / 12)
-            + taxThisMonth + (intY) + (othExpY) + (penY)
+            + taxThisMonth + (intSch[p]) + (othExpY) + (penY)
             + loanSch[p] + capexSch[p] + (divY);
 
         var netFlow = inflow - outflow;
