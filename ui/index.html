@@ -47,7 +47,7 @@
                 <div style="flex:1;padding:16px;overflow-y:auto;">
                     <h3 style="margin:0 0 16px 0;">КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ</h3>
                     <div id="dashboard-metrics"
-                        style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+                        style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;"
                     </div>
                     <div id="dashboard-analysis"
                         style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
@@ -969,28 +969,66 @@
             if (!graph) return;
 
             var keyMetrics = [
-                { id: 'NET_PROFIT', label: 'Чистая прибыль' },
-                { id: 'REVENUE', label: 'Выручка' },
-                { id: 'EBITDA', label: 'EBITDA' },
-                { id: 'FCF', label: 'Денежный поток' },
-                { id: 'ASSETS', label: 'Активы' },
-                { id: 'DEBT_EBITDA', label: 'Долг/EBITDA' },
-                { id: 'CASH', label: 'Остаток денег' },
-                { id: 'GROSS_PROFIT', label: 'Валовая прибыль' }
+                { id: 'NET_PROFIT', label: 'Чистая прибыль', compute: null },
+                {
+                    id: 'ROS', label: 'Рентабельность (ROS)', compute: function () {
+                        var r = graph.nodes['REVENUE']; var p = graph.nodes['NET_PROFIT'];
+                        return (r && p && r.value) ? (p.value / r.value * 100) : null;
+                    }
+                },
+                { id: 'REVENUE', label: 'Выручка', compute: null },
+                {
+                    id: 'EBITDA_MARGIN', label: 'Операц. рентаб.', compute: function () {
+                        var r = graph.nodes['REVENUE']; var e = graph.nodes['EBITDA'];
+                        return (r && e && r.value) ? (e.value / r.value * 100) : null;
+                    }
+                },
+                { id: 'EBITDA', label: 'EBITDA', compute: null },
+                {
+                    id: 'DEBT_EBITDA', label: 'Долг/EBITDA', compute: function () {
+                        var l = graph.nodes['LOANS']; var e = graph.nodes['EBITDA'];
+                        return (l && e && e.value) ? (l.value / e.value) : null;
+                    }
+                },
+                { id: 'FCF', label: 'Денежный поток', compute: null },
+                {
+                    id: 'PAYROLL_SHARE', label: 'Доля ФОТ в выручке', compute: function () {
+                        var r = graph.nodes['REVENUE']; var pl = graph.nodes['DIRECT_LABOR'] || graph.nodes['DEV_PAYROLL'] || graph.nodes['STAFF_PAYROLL'] || graph.nodes['SPECIALIST_PAYROLL'];
+                        var adm = graph.nodes['ADMIN_PAYROLL'];
+                        var total = (pl ? Math.abs(pl.value) : 0) + (adm ? Math.abs(adm.value) : 0);
+                        return (r && r.value) ? (total / r.value * 100) : null;
+                    }
+                },
+                { id: 'CASH', label: 'Остаток денег', compute: null },
+                {
+                    id: 'INTEREST_COVERAGE', label: 'Покрытие процентов', compute: function () {
+                        var e = graph.nodes['EBIT']; var i = graph.nodes['INTEREST'];
+                        return (e && i && i.value) ? (e.value / i.value) : null;
+                    }
+                },
+                { id: 'GROSS_PROFIT', label: 'Валовая прибыль', compute: null },
+                { id: 'ASSETS', label: 'Активы', compute: null },
+                {
+                    id: 'NET_MARGIN', label: 'Чистая маржа', compute: function () {
+                        var r = graph.nodes['REVENUE']; var p = graph.nodes['NET_PROFIT'];
+                        return (r && p && r.value) ? (p.value / r.value) : null;
+                    }
+                }
             ];
 
             var html = '';
             keyMetrics.forEach(function (m) {
-                var n = graph.nodes[m.id];
-                if (!n) return;
-                var val = n.value !== null && n.value !== undefined ? n.value : 0;
-                var formatted = formatInputValue(val);
+                var val = m.compute ? m.compute() : (graph.nodes[m.id] ? graph.nodes[m.id].value : null);
+                if (val === null || val === undefined) return; // пропускаем отсутствующие
                 var color = val >= 0 ? 'var(--ok)' : 'var(--critical)';
-                var borderColor = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
+                var formatted = m.id === 'ROS' || m.id === 'EBITDA_MARGIN' || m.id === 'PAYROLL_SHARE' || m.id === 'NET_MARGIN'
+                    ? val.toFixed(1) + '%'
+                    : (m.id === 'DEBT_EBITDA' || m.id === 'INTEREST_COVERAGE' ? val.toFixed(1) : formatValue(val));
+                var border = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
 
-                html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
-                html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
-                html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatted + '</div>';
+                html += '<div class="metric-card" data-node="' + m.id + '" style="padding:10px;background:var(--bg-input);border:2px solid ' + border + ';cursor:pointer;">';
+                html += '<div style="font-size:9px;color:var(--text-hint);margin-bottom:2px;">' + m.label + '</div>';
+                html += '<div style="font-size:16px;font-weight:700;color:' + color + ';">' + formatted + '</div>';
                 html += '</div>';
             });
 
