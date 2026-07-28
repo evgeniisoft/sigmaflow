@@ -993,7 +993,7 @@
                 var formatted;
                 if (m.format === 'pct') formatted = val.toFixed(1) + '%';
                 else if (m.format === 'num') formatted = val.toFixed(1);
-                else formatted = formatValue(val);
+                else formatted = formatInputValue(val);
 
                 var borderColor = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
 
