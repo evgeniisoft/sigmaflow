@@ -658,9 +658,6 @@
             var data = parseYAML(yamlText);
             graph = Graph.fromDict(data);
             graph.industry = modelData.industry;
-            graph.investments = modelData.investments || [];
-            graph.credits = modelData.credits || [];
-            graph.company = modelData.company || {};
             graph.history = modelData.history || [];
             graph.planForecast = modelData.planForecast || null;
             graph.calibrationLog = modelData.calibrationLog || [];
