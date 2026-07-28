@@ -234,20 +234,30 @@ Graph.prototype.checkCovenants = function () {
     if (!self.credits) return warnings;
 
     self.credits.forEach(function (cr) {
-        if (!cr.covenants) return;
-        var ebitda = self.nodes['EBITDA'] ? Math.abs(self.nodes['EBITDA'].value) : 0;
-        var ebit = self.nodes['EBIT'] ? Math.abs(self.nodes['EBIT'].value) : 0;
-        var interest = self.nodes['INTEREST'] ? Math.abs(self.nodes['INTEREST'].value) : 0;
-        var loans = cr.amount || 0;
-        var debtEbitda = ebitda > 0 ? loans / ebitda : 999;
-        var icr = interest > 0 ? ebit / interest : 0;
+        (cr.covenants || []).forEach(function (cov) {
+            var violated = false;
+            var actual = 0;
 
-        if (cr.covenants.debtEbitda && debtEbitda > cr.covenants.debtEbitda) {
-            warnings.push({ credit: cr.name, covenant: 'Debt/EBITDA', threshold: '< ' + cr.covenants.debtEbitda, actual: debtEbitda.toFixed(1), violated: true });
-        }
-        if (cr.covenants.icr && icr < cr.covenants.icr) {
-            warnings.push({ credit: cr.name, covenant: 'Interest Coverage', threshold: '> ' + cr.covenants.icr, actual: icr.toFixed(1), violated: true });
-        }
+            if (cov.type === 'debtEbitda') {
+                var ebitda = self.nodes['EBITDA'] ? Math.abs(self.nodes['EBITDA'].value) : 0;
+                actual = ebitda > 0 ? (cr.amount || 0) / ebitda : 999;
+                violated = actual > cov.value;
+            } else if (cov.type === 'icr') {
+                var ebit = self.nodes['EBIT'] ? Math.abs(self.nodes['EBIT'].value) : 0;
+                var interest = self.nodes['INTEREST'] ? Math.abs(self.nodes['INTEREST'].value) : 0;
+                actual = interest > 0 ? ebit / interest : 0;
+                violated = actual < cov.value;
+            } else if (cov.type === 'currentRatio') {
+                var ca = self.nodes['CURRENT_ASSETS'] ? Math.abs(self.nodes['CURRENT_ASSETS'].value) : 0;
+                var cl = (self.nodes['PAYABLES'] ? Math.abs(self.nodes['PAYABLES'].value) : 0) + (self.nodes['LOANS'] ? Math.abs(self.nodes['LOANS'].value) : 0);
+                actual = cl > 0 ? ca / cl : 0;
+                violated = actual < cov.value;
+            }
+
+            if (violated) {
+                warnings.push({ credit: cr.name, covenant: cov.type, threshold: cov.value, actual: actual.toFixed(1), violated: true });
+            }
+        });
     });
     return warnings;
 };
