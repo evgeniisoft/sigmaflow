@@ -1520,6 +1520,22 @@
                 diag.push({ code: 'B01', level: 'warning', message: 'Баланс не сходится: активы ' + formatValue(balance.assets) + ', пассивы ' + formatValue(balance.liabilities) + ', расхождение ' + balance.pct.toFixed(1) + '%' });
             }
             var covenantWarnings = graph.checkCovenants();
+            var monthlyCov = graph.checkCovenantsMonthly(new Date().getMonth(), 12);
+            var violationMonths = [];
+            monthlyCov.forEach(function (mc) {
+                if (mc.hasViolation) violationMonths.push(mc.period);
+            });
+            if (violationMonths.length > 0) {
+                diag.push({
+                    code: 'C06',
+                    level: 'critical',
+                    message: 'Ковенанты нарушены в месяцах: ' + violationMonths.map(function (p) {
+                        var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+                        var mo = (new Date().getMonth() + p) % 12;
+                        return months[mo];
+                    }).join(', ')
+                });
+            }
             covenantWarnings.forEach(function (cw) {
                 diag.push({ code: 'C05', level: 'critical', message: 'Ковенант «' + cw.credit + '»: ' + cw.covenant + ' = ' + cw.actual + ' (порог: ' + cw.threshold + ')' });
             });
@@ -1626,6 +1642,32 @@
             html += row('Штрафы', function (p) { return -p.penalties; });
             html += row('Прочие расходы', function (p) { return -p.otherExp; });
 
+            // Ковенанты
+            var covenantData = graph.checkCovenantsMonthly(startMonth, 12);
+            if (covenantData.length > 0 && graph.credits && graph.credits.length > 0) {
+                var hasAnyCovenants = false;
+                graph.credits.forEach(function (cr) { if (cr.covenants && cr.covenants.length > 0) hasAnyCovenants = true; });
+
+                if (hasAnyCovenants) {
+                    html += spacer('── КОВЕНАНТЫ ──');
+                    // По одному кредиту
+                    graph.credits.forEach(function (cr) {
+                        if (!cr.covenants || cr.covenants.length === 0) return;
+                        cr.covenants.forEach(function (cov) {
+                            var label = cr.name + ': ' + cov.type;
+                            html += '<tr><td style="position:sticky;left:0;background:var(--bg-panel);font-size:11px;">' + label + '</td>';
+                            covenantData.forEach(function (cd) {
+                                var violated = false;
+                                cd.violations.forEach(function (v) {
+                                    if (v.credit === cr.name && v.covenant === cov.type) violated = true;
+                                });
+                                html += '<td class="value-cell" style="color:' + (violated ? 'var(--critical)' : 'var(--ok)') + ';">' + (violated ? '⚠' : '✓') + '</td>';
+                            });
+                            html += '<td class="value-cell">—</td></tr>';
+                        });
+                    });
+                }
+            }
             html += spacer('── ИТОГО ──');
             html += row('Чистый поток', function (p) { return p.netFlow; }, false, 'cal-net');
             html += row('Остаток на конец', function (p) { return p.endCash; }, false, 'cal-end');
