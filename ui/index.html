@@ -678,7 +678,7 @@
             graph.company = modelData.company || {};
             if (modelData.nodes) {
                 Object.keys(modelData.nodes).forEach(function (key) {
-                    if (graph.nodes[key]) {
+                    if (graph.nodes[key] && !graph.nodes[key].formula) {
                         var nd = modelData.nodes[key];
                         if (nd.value !== undefined) graph.nodes[key].value = nd.value;
                         if (nd.enabled !== undefined) graph.nodes[key].enabled = nd.enabled;
