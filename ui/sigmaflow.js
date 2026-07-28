@@ -1053,13 +1053,18 @@ Graph.prototype.selfCheck = function () {
         'PRICE->VOLUME': 'negative',
         'COGS->NET_PROFIT': 'negative',
         'COGS->GROSS_PROFIT': 'negative',
+        'COGS->EBITDA': 'negative',
         'OPEX->NET_PROFIT': 'negative',
         'INTEREST->EBT': 'negative',
         'TAX->NET_PROFIT': 'negative',
         'ATTRITION->HEADCOUNT': 'negative',
+        'ADMIN_EXP->EBITDA': 'negative',
+        'SELLING_EXP->EBITDA': 'negative',
+        'DA->EBIT': 'negative',
         'MARKETING->VOLUME': 'positive',
         'REVENUE->NET_PROFIT': 'positive',
-        'REVENUE->GROSS_PROFIT': 'positive'
+        'REVENUE->GROSS_PROFIT': 'positive',
+        'REVENUE->EBITDA': 'positive'
     };
     self.edges.forEach(function (e) {
         var key = e.from + '->' + e.to;
