@@ -381,6 +381,24 @@
                             <input type="number" id="company-receivables-days" value="30" min="0" max="180" step="1"
                                 style="width:100%;">
                         </div>
+                        <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                                onclick="toggleSettingsSection(this)">
+                                <h4 style="margin:0;">ОСНОВНЫЕ СРЕДСТВА</h4><span class="section-arrow">▼</span>
+                            </div>
+                            <div class="settings-section">
+                                <div class="form-group"><label>СТОИМОСТЬ ОС НА СТАРТЕ</label><input type="number"
+                                        id="fa-start-value" value="4000000" step="100000" style="width:100%;"></div>
+                                <div class="form-group"><label>НАКОПЛЕННАЯ АМОРТИЗАЦИЯ НА СТАРТЕ</label><input
+                                        type="number" id="fa-start-da" value="1000000" step="10000" style="width:100%;">
+                                </div>
+                                <div class="form-group"><label>НОРМА АМОРТИЗАЦИИ (%)</label><input type="number"
+                                        id="fa-da-rate" value="10" step="0.5" min="1" max="50" style="width:100%;">
+                                </div>
+                                <button id="btn-apply-fa" class="primary"
+                                    style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>
+                            </div>
+                        </div>
                         <button id="btn-apply-company" class="primary"
                             style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>
                     </div>
@@ -416,20 +434,21 @@
                                     <option value="10">Ноя</option>
                                     <option value="11">Дек</option>
                                 </select></div>
-                                <div class="form-group"><label>МЕСЯЦ ВВОДА В ЭКСПЛУАТАЦИЮ</label><select id="inv-commissioning">
-                                        <option value="0">Янв</option>
-                                        <option value="1">Фев</option>
-                                        <option value="2">Мар</option>
-                                        <option value="3">Апр</option>
-                                        <option value="4">Май</option>
-                                        <option value="5">Июн</option>
-                                        <option value="6">Июл</option>
-                                        <option value="7">Авг</option>
-                                        <option value="8">Сен</option>
-                                        <option value="9">Окт</option>
-                                        <option value="10">Ноя</option>
-                                        <option value="11">Дек</option>
-                                    </select></div>
+                            <div class="form-group"><label>МЕСЯЦ ВВОДА В ЭКСПЛУАТАЦИЮ</label><select
+                                    id="inv-commissioning">
+                                    <option value="0">Янв</option>
+                                    <option value="1">Фев</option>
+                                    <option value="2">Мар</option>
+                                    <option value="3">Апр</option>
+                                    <option value="4">Май</option>
+                                    <option value="5">Июн</option>
+                                    <option value="6">Июл</option>
+                                    <option value="7">Авг</option>
+                                    <option value="8">Сен</option>
+                                    <option value="9">Окт</option>
+                                    <option value="10">Ноя</option>
+                                    <option value="11">Дек</option>
+                                </select></div>
                             <div class="form-group"><label>ПЛАТЕЖЕЙ</label><select id="inv-payments-count"
                                     onchange="updateInvSchedule()">
                                     <option value="1">1</option>
@@ -488,6 +507,11 @@
                                 </select></div>
                             <div class="form-group"><label>ПЛАТЁЖ/МЕС</label><input type="number"
                                     id="cr-monthly-payment" readonly></div>
+                            <div style="font-size:11px;color:var(--text-hint);margin-top:8px;">КОВЕНАНТЫ</div>
+                            <div class="form-group"><label>Debt/EBITDA &lt;</label><input type="number"
+                                    id="cr-covenant-debt-ebitda" value="3.0" step="0.1" style="width:100%;"></div>
+                            <div class="form-group"><label>Interest Coverage &gt;</label><input type="number"
+                                    id="cr-covenant-icr" value="2.0" step="0.1" style="width:100%;"></div>
                             <button id="btn-save-credit" class="primary">СОХРАНИТЬ</button>
                             <button id="btn-cancel-credit">ОТМЕНА</button>
                         </div>
@@ -712,6 +736,9 @@
                     if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
                     if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
                     if (graph.company.receivables_days !== undefined) document.getElementById('company-receivables-days').value = graph.company.receivables_days;
+                    if (graph.company.fa_start_value !== undefined) document.getElementById('fa-start-value').value = graph.company.fa_start_value;
+                    if (graph.company.fa_start_da !== undefined) document.getElementById('fa-start-da').value = graph.company.fa_start_da;
+                    if (graph.company.fa_da_rate !== undefined) document.getElementById('fa-da-rate').value = (graph.company.fa_da_rate * 100).toFixed(1);
                 }
             } else {
                 showSetupWizard();
@@ -1483,6 +1510,14 @@
                 else if (d.level === 'warning') counts.warning++;
                 else counts.info++;
             });
+                var balance = graph.checkBalance();
+            if (!balance.balanced) {
+                diag.push({ code: 'B01', level: 'warning', message: 'Баланс не сходится: активы ' + formatValue(balance.assets) + ', пассивы ' + formatValue(balance.liabilities) + ', расхождение ' + balance.pct.toFixed(1) + '%' });
+            }
+            var covenantWarnings = graph.checkCovenants();
+            covenantWarnings.forEach(function (cw) {
+                diag.push({ code: 'C05', level: 'critical', message: 'Ковенант «' + cw.credit + '»: ' + cw.covenant + ' = ' + cw.actual + ' (порог: ' + cw.threshold + ')' });
+            });
             html += '<div style="margin-bottom:16px;font-size:12px;">';
             html += 'Найдено: <span style="color:var(--critical);">' + counts.critical + ' критических</span>, ';
             html += '<span style="color:var(--warning);">' + counts.warning + ' предупреждений</span>, ';
@@ -1570,7 +1605,7 @@
             html += row('Маркетинг', function (p) { return -p.marketing; });
             html += row('Аренда', function (p) { return -p.rent; });
             html += row('IT/R&D/Обучение', function (p) { return -p.itRdTraining; });
-            
+
 
             html += spacer('── НАЛОГИ ──');
             html += row('НДС', function (p) { return -p.nds; });
@@ -2111,6 +2146,16 @@
                 graph.company.profit_tax_rate = parseFloat(document.getElementById('company-profit-tax-rate').value);
                 graph.company.insurance_rate = parseFloat(document.getElementById('company-insurance-rate').value);
                 graph.company.receivables_days = parseInt(document.getElementById('company-receivables-days').value) || 30;
+                graph.company.fa_start_value = parseFloat(document.getElementById('fa-start-value').value) || 0;
+                graph.company.fa_start_da = parseFloat(document.getElementById('fa-start-da').value) || 0;
+                graph.company.fa_da_rate = (parseFloat(document.getElementById('fa-da-rate').value) || 10) / 100;
+
+                if (!graph.nodes['FIXED_ASSETS_START']) {
+                    graph.addNode(new Node('FIXED_ASSETS_START', 'INPUT', graph.company.fa_start_value, 0, 100000000, 'manual', 'ОС на старте', true));
+                } else {
+                    graph.nodes['FIXED_ASSETS_START'].value = graph.company.fa_start_value;
+                }
+                if (graph.nodes['DA_RATE']) graph.nodes['DA_RATE'].value = graph.company.fa_da_rate;
 
                 if (graph.nodes['TAX_RATE']) {
                     graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
@@ -2372,7 +2417,11 @@
                     name: name, bank: bank, amount: amount, rate: rate, term: term,
                     rateType: rateType, repaymentType: repaymentType,
                     monthlyPayment: Math.round(monthlyPayment),
-                    startMonth: startMonth
+                    startMonth: startMonth,
+                    covenants: {
+                        debtEbitda: parseFloat(document.getElementById('cr-covenant-debt-ebitda').value) || 3.0,
+                        icr: parseFloat(document.getElementById('cr-covenant-icr').value) || 2.0
+                    }
                 });
                 saveCredits();
                 document.getElementById('credit-form').style.display = 'none';
@@ -2415,6 +2464,9 @@
                         if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
                         if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
                         if (graph.company.receivables_days !== undefined) document.getElementById('company-receivables-days').value = graph.company.receivables_days;
+                        if (graph.company.fa_start_value !== undefined) document.getElementById('fa-start-value').value = graph.company.fa_start_value;
+                        if (graph.company.fa_start_da !== undefined) document.getElementById('fa-start-da').value = graph.company.fa_start_da;
+                        if (graph.company.fa_da_rate !== undefined) document.getElementById('fa-da-rate').value = (graph.company.fa_da_rate * 100).toFixed(1);
                     }
                     updateStatusBar('Компания загружена');
                 }
