@@ -192,9 +192,11 @@
         <div id="panel-calibrate" class="panel">
             <div style="padding:16px;overflow-y:auto;flex:1;">
                 <h3 style="margin:0 0 16px 0;">КАЛИБРОВКА МОДЕЛИ</h3>
-                <p style="color:var(--text-hint);font-size:12px;margin-bottom:12px;">Загрузите исторические данные на вкладке
+                <p style="color:var(--text-hint);font-size:12px;margin-bottom:12px;">Загрузите исторические данные на
+                    вкладке
                     ПЛАН/ФАКТ, затем запустите калибровку.</p>
-                <button id="btn-run-calibration" class="primary" style="margin-bottom:16px;">ЗАПУСТИТЬ КАЛИБРОВКУ</button>
+                <button id="btn-run-calibration" class="primary" style="margin-bottom:16px;">ЗАПУСТИТЬ
+                    КАЛИБРОВКУ</button>
                 <div id="calibrate-results"></div>
                 <div id="calibrate-history" style="margin-top:24px;"></div>
             </div>
@@ -1827,7 +1829,7 @@
                     saveCurrentModel();
                     renderAll();
                     if (!graph.calibrationLog) graph.calibrationLog = [];
-                                        if (window._calibrationSnapshot) {
+                    if (window._calibrationSnapshot) {
                         window._calibrationSnapshot.applied = window._calibrationResults.filter(function (r, idx) {
                             var cb = document.querySelector('.calibrate-check[data-idx="' + idx + '"]');
                             return cb && cb.checked;
@@ -1837,14 +1839,7 @@
                         window._calibrationSnapshot = null;
                     }
                     notify('Калибровка применена');
-                    // Сохраняем в лог
-                    snapshot.applied = window._calibrationResults.filter(function (r, idx) {
-                        return document.querySelector('.calibrate-check[data-idx="' + idx + '"]') &&
-                            document.querySelector('.calibrate-check[data-idx="' + idx + '"]').checked;
-                    });
-                    snapshot.appliedCount = snapshot.applied.length;
-                    graph.calibrationLog.push(snapshot);
-                    saveCurrentModel();
+
                 });
             });
             document.getElementById('btn-download-template').addEventListener('click', function () {
@@ -1936,7 +1931,7 @@
                 document.getElementById('planfact-periods').innerHTML = '';
                 document.getElementById('planfact-comparison').innerHTML = html;
             }
-            
+
             window.renderPlanFact = renderPlanFact;
             document.getElementById('btn-build-pnl').addEventListener('click', function () {
                 if (!graph) { notify('Сначала загрузите модель', true); return; }
@@ -2768,26 +2763,26 @@
             });
             document.getElementById('live-comparison-body').innerHTML = compHtml;
         }
-    window.rollbackCalibration = function (idx) {
-        if (!graph || !graph.calibrationLog || idx >= graph.calibrationLog.length) return;
-        if (!confirm('Откатить калибровку #' + (idx + 1) + ' от ' + new Date(graph.calibrationLog[idx].date).toLocaleString('ru-RU') + '?')) return;
+        window.rollbackCalibration = function (idx) {
+            if (!graph || !graph.calibrationLog || idx >= graph.calibrationLog.length) return;
+            if (!confirm('Откатить калибровку #' + (idx + 1) + ' от ' + new Date(graph.calibrationLog[idx].date).toLocaleString('ru-RU') + '?')) return;
 
-        var snapshot = graph.calibrationLog[idx];
-        snapshot.edges.forEach(function (savedEdge) {
-            graph.edges.forEach(function (edge) {
-                if (edge.from === savedEdge.from && edge.to === savedEdge.to) {
-                    edge.coefficient = savedEdge.coefficient;
-                }
+            var snapshot = graph.calibrationLog[idx];
+            snapshot.edges.forEach(function (savedEdge) {
+                graph.edges.forEach(function (edge) {
+                    if (edge.from === savedEdge.from && edge.to === savedEdge.to) {
+                        edge.coefficient = savedEdge.coefficient;
+                    }
+                });
             });
-        });
 
-        // Удаляем эту и все более поздние калибровки из лога
-        graph.calibrationLog = graph.calibrationLog.slice(0, idx);
-        graph.compute();
-        saveCurrentModel();
-        renderAll();
-        notify('Модель откачена к версии #' + (idx + 1));
-    };
+            // Удаляем эту и все более поздние калибровки из лога
+            graph.calibrationLog = graph.calibrationLog.slice(0, idx);
+            graph.compute();
+            saveCurrentModel();
+            renderAll();
+            notify('Модель откачена к версии #' + (idx + 1));
+        };
     </script>
 
 </body>
