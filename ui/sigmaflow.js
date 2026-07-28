@@ -672,6 +672,148 @@ Graph.prototype.getMarginalEffects = function() {
     return effects;
 };
 
+// Вспомогательные функции для регрессии
+function mean(arr) {
+    var sum = 0, n = arr.length;
+    for (var i = 0; i < n; i++) sum += arr[i];
+    return n > 0 ? sum / n : 0;
+}
+
+function dot(a, b) {
+    var s = 0, n = Math.min(a.length, b.length);
+    for (var i = 0; i < n; i++) s += a[i] * b[i];
+    return s;
+}
+
+function transpose(m) {
+    var rows = m.length, cols = m[0].length;
+    var t = [];
+    for (var j = 0; j < cols; j++) { t[j] = []; for (var i = 0; i < rows; i++) t[j][i] = m[i][j]; }
+    return t;
+}
+
+function matMul(a, b) {
+    var rows = a.length, cols = b[0].length, inner = b.length;
+    var r = [];
+    for (var i = 0; i < rows; i++) { r[i] = []; for (var j = 0; j < cols; j++) { r[i][j] = 0; for (var k = 0; k < inner; k++) r[i][j] += a[i][k] * b[k][j]; } }
+    return r;
+}
+
+function invert2x2(m) {
+    var det = m[0][0] * m[1][1] - m[0][1] * m[1][0];
+    if (Math.abs(det) < 1e-10) return null;
+    return [[m[1][1] / det, -m[0][1] / det], [-m[1][0] / det, m[0][0] / det]];
+}
+
+function linearRegression(X, y) {
+    var n = X.length;
+    if (n < 2) return null;
+    var p = X[0].length;
+
+    // XtX
+    var XtX = [];
+    for (var i = 0; i < p; i++) { XtX[i] = []; for (var j = 0; j < p; j++) { XtX[i][j] = 0; for (var k = 0; k < n; k++) XtX[i][j] += X[k][i] * X[k][j]; } }
+
+    // Xty
+    var Xty = [];
+    for (var i = 0; i < p; i++) { Xty[i] = 0; for (var k = 0; k < n; k++) Xty[i] += X[k][i] * y[k]; }
+
+    // Решение для p=2 через аналитическую формулу
+    if (p === 2) {
+        var inv = invert2x2(XtX);
+        if (!inv) return null;
+        var beta = [inv[0][0] * Xty[0] + inv[0][1] * Xty[1], inv[1][0] * Xty[0] + inv[1][1] * Xty[1]];
+
+        // R²
+        var yMean = mean(y);
+        var ssRes = 0, ssTot = 0;
+        for (var i = 0; i < n; i++) { var pred = beta[0] * X[i][0] + beta[1] * X[i][1]; ssRes += (y[i] - pred) * (y[i] - pred); ssTot += (y[i] - yMean) * (y[i] - yMean); }
+        var r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+
+        return { coefficients: beta, r2: r2 };
+    }
+
+    // Для p=1 — парная регрессия
+    if (p === 1) {
+        var xMean = mean(X.map(function (r) { return r[0]; }));
+        var numerator = 0, denominator = 0;
+        for (var i = 0; i < n; i++) { var dx = X[i][0] - xMean; numerator += dx * (y[i] - yMean); denominator += dx * dx; }
+        if (denominator === 0) return null;
+        var slope = numerator / denominator;
+        var intercept = yMean - slope * xMean;
+        var ssRes = 0, ssTot = 0;
+        for (var i = 0; i < n; i++) { var pred = intercept + slope * X[i][0]; ssRes += (y[i] - pred) * (y[i] - pred); ssTot += (y[i] - yMean) * (y[i] - yMean); }
+        var r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+        return { coefficients: [intercept, slope], r2: r2 };
+    }
+
+    return null;
+}
+
+Graph.prototype.calibrate = function () {
+    var self = this;
+    if (!self.history || self.history.length < 2) return { error: 'Недостаточно данных. Нужно минимум 2 периода.' };
+
+    var results = [];
+
+    self.edges.forEach(function (edge) {
+        var fromNode = self.nodes[edge.from];
+        var toNode = self.nodes[edge.to];
+        if (!fromNode || !toNode) return;
+        if (toNode.formula) return; // формулы не калибруем
+        if (edge.type === 'THR') return; // пороговые связи пока не калибруем
+
+        // Собираем данные из истории
+        var xData = [], yData = [];
+        self.history.forEach(function (h) {
+            if (!h.fact) return;
+            var x = h.fact[edge.from];
+            var y = h.fact[edge.to];
+            if (x !== undefined && x !== null && y !== undefined && y !== null && h.type === 'historical') {
+                xData.push(x);
+                yData.push(y);
+            }
+        });
+
+        if (xData.length < 3) return;
+
+        // Парная регрессия: [1, x] → y
+        var X = xData.map(function (x) { return [1, x]; });
+        var reg = linearRegression(X, yData);
+        if (!reg) return;
+
+        var newCoeff = reg.coefficients[1]; // slope
+        var oldCoeff = edge.coefficient || 0;
+
+        // Проверка знака
+        var expectedSign = null;
+        var signPairs = {
+            'PRICE': { 'VOLUME': 'negative' },
+            'MARKETING': { 'VOLUME': 'positive' },
+            'COGS': { 'NET_PROFIT': 'negative' },
+            'INTEREST': { 'EBT': 'negative' },
+            'REVENUE': { 'NET_PROFIT': 'positive' }
+        };
+        // ... можно расширить
+
+        var signOk = true;
+        var actualSign = newCoeff > 0 ? 'positive' : (newCoeff < 0 ? 'negative' : 'zero');
+
+        results.push({
+            from: edge.from,
+            to: edge.to,
+            oldCoefficient: oldCoeff,
+            newCoefficient: Math.round(newCoeff * 10000) / 10000,
+            r2: Math.round(reg.r2 * 100) / 100,
+            dataPoints: xData.length,
+            signOk: signOk,
+            actualSign: actualSign
+        });
+    });
+
+    return results;
+};
+
 Graph.prototype.importFactFromCSV = function (csvText) {
     var self = this;
     var lines = csvText.split('\n').filter(function (l) { return l.trim(); });
