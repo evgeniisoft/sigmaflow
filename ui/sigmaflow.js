@@ -442,7 +442,8 @@ Graph.prototype.auditInvariants = function () {
 
 Graph.prototype.updateBalanceFromCredits = function () {
     var self = this;
-    if (!self.credits) return;
+    if (!self.credits || self.credits.length === 0) return; // не трогаем, если нет кредитов
+    //
 
     var totalLoans = 0;
     var totalRepayment = 0;
