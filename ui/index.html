@@ -190,11 +190,12 @@
         </div>
         <!-- ПАНЕЛЬ КАЛИБРОВКА -->
         <div id="panel-calibrate" class="panel">
-            <h3>КАЛИБРОВКА МОДЕЛИ</h3>
-            <div class="placeholder">
-                Загрузите CSV-файл с историческими данными для калибровки коэффициентов модели.
-                <br><br>
-                <input type="file" id="calibrate-file" accept=".csv" style="display:block; margin: 8px auto;">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3 style="margin:0 0 16px 0;">КАЛИБРОВКА МОДЕЛИ</h3>
+                <p style="color:var(--text-hint);font-size:12px;margin-bottom:12px;">Загрузите исторические данные на вкладке
+                    ПЛАН/ФАКТ, затем запустите калибровку.</p>
+                <button id="btn-run-calibration" class="primary" style="margin-bottom:16px;">ЗАПУСТИТЬ КАЛИБРОВКУ</button>
+                <div id="calibrate-results"></div>
             </div>
         </div>
         <!-- ПАНЕЛЬ P&L -->
