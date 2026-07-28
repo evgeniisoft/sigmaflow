@@ -268,6 +268,7 @@ var TEMPLATE_RETAIL = [
     '    type: INTERMEDIATE',
     '    label: "Денежные средства"',
     '    source: computed',
+    '    formula: "CASH_START + FCF"',
     '',
     '  - id: CASH_START',
     '    type: INPUT',
