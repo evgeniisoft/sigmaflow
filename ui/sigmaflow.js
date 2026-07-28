@@ -611,10 +611,21 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
     var sellY = self._val('SELLING_EXP');
     var admY = self._val('ADMIN_EXP');
     var daY = self._val('DA');
-    var intY = 0;
+    var intSch = [];
+    for (var i = 0; i < horizon; i++) intSch.push(0);
     if (self.credits) {
         self.credits.forEach(function (cr) {
-            intY += (cr.amount || 0) * (cr.rate || 0) / 12;
+            var amount = cr.amount || 0;
+            var term = cr.term || 12;
+            var monthlyInterest = amount * (cr.rate || 0) / 12;
+            var crStart = (cr.startMonth || 0) - startMonth;
+            if (crStart < 0) crStart += 12;
+            for (var j = 1; j < horizon && j <= term; j++) {
+                var idx = crStart + j;
+                if (idx >= 0 && idx < intSch.length) {
+                    intSch[idx] = (intSch[idx] || 0) + monthlyInterest;
+                }
+            }
         });
     }
     var otherIncY = self._val('OTHER_INCOME');
@@ -642,7 +653,7 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
         var ebitda = gross + selling + admin;
         var da = -Math.abs(daY);
         var ebit = ebitda + da;
-        var interest = -Math.abs(intY);
+        var interest = -Math.abs(intSch[p]);
         var other = (otherIncY || 0) - Math.abs(otherExpY || 0) - Math.abs(penY || 0);
         var ebt = ebit + interest + other;
 
