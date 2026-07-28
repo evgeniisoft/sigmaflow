@@ -2443,6 +2443,18 @@
                 }
             });
 
+            function toggleSettingsSection(header) {
+                var arrow = header.querySelector('.section-arrow');
+                var section = header.nextElementSibling;
+                if (section.style.display === 'none') {
+                    section.style.display = 'block';
+                    arrow.textContent = '▼';
+                } else {
+                    section.style.display = 'none';
+                    arrow.textContent = '▶';
+                }
+            }
+
             // ==================== СЦЕНАРИИ ====================
             if (!graph) graph = {};
             if (!graph.scenarios) graph.scenarios = [];
