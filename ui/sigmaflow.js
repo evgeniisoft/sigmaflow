@@ -713,6 +713,17 @@ Graph.prototype.importFactFromCSV = function (csvText) {
         var values = lines[l].split(sep).map(function (v) { return v.trim(); });
         var period = values[periodIndex];
         if (!period) continue;
+        // Определяем тип периода
+        var isHistorical = true;
+        if (self.planForecast && self.planForecast.periods[period]) {
+            isHistorical = false;
+        }
+
+        var planEntry = {};
+        if (!isHistorical) {
+            // Для forecast — берём план из planForecast
+            planEntry = self.planForecast.periods[period] || {};
+        }
 
         // Сохраняем план (текущие значения модели)
         var planEntry = {};
@@ -745,8 +756,10 @@ Graph.prototype.importFactFromCSV = function (csvText) {
         } else {
             self.history.push({
                 period: period,
-                plan: planEntry,
-                fact: factEntry
+                type: isHistorical ? 'historical' : 'forecast',
+                plan: isHistorical ? null : planEntry,
+                fact: factEntry,
+                importedAt: new Date().toISOString()
             });
         }
         imported++;
