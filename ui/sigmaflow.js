@@ -411,6 +411,32 @@ Graph.prototype.auditInvariants = function () {
         check('I06', 'CASH = CASH_START + FCF', cashStart + fcf, cash);
     }
 
+    // I07: FCF = CFO + CFI + CFF
+    var fcf = self._valSigned('FCF');
+    var cfo = self._valSigned('CFO');
+    var cfi = self._valSigned('CFI');
+    var cff = self._valSigned('CFF');
+    if (fcf !== null && cfo !== null && cfi !== null && cff !== null) {
+        check('I07', 'FCF = CFO + CFI + CFF', cfo + cfi + cff, fcf);
+    }
+
+    // I08: INTEREST = LOANS * LOAN_RATE (если формула)
+    var interest = self._valSigned('INTEREST');
+    var loans = self._valSigned('LOANS');
+    var loanRate = self._valSigned('LOAN_RATE');
+    if (interest !== null && loans !== null && loanRate !== null && self.nodes['INTEREST'].formula) {
+        check('I08', 'INTEREST = LOANS × LOAN_RATE', loans * loanRate, interest);
+    }
+
+    // I09: DA = (FIXED_ASSETS + INTANGIBLE) * DA_RATE (если формула)
+    var da = self._valSigned('DA');
+    var fa = self._valSigned('FIXED_ASSETS');
+    var ia = self._valSigned('INTANGIBLE_ASSETS');
+    var daRate = self._valSigned('DA_RATE');
+    if (da !== null && fa !== null && ia !== null && daRate !== null && self.nodes['DA'] && self.nodes['DA'].formula) {
+        check('I09', 'DA = (FIXED + INTANGIBLE) × DA_RATE', (fa + ia) * daRate, da);
+    }
+
     return results;
 };
 
