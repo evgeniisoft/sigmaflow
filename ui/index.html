@@ -47,522 +47,512 @@
                 <div style="flex:1;padding:16px;overflow-y:auto;">
                     <h3 style="margin:0 0 16px 0;">КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ</h3>
                     <div id="dashboard-metrics"
-                        style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;" </div>
-                        <div id="dashboard-analysis"
-                            style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
-                        </div>
-                        <button id="btn-analysis" style="margin-top:8px;">▶ АНАЛИЗ И РЕКОМЕНДАЦИИ</button>
-                        <button id="btn-goto-live" style="margin-top:8px;font-size:11px;">▶ ОТКРЫТЬ ЖИВУЮ
-                            МОДЕЛЬ</button>
-                        <div id="dashboard-analysis-panel"
-                            style="display:none;margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border);max-width:100%;overflow-x:auto;word-break:break-word;">
-                        </div>
+                        style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
                     </div>
-                    <div id="dashboard-graph-panel"
-                        style="flex:1;background:var(--bg-primary);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;">
-                        <div
-                            style="padding:8px 12px;background:var(--bg-panel);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-hint);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-                            <span>ГРАФ МОДЕЛИ <span id="graph-selected-node"></span></span>
-                            <button id="btn-full-graph" style="font-size:10px;padding:2px 8px;">▶ ПОЛНЫЙ ГРАФ</button>
-                        </div>
-                        <div id="graph-container" style="flex:1;min-height:400px;overflow:hidden;"></div>
-                        <div
-                            style="padding:4px 12px;background:var(--bg-panel);border-top:1px solid var(--border);font-size:10px;color:var(--text-hint);flex-shrink:0;">
-                            Глубина:
-                            <button class="graph-depth-btn active" data-depth="2">2</button>
-                            <button class="graph-depth-btn" data-depth="3">3</button>
-                            <button class="graph-depth-btn" data-depth="4">4</button>
-                            <button class="graph-depth-btn" data-depth="0">ВСЕ</button>
-                            &nbsp;| Кликните на метрику для трассировки
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ПАНЕЛЬ ДАННЫЕ -->
-            <div id="panel-data" class="panel">
-                <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
-                    <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
-                        <button id="btn-compute-data" class="primary">ВЫЧИСЛИТЬ</button>
-                        <button id="btn-apply-table" class="primary">ПРИМЕНИТЬ ИЗМЕНЕНИЯ</button>
-                        <button id="btn-copy-table" style="margin-left:auto;">КОПИРОВАТЬ ТАБЛИЦУ</button>
-                    </div>
-
-                    <!-- Управляемые параметры -->
-                    <div style="margin-bottom:16px;flex-shrink:0;">
-                        <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">
-                            УПРАВЛЯЕМЫЕ
-                            ПАРАМЕТРЫ</div>
-                        <table id="table-inputs-main">
-                            <thead>
-                                <tr>
-                                    <th>НАЗВАНИЕ</th>
-                                    <th>ЗНАЧЕНИЕ</th>
-                                    <th>+/-10%</th>
-                                    <th>МИН</th>
-                                    <th>МАКС</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-inputs-main-body"></tbody>
-                        </table>
-                        <div id="toggle-extended"
-                            style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">
-                            ▶
-                            РАСШИРЕННЫЕ ПАРАМЕТРЫ</div>
-                        <table id="table-inputs-ext" style="display:none;">
-                            <thead>
-                                <tr>
-                                    <th>НАЗВАНИЕ</th>
-                                    <th>ЗНАЧЕНИЕ</th>
-                                    <th>+/-10%</th>
-                                    <th>МИН</th>
-                                    <th>МАКС</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-inputs-ext-body"></tbody>
-                        </table>
-                    </div>
-
-                    <!-- Внешние факторы -->
-                    <div style="margin-bottom:16px;flex-shrink:0;">
-                        <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">
-                            ВНЕШНИЕ
-                            ФАКТОРЫ
-                        </div>
-                        <table id="table-external-main">
-                            <thead>
-                                <tr>
-                                    <th>НАЗВАНИЕ</th>
-                                    <th>ЗНАЧЕНИЕ</th>
-                                    <th>+/-10%</th>
-                                    <th>МИН</th>
-                                    <th>МАКС</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-external-main-body"></tbody>
-                        </table>
-                        <div id="toggle-ext-external"
-                            style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">▶
-                            РАСШИРЕННЫЕ ВНЕШНИЕ</div>
-                        <table id="table-external-ext" style="display:none;">
-                            <thead>
-                                <tr>
-                                    <th>НАЗВАНИЕ</th>
-                                    <th>ЗНАЧЕНИЕ</th>
-                                    <th>+/-10%</th>
-                                    <th>МИН</th>
-                                    <th>МАКС</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-external-ext-body"></tbody>
-                        </table>
-                    </div>
-
-                    <!-- Ключевые результаты -->
-                    <div style="margin-bottom:16px;flex-shrink:0;">
-                        <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">
-                            КЛЮЧЕВЫЕ
-                            РЕЗУЛЬТАТЫ</div>
-                        <div id="key-results"
-                            style="padding:8px;background:var(--bg-input);border:1px solid var(--border);"></div>
-                        <div id="toggle-full-table"
-                            style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">▶
-                            ПОЛНАЯ ТАБЛИЦА</div>
-                    </div>
-
-                    <!-- Полная таблица (скрыта) -->
-                    <div id="full-table-container" style="display:none;margin-bottom:16px;">
-                        <table id="data-table">
-                            <thead>
-                                <tr>
-                                    <th>НАЗВАНИЕ (ID)</th>
-                                    <th>ТИП</th>
-                                    <th>ЗНАЧЕНИЕ</th>
-                                    <th>МИН</th>
-                                    <th>МАКС</th>
-                                    <th>ИСТ</th>
-                                </tr>
-                            </thead>
-                            <tbody id="data-table-body"></tbody>
-                        </table>
-                    </div>
-
-                    <!-- Ограничения -->
-                    <div id="compute-results" style="flex-shrink:0;"></div>
-                </div>
-            </div>
-            <!-- ПАНЕЛЬ КАЛИБРОВКА -->
-            <div id="panel-calibrate" class="panel">
-                <div style="padding:16px;overflow-y:auto;flex:1;">
-                    <h3 style="margin:0 0 16px 0;">КАЛИБРОВКА МОДЕЛИ</h3>
-                    <p style="color:var(--text-hint);font-size:12px;margin-bottom:12px;">Загрузите исторические данные
-                        на
-                        вкладке
-                        ПЛАН/ФАКТ, затем запустите калибровку.</p>
-                    <button id="btn-run-calibration" class="primary" style="margin-bottom:16px;">ЗАПУСТИТЬ
-                        КАЛИБРОВКУ</button>
-                    <div id="calibrate-results"></div>
-                    <div id="calibrate-history" style="margin-top:24px;"></div>
-                </div>
-            </div>
-            <!-- ПАНЕЛЬ P&L -->
-            <div id="panel-pnl" class="panel">
-                <div style="padding:16px;overflow:auto;flex:1;display:flex;flex-direction:column;">
-                    <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
-                        <h3 style="margin:0;">P&L — ОТЧЁТ О ПРИБЫЛЯХ И УБЫТКАХ</h3>
-                        <button id="btn-build-pnl" class="primary" style="margin-left:auto;">ПОСТРОИТЬ P&L</button>
-                    </div>
-                    <div style="overflow-x:auto;flex:1;">
-                        <table id="pnl-table" style="min-width:1200px;">
-                            <thead id="pnl-head"></thead>
-                            <tbody id="pnl-body"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <!-- ПАНЕЛЬ ЖИВАЯ МОДЕЛЬ -->
-            <div id="panel-live" class="panel">
-                <div style="padding:16px;overflow-y:auto;flex:1;">
-                    <h3 style="margin:0 0 16px 0;">ЖИВАЯ МОДЕЛЬ</h3>
-                    <p style="color:var(--text-hint);font-size:13px;margin-bottom:24px;">Двигайте ползунки — наблюдайте
-                        каскад изменений в реальном времени</p>
-
-                    <div style="display:flex;gap:32px;">
-                        <div style="flex:1;">
-                            <div style="font-size:13px;color:var(--text-hint);margin-bottom:12px;">ПАРАМЕТРЫ</div>
-                            <div id="live-sliders"></div>
-                        </div>
-                        <div style="flex:1;">
-                            <div style="font-size:13px;color:var(--text-hint);margin-bottom:12px;">ДО / ПОСЛЕ</div>
-                            <table id="live-comparison" style="width:100%;font-size:13px;">
-                                <thead>
-                                    <tr>
-                                        <th style="text-align:left;">ПОКАЗАТЕЛЬ</th>
-                                        <th style="text-align:center;">ДО</th>
-                                        <th style="text-align:center;">ПОСЛЕ</th>
-                                        <th style="text-align:center;">Δ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="live-comparison-body"></tbody>
-                            </table>
-                            <div style="font-size:13px;color:var(--text-hint);margin:16px 0 8px;">КАСКАД ИЗМЕНЕНИЙ</div>
-                            <div id="live-cascade" style="font-size:14px;line-height:2;"></div>
-                            <div style="margin-top:24px;display:flex;gap:12px;">
-                                <button id="btn-live-apply" class="primary">ПРИМЕНИТЬ К МОДЕЛИ</button>
-                                <button id="btn-live-save-scenario">СОХРАНИТЬ КАК СЦЕНАРИЙ</button>
-                                <button id="btn-live-reset">СБРОСИТЬ</button>
-                            </div>
-                        </div>
-                    </div>
-
-
-                </div>
-            </div>
-            <!-- ПАНЕЛЬ КАЛИБРОВКА -->
-            <div id="panel-calibrate" class="panel">
-                <div style="padding:16px;overflow-y:auto;flex:1;">
-                    <h3 style="margin:0 0 16px 0;">КАЛИБРОВКА МОДЕЛИ</h3>
-                    <p style="color:var(--text-hint);font-size:12px;margin-bottom:12px;">Загрузите исторические данные
-                        на
-                        вкладке
-                        ПЛАН/ФАКТ, затем запустите калибровку.</p>
-                    <button id="btn-run-calibration" class="primary" style="margin-bottom:16px;">ЗАПУСТИТЬ
-                        КАЛИБРОВКУ</button>
-                    <div id="calibrate-results"></div>
-                </div>
-            </div>
-            <!-- ПАНЕЛЬ ПЛАН/ФАКТ -->
-            <div id="panel-planfact" class="panel">
-                <div style="padding:16px;overflow-y:auto;flex:1;">
-                    <h3 style="margin:0 0 16px 0;">ПЛАН / ФАКТ</h3>
-                    <div style="display:flex;gap:12px;margin-bottom:16px;">
-                        <button id="btn-download-template" class="primary">СКАЧАТЬ ШАБЛОН CSV</button>
-                        <input type="file" id="file-fact-import" accept=".csv" style="display:none;">
-                        <button id="btn-import-fact" class="primary">ЗАГРУЗИТЬ ФАКТ</button>
-                    </div>
-                    <div id="planfact-periods" style="margin-bottom:16px;"></div>
-                    <div id="planfact-comparison"></div>
-                    <div id="planfact-analysis" style="margin-top:16px;"></div>
-                </div>
-            </div>
-            <!-- ПАНЕЛЬ СЦЕНАРИИ -->
-            <div id="panel-scenarios" class="panel">
-                <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
-                    <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;">
-                        <h3 style="margin:0;">СЦЕНАРИИ</h3>
-                        <button id="btn-add-scenario" class="primary" style="margin-left:auto;">+ НОВЫЙ
-                            СЦЕНАРИЙ</button>
-                    </div>
-
-                    <div id="scenarios-list" style="margin-bottom:16px;"></div>
-
-                    <div id="scenario-form"
+                    <div id="dashboard-analysis"
                         style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
-                        <div class="form-group">
-                            <label>НАЗВАНИЕ СЦЕНАРИЯ</label>
-                            <input type="text" id="sc-name" placeholder="Например: Рост ставки ЦБ до 25%">
-                        </div>
-                        <div class="form-group">
-                            <label>ОПИСАНИЕ</label>
-                            <input type="text" id="sc-desc" placeholder="Что моделируем">
-                        </div>
-                        <div style="color:var(--text-hint);font-size:11px;margin-bottom:8px;">ШОКИ (изменения
-                            параметров)
-                        </div>
-                        <div id="scenario-shocks"></div>
-                        <button id="btn-add-shock" style="margin-bottom:12px;">+ ДОБАВИТЬ ШОК</button>
-                        <div style="display:flex;gap:8px;">
-                            <button id="btn-save-scenario" class="primary">СОХРАНИТЬ</button>
-                            <button id="btn-cancel-scenario">ОТМЕНА</button>
+                    </div>
+                    <button id="btn-analysis" style="margin-top:8px;">▶ АНАЛИЗ И РЕКОМЕНДАЦИИ</button>
+                    <button id="btn-goto-live" style="margin-top:8px;font-size:11px;">▶ ОТКРЫТЬ ЖИВУЮ МОДЕЛЬ</button>
+                    <div id="dashboard-analysis-panel"
+                        style="display:none;margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border);max-width:100%;overflow-x:auto;word-break:break-word;">
+                    </div>
+                </div>
+                <div id="dashboard-graph-panel"
+                    style="flex:1;background:var(--bg-primary);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;">
+                    <div
+                        style="padding:8px 12px;background:var(--bg-panel);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-hint);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+                        <span>ГРАФ МОДЕЛИ <span id="graph-selected-node"></span></span>
+                        <button id="btn-full-graph" style="font-size:10px;padding:2px 8px;">▶ ПОЛНЫЙ ГРАФ</button>
+                    </div>
+                    <div id="graph-container" style="flex:1;min-height:400px;overflow:hidden;"></div>
+                    <div
+                        style="padding:4px 12px;background:var(--bg-panel);border-top:1px solid var(--border);font-size:10px;color:var(--text-hint);flex-shrink:0;">
+                        Глубина:
+                        <button class="graph-depth-btn active" data-depth="2">2</button>
+                        <button class="graph-depth-btn" data-depth="3">3</button>
+                        <button class="graph-depth-btn" data-depth="4">4</button>
+                        <button class="graph-depth-btn" data-depth="0">ВСЕ</button>
+                        &nbsp;| Кликните на метрику для трассировки
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ ДАННЫЕ -->
+        <div id="panel-data" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
+                    <button id="btn-compute-data" class="primary">ВЫЧИСЛИТЬ</button>
+                    <button id="btn-apply-table" class="primary">ПРИМЕНИТЬ ИЗМЕНЕНИЯ</button>
+                    <button id="btn-copy-table" style="margin-left:auto;">КОПИРОВАТЬ ТАБЛИЦУ</button>
+                </div>
+
+                <!-- Управляемые параметры -->
+                <div style="margin-bottom:16px;flex-shrink:0;">
+                    <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">
+                        УПРАВЛЯЕМЫЕ
+                        ПАРАМЕТРЫ</div>
+                    <table id="table-inputs-main">
+                        <thead>
+                            <tr>
+                                <th>НАЗВАНИЕ</th>
+                                <th>ЗНАЧЕНИЕ</th>
+                                <th>+/-10%</th>
+                                <th>МИН</th>
+                                <th>МАКС</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-inputs-main-body"></tbody>
+                    </table>
+                    <div id="toggle-extended" style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">
+                        ▶
+                        РАСШИРЕННЫЕ ПАРАМЕТРЫ</div>
+                    <table id="table-inputs-ext" style="display:none;">
+                        <thead>
+                            <tr>
+                                <th>НАЗВАНИЕ</th>
+                                <th>ЗНАЧЕНИЕ</th>
+                                <th>+/-10%</th>
+                                <th>МИН</th>
+                                <th>МАКС</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-inputs-ext-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- Внешние факторы -->
+                <div style="margin-bottom:16px;flex-shrink:0;">
+                    <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">ВНЕШНИЕ
+                        ФАКТОРЫ
+                    </div>
+                    <table id="table-external-main">
+                        <thead>
+                            <tr>
+                                <th>НАЗВАНИЕ</th>
+                                <th>ЗНАЧЕНИЕ</th>
+                                <th>+/-10%</th>
+                                <th>МИН</th>
+                                <th>МАКС</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-external-main-body"></tbody>
+                    </table>
+                    <div id="toggle-ext-external"
+                        style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">▶
+                        РАСШИРЕННЫЕ ВНЕШНИЕ</div>
+                    <table id="table-external-ext" style="display:none;">
+                        <thead>
+                            <tr>
+                                <th>НАЗВАНИЕ</th>
+                                <th>ЗНАЧЕНИЕ</th>
+                                <th>+/-10%</th>
+                                <th>МИН</th>
+                                <th>МАКС</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-external-ext-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- Ключевые результаты -->
+                <div style="margin-bottom:16px;flex-shrink:0;">
+                    <div style="color:var(--text-heading);font-size:12px;letter-spacing:1px;margin-bottom:8px;">КЛЮЧЕВЫЕ
+                        РЕЗУЛЬТАТЫ</div>
+                    <div id="key-results"
+                        style="padding:8px;background:var(--bg-input);border:1px solid var(--border);"></div>
+                    <div id="toggle-full-table"
+                        style="cursor:pointer;color:var(--accent);font-size:12px;margin-top:4px;">▶
+                        ПОЛНАЯ ТАБЛИЦА</div>
+                </div>
+
+                <!-- Полная таблица (скрыта) -->
+                <div id="full-table-container" style="display:none;margin-bottom:16px;">
+                    <table id="data-table">
+                        <thead>
+                            <tr>
+                                <th>НАЗВАНИЕ (ID)</th>
+                                <th>ТИП</th>
+                                <th>ЗНАЧЕНИЕ</th>
+                                <th>МИН</th>
+                                <th>МАКС</th>
+                                <th>ИСТ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-table-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- Ограничения -->
+                <div id="compute-results" style="flex-shrink:0;"></div>
+            </div>
+        </div>
+        <!-- ПАНЕЛЬ КАЛИБРОВКА -->
+        <div id="panel-calibrate" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3 style="margin:0 0 16px 0;">КАЛИБРОВКА МОДЕЛИ</h3>
+                <p style="color:var(--text-hint);font-size:12px;margin-bottom:12px;">Загрузите исторические данные на
+                    вкладке
+                    ПЛАН/ФАКТ, затем запустите калибровку.</p>
+                <button id="btn-run-calibration" class="primary" style="margin-bottom:16px;">ЗАПУСТИТЬ
+                    КАЛИБРОВКУ</button>
+                <div id="calibrate-results"></div>
+                <div id="calibrate-history" style="margin-top:24px;"></div>
+            </div>
+        </div>
+        <!-- ПАНЕЛЬ P&L -->
+        <div id="panel-pnl" class="panel">
+            <div style="padding:16px;overflow:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
+                    <h3 style="margin:0;">P&L — ОТЧЁТ О ПРИБЫЛЯХ И УБЫТКАХ</h3>
+                    <button id="btn-build-pnl" class="primary" style="margin-left:auto;">ПОСТРОИТЬ P&L</button>
+                </div>
+                <div style="overflow-x:auto;flex:1;">
+                    <table id="pnl-table" style="min-width:1200px;">
+                        <thead id="pnl-head"></thead>
+                        <tbody id="pnl-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- ПАНЕЛЬ ЖИВАЯ МОДЕЛЬ -->
+        <div id="panel-live" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3 style="margin:0 0 16px 0;">ЖИВАЯ МОДЕЛЬ</h3>
+                <p style="color:var(--text-hint);font-size:13px;margin-bottom:24px;">Двигайте ползунки — наблюдайте
+                    каскад изменений в реальном времени</p>
+
+                <div style="display:flex;gap:32px;">
+                    <div style="flex:1;">
+                        <div style="font-size:13px;color:var(--text-hint);margin-bottom:12px;">ПАРАМЕТРЫ</div>
+                        <div id="live-sliders"></div>
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-size:13px;color:var(--text-hint);margin-bottom:12px;">ДО / ПОСЛЕ</div>
+                        <table id="live-comparison" style="width:100%;font-size:13px;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;">ПОКАЗАТЕЛЬ</th>
+                                    <th style="text-align:center;">ДО</th>
+                                    <th style="text-align:center;">ПОСЛЕ</th>
+                                    <th style="text-align:center;">Δ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="live-comparison-body"></tbody>
+                        </table>
+                        <div style="font-size:13px;color:var(--text-hint);margin:16px 0 8px;">КАСКАД ИЗМЕНЕНИЙ</div>
+                        <div id="live-cascade" style="font-size:14px;line-height:2;"></div>
+                        <div style="margin-top:24px;display:flex;gap:12px;">
+                            <button id="btn-live-apply" class="primary">ПРИМЕНИТЬ К МОДЕЛИ</button>
+                            <button id="btn-live-save-scenario">СОХРАНИТЬ КАК СЦЕНАРИЙ</button>
+                            <button id="btn-live-reset">СБРОСИТЬ</button>
                         </div>
                     </div>
-
-                    <div id="scenario-comparison" style="display:none;margin-top:16px;"></div>
                 </div>
-            </div>
 
-            <!-- ПАНЕЛЬ ОПТИМИЗАЦИЯ -->
-            <div id="panel-optimize" class="panel">
-                <h3>ОПТИМИЗАЦИЯ</h3>
-                <div class="placeholder">
-                    Обратный счёт от цели, многокритериальная оптимизация, подбор рычагов.
+
+            </div>
+        </div>
+        <!-- ПАНЕЛЬ КАЛИБРОВКА -->
+        <div id="panel-calibrate" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3 style="margin:0 0 16px 0;">КАЛИБРОВКА МОДЕЛИ</h3>
+                <p style="color:var(--text-hint);font-size:12px;margin-bottom:12px;">Загрузите исторические данные на
+                    вкладке
+                    ПЛАН/ФАКТ, затем запустите калибровку.</p>
+                <button id="btn-run-calibration" class="primary" style="margin-bottom:16px;">ЗАПУСТИТЬ
+                    КАЛИБРОВКУ</button>
+                <div id="calibrate-results"></div>
+            </div>
+        </div>
+        <!-- ПАНЕЛЬ ПЛАН/ФАКТ -->
+        <div id="panel-planfact" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3 style="margin:0 0 16px 0;">ПЛАН / ФАКТ</h3>
+                <div style="display:flex;gap:12px;margin-bottom:16px;">
+                    <button id="btn-download-template" class="primary">СКАЧАТЬ ШАБЛОН CSV</button>
+                    <input type="file" id="file-fact-import" accept=".csv" style="display:none;">
+                    <button id="btn-import-fact" class="primary">ЗАГРУЗИТЬ ФАКТ</button>
                 </div>
+                <div id="planfact-periods" style="margin-bottom:16px;"></div>
+                <div id="planfact-comparison"></div>
+                <div id="planfact-analysis" style="margin-top:16px;"></div>
             </div>
+        </div>
+        <!-- ПАНЕЛЬ СЦЕНАРИИ -->
+        <div id="panel-scenarios" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;">
+                    <h3 style="margin:0;">СЦЕНАРИИ</h3>
+                    <button id="btn-add-scenario" class="primary" style="margin-left:auto;">+ НОВЫЙ СЦЕНАРИЙ</button>
+                </div>
+
+                <div id="scenarios-list" style="margin-bottom:16px;"></div>
+
+                <div id="scenario-form"
+                    style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
+                    <div class="form-group">
+                        <label>НАЗВАНИЕ СЦЕНАРИЯ</label>
+                        <input type="text" id="sc-name" placeholder="Например: Рост ставки ЦБ до 25%">
+                    </div>
+                    <div class="form-group">
+                        <label>ОПИСАНИЕ</label>
+                        <input type="text" id="sc-desc" placeholder="Что моделируем">
+                    </div>
+                    <div style="color:var(--text-hint);font-size:11px;margin-bottom:8px;">ШОКИ (изменения параметров)
+                    </div>
+                    <div id="scenario-shocks"></div>
+                    <button id="btn-add-shock" style="margin-bottom:12px;">+ ДОБАВИТЬ ШОК</button>
+                    <div style="display:flex;gap:8px;">
+                        <button id="btn-save-scenario" class="primary">СОХРАНИТЬ</button>
+                        <button id="btn-cancel-scenario">ОТМЕНА</button>
+                    </div>
+                </div>
+
+                <div id="scenario-comparison" style="display:none;margin-top:16px;"></div>
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ ОПТИМИЗАЦИЯ -->
+        <div id="panel-optimize" class="panel">
+            <h3>ОПТИМИЗАЦИЯ</h3>
+            <div class="placeholder">
+                Обратный счёт от цели, многокритериальная оптимизация, подбор рычагов.
+            </div>
+        </div>
 
 
-            <!-- ПАНЕЛЬ НАСТРОЙКИ -->
-            <div id="panel-company" class="panel">
-                <div style="padding:16px;overflow-y:auto;flex:1;">
-                    <h3 style="margin:0 0 16px 0;">НАСТРОЙКИ</h3>
+        <!-- ПАНЕЛЬ НАСТРОЙКИ -->
+        <div id="panel-company" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3 style="margin:0 0 16px 0;">НАСТРОЙКИ</h3>
 
-                    <!-- Секция: Компания -->
-                    <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
-                            onclick="toggleSettingsSection(this)">
-                            <h4 style="margin:0;">КОМПАНИЯ И НАЛОГИ</h4><span class="section-arrow">▼</span>
-                        </div>
-                        <div class="settings-section">
-                            <div class="form-group"><label>НАЛОГОВЫЙ РЕЖИМ</label><select id="company-tax-system"
+                <!-- Секция: Компания -->
+                <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                        onclick="toggleSettingsSection(this)">
+                        <h4 style="margin:0;">КОМПАНИЯ И НАЛОГИ</h4><span class="section-arrow">▼</span>
+                    </div>
+                    <div class="settings-section">
+                        <div class="form-group"><label>НАЛОГОВЫЙ РЕЖИМ</label><select id="company-tax-system"
+                                style="width:100%;">
+                                <option value="OSNO">ОСНО</option>
+                                <option value="USN_INCOME">УСН «Доходы»</option>
+                                <option value="USN_INCOME_MINUS">УСН «Доходы минус расходы»</option>
+                                <option value="PATENT">Патент</option>
+                            </select></div>
+                        <div id="osno-settings">
+                            <div class="form-group"><label>СТАВКА НДС</label><select id="company-nds-rate"
                                     style="width:100%;">
-                                    <option value="OSNO">ОСНО</option>
-                                    <option value="USN_INCOME">УСН «Доходы»</option>
-                                    <option value="USN_INCOME_MINUS">УСН «Доходы минус расходы»</option>
-                                    <option value="PATENT">Патент</option>
-                                </select></div>
-                            <div id="osno-settings">
-                                <div class="form-group"><label>СТАВКА НДС</label><select id="company-nds-rate"
-                                        style="width:100%;">
-                                        <option value="0.22">22% (ОСНО)</option>
-                                        <option value="0.10">10%</option>
-                                        <option value="0.07">7% (УСН)</option>
-                                        <option value="0.05">5% (УСН)</option>
-                                        <option value="0">0%</option>
-                                    </select></div>
-                            </div>
-                            <div class="form-group"><label>НАЛОГ НА ПРИБЫЛЬ</label><select id="company-profit-tax-rate"
-                                    style="width:100%;">
-                                    <option value="0.25">25% (ОСНО)</option>
-                                    <option value="0.15">15% (УСН)</option>
-                                    <option value="0.06">6% (УСН)</option>
-                                    <option value="0.05">5% (IT)</option>
+                                    <option value="0.22">22% (ОСНО)</option>
+                                    <option value="0.10">10%</option>
+                                    <option value="0.07">7% (УСН)</option>
+                                    <option value="0.05">5% (УСН)</option>
                                     <option value="0">0%</option>
                                 </select></div>
-                            <div class="form-group"><label>СТРАХОВЫЕ ВЗНОСЫ</label><select id="company-insurance-rate"
-                                    style="width:100%;">
-                                    <option value="0.30">30%</option>
-                                    <option value="0.151">15.1%</option>
-                                    <option value="0.15">15% (МСП)</option>
-                                    <option value="0.076">7.6% (IT)</option>
+                        </div>
+                        <div class="form-group"><label>НАЛОГ НА ПРИБЫЛЬ</label><select id="company-profit-tax-rate"
+                                style="width:100%;">
+                                <option value="0.25">25% (ОСНО)</option>
+                                <option value="0.15">15% (УСН)</option>
+                                <option value="0.06">6% (УСН)</option>
+                                <option value="0.05">5% (IT)</option>
+                                <option value="0">0%</option>
+                            </select></div>
+                        <div class="form-group"><label>СТРАХОВЫЕ ВЗНОСЫ</label><select id="company-insurance-rate"
+                                style="width:100%;">
+                                <option value="0.30">30%</option>
+                                <option value="0.151">15.1%</option>
+                                <option value="0.15">15% (МСП)</option>
+                                <option value="0.076">7.6% (IT)</option>
+                            </select></div>
+                        <div class="form-group"><label>ОТСРОЧКА ПЛАТЕЖЕЙ (дней)</label><input type="number"
+                                id="company-receivables-days" value="30" min="0" max="180" style="width:100%;"></div>
+                        <!-- Секция: Основные средства -->
+                        <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                                onclick="toggleSettingsSection(this)">
+                                <h4 style="margin:0;">ОСНОВНЫЕ СРЕДСТВА</h4><span class="section-arrow">▼</span>
+                            </div>
+                            <div class="settings-section">
+                                <div class="form-group"><label>СТОИМОСТЬ ОС НА СТАРТЕ</label><input type="number"
+                                        id="fa-start-value" value="4000000" step="100000" style="width:100%;"></div>
+                                <div class="form-group"><label>НАКОПЛЕННАЯ АМОРТИЗАЦИЯ</label><input type="number"
+                                        id="fa-start-da" value="1000000" step="10000" style="width:100%;"></div>
+                                <div class="form-group"><label>НОРМА АМОРТИЗАЦИИ (%)</label><input type="number"
+                                        id="fa-da-rate" value="10" step="0.5" min="1" max="50" style="width:100%;">
+                                </div>
+                                <div class="form-group"><label>ОСТАВШИЙСЯ СРОК АМОРТИЗАЦИИ (мес)</label><input
+                                        type="number" id="fa-remaining-months" value="60" step="1" min="1" max="360"
+                                        style="width:100%;"></div>
+                            </div>
+                        </div>
+                        <button id="btn-apply-company" class="primary"
+                            style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>
+                    </div>
+                </div>
+
+
+
+                <!-- Секция: Инвестиции -->
+                <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                        onclick="toggleSettingsSection(this)">
+                        <h4 style="margin:0;">ИНВЕСТИЦИИ (CAPEX)</h4><span class="section-arrow">▼</span>
+                    </div>
+                    <div class="settings-section">
+                        <div id="investments-list"></div>
+                        <button id="btn-add-investment" class="primary" style="margin-top:8px;">+ ДОБАВИТЬ
+                            ПРОЕКТ</button>
+                        <div id="investment-form"
+                            style="display:none;padding:8px;background:var(--bg-input);border:1px solid var(--border);margin-top:8px;">
+                            <div class="form-group"><label>НАЗВАНИЕ</label><input type="text" id="inv-name"></div>
+                            <div class="form-group"><label>СТОИМОСТЬ</label><input type="number" id="inv-cost"
+                                    step="10000" min="0" oninput="updateInvSchedule()"></div>
+                            <div class="form-group"><label>МЕСЯЦ ПЛАТЕЖА</label><select id="inv-start-month">
+                                    <option value="0">Янв</option>
+                                    <option value="1">Фев</option>
+                                    <option value="2">Мар</option>
+                                    <option value="3">Апр</option>
+                                    <option value="4">Май</option>
+                                    <option value="5">Июн</option>
+                                    <option value="6">Июл</option>
+                                    <option value="7">Авг</option>
+                                    <option value="8">Сен</option>
+                                    <option value="9">Окт</option>
+                                    <option value="10">Ноя</option>
+                                    <option value="11">Дек</option>
                                 </select></div>
-                            <div class="form-group"><label>ОТСРОЧКА ПЛАТЕЖЕЙ (дней)</label><input type="number"
-                                    id="company-receivables-days" value="30" min="0" max="180" style="width:100%;">
+                            <div class="form-group"><label>МЕСЯЦ ВВОДА В ЭКСПЛУАТАЦИЮ</label><select
+                                    id="inv-commissioning">
+                                    <option value="0">Янв</option>
+                                    <option value="1">Фев</option>
+                                    <option value="2">Мар</option>
+                                    <option value="3">Апр</option>
+                                    <option value="4">Май</option>
+                                    <option value="5">Июн</option>
+                                    <option value="6">Июл</option>
+                                    <option value="7">Авг</option>
+                                    <option value="8">Сен</option>
+                                    <option value="9">Окт</option>
+                                    <option value="10">Ноя</option>
+                                    <option value="11">Дек</option>
+                                </select></div>
+                            <div class="form-group"><label>ПЛАТЕЖЕЙ</label><select id="inv-payments-count"
+                                    onchange="updateInvSchedule()">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="6">6</option>
+                                    <option value="12">12</option>
+                                </select></div>
+                            <div class="form-group"><label>ГРАФИК</label>
+                                <div id="inv-schedule-inputs"></div>
                             </div>
-                            <!-- Секция: Основные средства -->
-                            <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
-                                <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
-                                    onclick="toggleSettingsSection(this)">
-                                    <h4 style="margin:0;">ОСНОВНЫЕ СРЕДСТВА</h4><span class="section-arrow">▼</span>
-                                </div>
-                                <div class="settings-section">
-                                    <div class="form-group"><label>СТОИМОСТЬ ОС НА СТАРТЕ</label><input type="number"
-                                            id="fa-start-value" value="4000000" step="100000" style="width:100%;"></div>
-                                    <div class="form-group"><label>НАКОПЛЕННАЯ АМОРТИЗАЦИЯ</label><input type="number"
-                                            id="fa-start-da" value="1000000" step="10000" style="width:100%;"></div>
-                                    <div class="form-group"><label>НОРМА АМОРТИЗАЦИИ (%)</label><input type="number"
-                                            id="fa-da-rate" value="10" step="0.5" min="1" max="50" style="width:100%;">
-                                    </div>
-                                    <div class="form-group"><label>ОСТАВШИЙСЯ СРОК АМОРТИЗАЦИИ (мес)</label><input
-                                            type="number" id="fa-remaining-months" value="60" step="1" min="1" max="360"
-                                            style="width:100%;"></div>
-                                </div>
-                            </div>
-                            <button id="btn-apply-company" class="primary"
-                                style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>
+                            <button id="btn-save-investment" class="primary">СОХРАНИТЬ</button><button
+                                id="btn-cancel-investment">ОТМЕНА</button>
                         </div>
                     </div>
+                </div>
 
-
-
-                    <!-- Секция: Инвестиции -->
-                    <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
-                            onclick="toggleSettingsSection(this)">
-                            <h4 style="margin:0;">ИНВЕСТИЦИИ (CAPEX)</h4><span class="section-arrow">▼</span>
-                        </div>
-                        <div class="settings-section">
-                            <div id="investments-list"></div>
-                            <button id="btn-add-investment" class="primary" style="margin-top:8px;">+ ДОБАВИТЬ
-                                ПРОЕКТ</button>
-                            <div id="investment-form"
-                                style="display:none;padding:8px;background:var(--bg-input);border:1px solid var(--border);margin-top:8px;">
-                                <div class="form-group"><label>НАЗВАНИЕ</label><input type="text" id="inv-name"></div>
-                                <div class="form-group"><label>СТОИМОСТЬ</label><input type="number" id="inv-cost"
-                                        step="10000" min="0" oninput="updateInvSchedule()"></div>
-                                <div class="form-group"><label>МЕСЯЦ ПЛАТЕЖА</label><select id="inv-start-month">
-                                        <option value="0">Янв</option>
-                                        <option value="1">Фев</option>
-                                        <option value="2">Мар</option>
-                                        <option value="3">Апр</option>
-                                        <option value="4">Май</option>
-                                        <option value="5">Июн</option>
-                                        <option value="6">Июл</option>
-                                        <option value="7">Авг</option>
-                                        <option value="8">Сен</option>
-                                        <option value="9">Окт</option>
-                                        <option value="10">Ноя</option>
-                                        <option value="11">Дек</option>
-                                    </select></div>
-                                <div class="form-group"><label>МЕСЯЦ ВВОДА В ЭКСПЛУАТАЦИЮ</label><select
-                                        id="inv-commissioning">
-                                        <option value="0">Янв</option>
-                                        <option value="1">Фев</option>
-                                        <option value="2">Мар</option>
-                                        <option value="3">Апр</option>
-                                        <option value="4">Май</option>
-                                        <option value="5">Июн</option>
-                                        <option value="6">Июл</option>
-                                        <option value="7">Авг</option>
-                                        <option value="8">Сен</option>
-                                        <option value="9">Окт</option>
-                                        <option value="10">Ноя</option>
-                                        <option value="11">Дек</option>
-                                    </select></div>
-                                <div class="form-group"><label>ПЛАТЕЖЕЙ</label><select id="inv-payments-count"
-                                        onchange="updateInvSchedule()">
-                                        <option value="1">1</option>
-                                        <option value="2">2</option>
-                                        <option value="3">3</option>
-                                        <option value="6">6</option>
-                                        <option value="12">12</option>
-                                    </select></div>
-                                <div class="form-group"><label>ГРАФИК</label>
-                                    <div id="inv-schedule-inputs"></div>
-                                </div>
-                                <button id="btn-save-investment" class="primary">СОХРАНИТЬ</button><button
-                                    id="btn-cancel-investment">ОТМЕНА</button>
-                            </div>
-                        </div>
+                <!-- Секция: Кредиты -->
+                <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                        onclick="toggleSettingsSection(this)">
+                        <h4 style="margin:0;">КРЕДИТЫ</h4><span class="section-arrow">▼</span>
                     </div>
-
-                    <!-- Секция: Кредиты -->
-                    <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
-                            onclick="toggleSettingsSection(this)">
-                            <h4 style="margin:0;">КРЕДИТЫ</h4><span class="section-arrow">▼</span>
-                        </div>
-                        <div class="settings-section">
-                            <div id="credits-list"></div>
-                            <button id="btn-add-credit" class="primary" style="margin-top:8px;">+ ДОБАВИТЬ
-                                КРЕДИТ</button>
-                            <div id="credit-form"
-                                style="display:none;padding:8px;background:var(--bg-input);border:1px solid var(--border);margin-top:8px;">
-                                <div class="form-group"><label>НАЗВАНИЕ</label><input type="text" id="cr-name"></div>
-                                <div class="form-group"><label>БАНК</label><input type="text" id="cr-bank"></div>
-                                <div class="form-group"><label>СУММА</label><input type="number" id="cr-amount"
-                                        step="100000" min="0" oninput="updateCreditInfo()"></div>
-                                <div class="form-group"><label>МЕСЯЦ ПОЛУЧЕНИЯ</label><select id="cr-start-month">
-                                        <option value="0">Янв</option>
-                                        <option value="1">Фев</option>
-                                        <option value="2">Мар</option>
-                                        <option value="3">Апр</option>
-                                        <option value="4">Май</option>
-                                        <option value="5">Июн</option>
-                                        <option value="6">Июл</option>
-                                        <option value="7">Авг</option>
-                                        <option value="8">Сен</option>
-                                        <option value="9">Окт</option>
-                                        <option value="10">Ноя</option>
-                                        <option value="11">Дек</option>
-                                    </select></div>
-                                <div class="form-group"><label>СТАВКА (%)</label><input type="number" id="cr-rate"
-                                        step="0.1" min="0" max="50" oninput="updateCreditInfo()"></div>
-                                <div class="form-group"><label>СРОК (МЕС)</label><input type="number" id="cr-term"
-                                        step="6" min="1" max="120" oninput="updateCreditInfo()"></div>
-                                <div class="form-group"><label>ТИП ПОГАШЕНИЯ</label><select id="cr-repayment-type"
-                                        onchange="updateCreditInfo()">
-                                        <option value="annuity">Аннуитет</option>
-                                        <option value="equal">Равное тело</option>
-                                    </select></div>
-                                <div class="form-group"><label>ПЛАТЁЖ/МЕС</label><input type="number"
-                                        id="cr-monthly-payment" readonly></div>
-                                <div style="font-size:11px;color:var(--text-hint);margin-top:8px;">КОВЕНАНТЫ</div>
-                                <div id="cr-covenants-container">
-                                    <div class="cr-covenant-row" style="display:flex;gap:8px;margin-bottom:4px;">
-                                        <select class="cr-covenant-type"
-                                            style="flex:1;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">
-                                            <option value="debtEbitda">Debt/EBITDA &lt;</option>
-                                            <option value="icr">Interest Coverage &gt;</option>
-                                            <option value="currentRatio">Текущая ликвидность &gt;</option>
-                                            <option value="maxCapex">Макс CAPEX/год &lt;</option>
-                                            <option value="minRevenue">Мин выручка/квартал &gt;</option>
-                                        </select>
-                                        <input type="number" class="cr-covenant-value" value="3.0" step="0.1"
-                                            style="width:100px;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">
-                                        <button class="btn-remove-covenant"
-                                            style="font-size:10px;padding:2px 6px;">X</button>
-                                    </div>
+                    <div class="settings-section">
+                        <div id="credits-list"></div>
+                        <button id="btn-add-credit" class="primary" style="margin-top:8px;">+ ДОБАВИТЬ КРЕДИТ</button>
+                        <div id="credit-form"
+                            style="display:none;padding:8px;background:var(--bg-input);border:1px solid var(--border);margin-top:8px;">
+                            <div class="form-group"><label>НАЗВАНИЕ</label><input type="text" id="cr-name"></div>
+                            <div class="form-group"><label>БАНК</label><input type="text" id="cr-bank"></div>
+                            <div class="form-group"><label>СУММА</label><input type="number" id="cr-amount"
+                                    step="100000" min="0" oninput="updateCreditInfo()"></div>
+                            <div class="form-group"><label>МЕСЯЦ ПОЛУЧЕНИЯ</label><select id="cr-start-month">
+                                    <option value="0">Янв</option>
+                                    <option value="1">Фев</option>
+                                    <option value="2">Мар</option>
+                                    <option value="3">Апр</option>
+                                    <option value="4">Май</option>
+                                    <option value="5">Июн</option>
+                                    <option value="6">Июл</option>
+                                    <option value="7">Авг</option>
+                                    <option value="8">Сен</option>
+                                    <option value="9">Окт</option>
+                                    <option value="10">Ноя</option>
+                                    <option value="11">Дек</option>
+                                </select></div>
+                            <div class="form-group"><label>СТАВКА (%)</label><input type="number" id="cr-rate"
+                                    step="0.1" min="0" max="50" oninput="updateCreditInfo()"></div>
+                            <div class="form-group"><label>СРОК (МЕС)</label><input type="number" id="cr-term" step="6"
+                                    min="1" max="120" oninput="updateCreditInfo()"></div>
+                            <div class="form-group"><label>ТИП ПОГАШЕНИЯ</label><select id="cr-repayment-type"
+                                    onchange="updateCreditInfo()">
+                                    <option value="annuity">Аннуитет</option>
+                                    <option value="equal">Равное тело</option>
+                                </select></div>
+                            <div class="form-group"><label>ПЛАТЁЖ/МЕС</label><input type="number"
+                                    id="cr-monthly-payment" readonly></div>
+                            <div style="font-size:11px;color:var(--text-hint);margin-top:8px;">КОВЕНАНТЫ</div>
+                            <div id="cr-covenants-container">
+                                <div class="cr-covenant-row" style="display:flex;gap:8px;margin-bottom:4px;">
+                                    <select class="cr-covenant-type"
+                                        style="flex:1;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">
+                                        <option value="debtEbitda">Debt/EBITDA &lt;</option>
+                                        <option value="icr">Interest Coverage &gt;</option>
+                                        <option value="currentRatio">Текущая ликвидность &gt;</option>
+                                        <option value="maxCapex">Макс CAPEX/год &lt;</option>
+                                        <option value="minRevenue">Мин выручка/квартал &gt;</option>
+                                    </select>
+                                    <input type="number" class="cr-covenant-value" value="3.0" step="0.1"
+                                        style="width:100px;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">
+                                    <button class="btn-remove-covenant"
+                                        style="font-size:10px;padding:2px 6px;">X</button>
                                 </div>
-                                <button id="btn-add-covenant" style="font-size:11px;margin-top:4px;">+ ДОБАВИТЬ
-                                    КОВЕНАНТ</button>
-                                <button id="btn-save-credit" class="primary">СОХРАНИТЬ</button><button
-                                    id="btn-cancel-credit">ОТМЕНА</button>
                             </div>
+                            <button id="btn-add-covenant" style="font-size:11px;margin-top:4px;">+ ДОБАВИТЬ
+                                КОВЕНАНТ</button>
+                            <button id="btn-save-credit" class="primary">СОХРАНИТЬ</button><button
+                                id="btn-cancel-credit">ОТМЕНА</button>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- ПАНЕЛЬ КАЛЕНДАРЬ -->
-            <div id="panel-calendar" class="panel">
-                <div style="padding:16px;overflow:auto;flex:1;display:flex;flex-direction:column;">
-                    <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
-                        <h3 style="margin:0;">КАЛЕНДАРЬ ДВИЖЕНИЯ ДЕНЕГ</h3>
-                        <button id="btn-run-calendar" class="primary" style="margin-left:auto;">ПОСТРОИТЬ
-                            КАЛЕНДАРЬ</button>
-                    </div>
-                    <div id="calendar-summary" style="margin-bottom:12px;font-size:12px;color:var(--text-hint);"></div>
-                    <div style="overflow-x:auto;flex:1;" id="calendar-scroll">
-                        <table id="calendar-table" style="min-width:1200px;">
-                            <thead id="calendar-head"></thead>
-                            <tbody id="calendar-table-body"></tbody>
-                        </table>
-                    </div>
-                    <div id="calendar-gaps" style="margin-top:12px;flex-shrink:0;"></div>
+        <!-- ПАНЕЛЬ КАЛЕНДАРЬ -->
+        <div id="panel-calendar" class="panel">
+            <div style="padding:16px;overflow:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;flex-shrink:0;">
+                    <h3 style="margin:0;">КАЛЕНДАРЬ ДВИЖЕНИЯ ДЕНЕГ</h3>
+                    <button id="btn-run-calendar" class="primary" style="margin-left:auto;">ПОСТРОИТЬ КАЛЕНДАРЬ</button>
+                </div>
+                <div id="calendar-summary" style="margin-bottom:12px;font-size:12px;color:var(--text-hint);"></div>
+                <div style="overflow-x:auto;flex:1;" id="calendar-scroll">
+                    <table id="calendar-table" style="min-width:1200px;">
+                        <thead id="calendar-head"></thead>
+                        <tbody id="calendar-table-body"></tbody>
+                    </table>
+                </div>
+                <div id="calendar-gaps" style="margin-top:12px;flex-shrink:0;"></div>
+            </div>
+        </div>
+
+        <!-- ПАНЕЛЬ ДИАГНОСТИКА -->
+        <div id="panel-diagnostics" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3>ДИАГНОСТИКА МОДЕЛИ</h3>
+                <div style="margin-bottom:12px;">
+                    <button id="btn-run-diagnostics" class="primary">ЗАПУСТИТЬ ПРОВЕРКУ</button>
+                </div>
+                <div id="diagnostics-results">
+                    <div class="placeholder">Нажмите «ЗАПУСТИТЬ ПРОВЕРКУ» для анализа модели</div>
                 </div>
             </div>
-
-            <!-- ПАНЕЛЬ ДИАГНОСТИКА -->
-            <div id="panel-diagnostics" class="panel">
-                <div style="padding:16px;overflow-y:auto;flex:1;">
-                    <h3>ДИАГНОСТИКА МОДЕЛИ</h3>
-                    <div style="margin-bottom:12px;">
-                        <button id="btn-run-diagnostics" class="primary">ЗАПУСТИТЬ ПРОВЕРКУ</button>
-                    </div>
-                    <div id="diagnostics-results">
-                        <div class="placeholder">Нажмите «ЗАПУСТИТЬ ПРОВЕРКУ» для анализа модели</div>
-                    </div>
-                </div>
-            </div>
+        </div>
 
     </main>
 
@@ -980,49 +970,51 @@
 
             var keyMetrics = [
                 { id: 'NET_PROFIT', label: 'Чистая прибыль' },
-                { id: 'ROS', label: 'Рентабельность (ROS)', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], p = graph.nodes['NET_PROFIT']; return (r && p && r.value) ? (p.value / r.value * 100) : null; } },
                 { id: 'REVENUE', label: 'Выручка' },
-                { id: 'EBITDA_MARGIN', label: 'Операц. рентаб.', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], e = graph.nodes['EBITDA']; return (r && e && r.value) ? (e.value / r.value * 100) : null; } },
                 { id: 'EBITDA', label: 'EBITDA' },
-                { id: 'DEBT_EBITDA', label: 'Долг/EBITDA', format: 'num', compute: function () { var l = graph.nodes['LOANS'], e = graph.nodes['EBITDA']; return (l && e && e.value) ? (l.value / e.value) : null; } },
                 { id: 'FCF', label: 'Денежный поток' },
-                { id: 'PAYROLL_SHARE', label: 'Доля ФОТ в выручке', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], pl = graph.nodes['DIRECT_LABOR'] || graph.nodes['DEV_PAYROLL'] || graph.nodes['STAFF_PAYROLL'] || graph.nodes['SPECIALIST_PAYROLL'], adm = graph.nodes['ADMIN_PAYROLL']; var total = (pl ? Math.abs(pl.value) : 0) + (adm ? Math.abs(adm.value) : 0); return (r && r.value) ? (total / r.value * 100) : null; } },
+                { id: 'ASSETS', label: 'Активы' },
+                { id: 'DEBT_EBITDA', label: 'Долг/EBITDA' },
                 { id: 'CASH', label: 'Остаток денег' },
-                { id: 'INTEREST_COVERAGE', label: 'Покрытие проц.', format: 'num', compute: function () { var e = graph.nodes['EBIT'], i = graph.nodes['INTEREST']; return (e && i && i.value) ? (e.value / i.value) : null; } },
-                { id: 'GROSS_PROFIT', label: 'Валовая прибыль' },
-                { id: 'ASSETS', label: 'Активы' }
+                { id: 'GROSS_PROFIT', label: 'Валовая прибыль' }
             ];
 
             var html = '';
             keyMetrics.forEach(function (m) {
-                var val = m.compute ? m.compute() : (graph.nodes[m.id] ? graph.nodes[m.id].value : null);
-                if (val === null || val === undefined) return;
-
+                var n = graph.nodes[m.id];
+                if (!n) return;
+                var val = n.value !== null && n.value !== undefined ? n.value : 0;
+                var formatted = formatInputValue(val);
                 var color = val >= 0 ? 'var(--ok)' : 'var(--critical)';
-                var formatted;
-                if (m.format === 'pct') formatted = val.toFixed(1) + '%';
-                else if (m.format === 'num') formatted = val.toFixed(1);
-                else formatted = formatValue(val);
+                var borderColor = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
 
-                var border = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
-                html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + border + ';cursor:pointer;">';
+                html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
                 html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
                 html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatted + '</div>';
                 html += '</div>';
             });
 
             document.getElementById('dashboard-metrics').innerHTML = html;
+
+            // Обработчики кликов на метриках
             document.querySelectorAll('.metric-card').forEach(function (card) {
                 card.addEventListener('click', function () {
-                    var nid = card.dataset.node;
-                    currentTracedNode = nid;
-                    document.getElementById('graph-selected-node').textContent = ' — ' + (graph.nodes[nid] ? graph.nodes[nid].label : nid);
-                    renderTraceGraph(nid, graphDepth);
-                    renderAnalysis(nid);
+                    var nodeId = card.dataset.node;
+                    currentTracedNode = nodeId;
+                    document.getElementById('graph-selected-node').textContent = ' — ' + (graph.nodes[nodeId] ? graph.nodes[nodeId].label : nodeId);
+                    renderTraceGraph(nodeId, graphDepth);
+                    renderAnalysis(nodeId);
                     renderDashboard();
                 });
             });
 
+            // Если был выбран узел — рисуем граф
+            if (currentTracedNode) {
+                renderTraceGraph(currentTracedNode, graphDepth);
+                renderAnalysis(currentTracedNode);
+            }
+
+            // По умолчанию показываем граф для чистой прибыли
             if (!currentTracedNode) {
                 currentTracedNode = 'NET_PROFIT';
                 graphDepth = 2;
