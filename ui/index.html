@@ -416,6 +416,20 @@
                                     <option value="10">Ноя</option>
                                     <option value="11">Дек</option>
                                 </select></div>
+                                <div class="form-group"><label>МЕСЯЦ ВВОДА В ЭКСПЛУАТАЦИЮ</label><select id="inv-commissioning">
+                                        <option value="0">Янв</option>
+                                        <option value="1">Фев</option>
+                                        <option value="2">Мар</option>
+                                        <option value="3">Апр</option>
+                                        <option value="4">Май</option>
+                                        <option value="5">Июн</option>
+                                        <option value="6">Июл</option>
+                                        <option value="7">Авг</option>
+                                        <option value="8">Сен</option>
+                                        <option value="9">Окт</option>
+                                        <option value="10">Ноя</option>
+                                        <option value="11">Дек</option>
+                                    </select></div>
                             <div class="form-group"><label>ПЛАТЕЖЕЙ</label><select id="inv-payments-count"
                                     onchange="updateInvSchedule()">
                                     <option value="1">1</option>
@@ -1556,7 +1570,7 @@
             html += row('Маркетинг', function (p) { return -p.marketing; });
             html += row('Аренда', function (p) { return -p.rent; });
             html += row('IT/R&D/Обучение', function (p) { return -p.itRdTraining; });
-            html += row('Амортизация (справочно)', function (p) { return -p.da; });
+            
 
             html += spacer('── НАЛОГИ ──');
             html += row('НДС', function (p) { return -p.nds; });
@@ -2220,13 +2234,14 @@
                 var start = parseInt(document.getElementById('inv-start-month').value);
                 var count = parseInt(document.getElementById('inv-payments-count').value);
                 var affects = 'FIXED_ASSETS';
+                var commissioning = parseInt(document.getElementById('inv-commissioning').value) || start;
                 var schedule = [];
                 var inputs = document.querySelectorAll('.inv-schedule-input');
                 inputs.forEach(function (inp) { schedule.push(parseFloat(inp.value) || 0); });
                 if (!name || isNaN(cost)) { notify('Заполните название и стоимость', true); return; }
                 if (!graph) { notify('Модель не загружена', true); return; }
                 if (!graph.investments) graph.investments = [];
-                graph.investments.push({ name: name, cost: cost, start: start, schedule: schedule, affects: affects, status: 'planned' });
+                graph.investments.push({ name: name, cost: cost, start: start, commissioning: commissioning, schedule: schedule, affects: 'FIXED_ASSETS', status: 'planned' });
                 saveInvestments();
                 document.getElementById('investment-form').style.display = 'none';
                 notify('Проект добавлен');
