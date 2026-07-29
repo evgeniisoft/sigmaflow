@@ -151,12 +151,19 @@ main {
 }
 
 .panel {
-    display: none;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
     flex: 1;
     flex-direction: column;
 }
 
 .panel.active {
+    height: auto;
+    overflow: visible;
+    opacity: 1;
+    pointer-events: auto;
     display: flex;
 }
 
@@ -443,3 +450,4 @@ table td.value-cell {
     text-align: center !important;
     font-variant-numeric: tabular-nums;
 }
+
