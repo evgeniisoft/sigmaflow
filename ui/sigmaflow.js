@@ -1691,163 +1691,80 @@ Graph.prototype.selfCheck = function () {
     var self = this;
     self.diagnostics = [];
 
+    // S01: INTERMEDIATE/TARGET без входящих связей И без формулы
     Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
-        if (n.type === 'INTERMEDIATE' || n.type === 'TARGET') {
+        if ((n.type === 'INTERMEDIATE' || n.type === 'TARGET') && !n.formula) {
             var hasIncoming = self.edges.some(function (e) { return e.to === n.id; });
             if (!hasIncoming) {
                 self.diagnostics.push({
                     code: 'S01',
                     level: 'warning',
-                    message: 'Узел "' + n.label + '" (' + n.id + ') не имеет входящих связей. Его значение всегда будет равно нулю.',
+                    message: 'Узел "' + n.label + '" (' + n.id + ') не имеет входящих связей или формулы.',
                     node: n.id
                 });
             }
         }
     });
 
+    // S02: INPUT/EXTERNAL без исходящих связей
     Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
-        if (n.type === 'INPUT' || n.type === 'INTERMEDIATE' || n.type === 'EXTERNAL') {
+        if (n.type === 'INPUT' || n.type === 'EXTERNAL') {
             var hasOutgoing = self.edges.some(function (e) { return e.from === n.id; });
-            if (!hasOutgoing) {
+            var usedInFormula = false;
+            Object.keys(self.nodes).forEach(function (k) {
+                if (self.nodes[k].formula && self.nodes[k].formula.indexOf(n.id) >= 0) {
+                    usedInFormula = true;
+                }
+            });
+            if (!hasOutgoing && !usedInFormula) {
                 self.diagnostics.push({
                     code: 'S02',
                     level: 'info',
-                    message: 'Узел "' + n.label + '" (' + n.id + ') не имеет исходящих связей. Он не влияет на результат.',
+                    message: 'Узел "' + n.label + '" (' + n.id + ') не имеет исходящих связей и не используется в формулах.',
                     node: n.id
                 });
             }
         }
     });
 
-    self.edges.forEach(function (e) {
-        if (e.type !== 'THR' && e.coefficient === null) {
-            self.diagnostics.push({
-                code: 'S06',
-                level: 'warning',
-                message: 'Ребро ' + e.from + ' \u2192 ' + e.to + ' (тип ' + e.type + ') не имеет коэффициента.',
-                edge: e.from + '->' + e.to
-            });
-        }
-        if (e.type === 'THR' && e.threshold === null) {
-            self.diagnostics.push({
-                code: 'S07',
-                level: 'warning',
-                message: 'Ребро ' + e.from + ' \u2192 ' + e.to + ' (тип THR): не задан порог (threshold).',
-                edge: e.from + '->' + e.to
-            });
-        }
-    });
-
-    var expectedSigns = {
-        'PRICE->VOLUME': 'negative',
-        'COGS->NET_PROFIT': 'negative',
-        'COGS->GROSS_PROFIT': 'negative',
-        'COGS->EBITDA': 'negative',
-        'OPEX->NET_PROFIT': 'negative',
-        'INTEREST->EBT': 'negative',
-        'TAX->NET_PROFIT': 'negative',
-        'ATTRITION->HEADCOUNT': 'negative',
-        'ADMIN_EXP->EBITDA': 'negative',
-        'SELLING_EXP->EBITDA': 'negative',
-        'DA->EBIT': 'negative',
-        'MARKETING->VOLUME': 'positive',
-        'REVENUE->NET_PROFIT': 'positive',
-        'REVENUE->GROSS_PROFIT': 'positive',
-        'REVENUE->EBITDA': 'positive'
-    };
-    self.edges.forEach(function (e) {
-        var key = e.from + '->' + e.to;
-        var expected = expectedSigns[key];
-        if (expected && e.coefficient !== null) {
-            var actualSign = e.coefficient > 0 ? 'positive' : (e.coefficient < 0 ? 'negative' : 'zero');
-            if (actualSign !== 'zero' && actualSign !== expected) {
-                self.diagnostics.push({
-                    code: 'E01',
-                    level: 'warning',
-                    message: 'Ребро ' + key + ' имеет ' + (e.coefficient > 0 ? 'положительный' : 'отрицательный') +
-                        ' коэффициент (' + e.coefficient.toFixed(2) + '). Обычно ожидается ' +
-                        (expected === 'positive' ? 'положительный' : 'отрицательный') + '. Проверьте.',
-                    edge: key
-                });
-            }
-        }
-    });
-
-    var nonNegativeNodes = ['INVENTORY', 'CASH', 'FIXED_ASSETS', 'RECEIVABLES', 'HEADCOUNT', 'ADMIN_HEADCOUNT', 'PROD_HEADCOUNT'];
-    nonNegativeNodes.forEach(function (nid) {
-        var n = self.nodes[nid];
-        if (n && n.value !== null && n.value < 0) {
-            self.diagnostics.push({
-                code: 'E05',
-                level: 'warning',
-                message: 'Узел "' + n.label + '" (' + n.id + ') принял отрицательное значение: ' + formatValue(n.value) + '. Это экономически некорректно.',
-                node: n.id
-            });
-        }
-    });
-
+    // C01: Кассовый разрыв
     var cashNode = self.nodes['CASH'];
-    var fcfNode = self.nodes['FCF'];
-    if (cashNode && fcfNode && cashNode.value !== null && fcfNode.value !== null) {
-        if (fcfNode.value < 0 && cashNode.value > 0) {
-            var dailyBurn = Math.abs(fcfNode.value) / 365;
-            if (dailyBurn > 0) {
-                var daysLeft = Math.floor(cashNode.value / dailyBurn);
-                if (daysLeft < 30) {
-                    self.diagnostics.push({
-                        code: 'C01',
-                        level: 'critical',
-                        message: 'Дней до кассового разрыва: ' + daysLeft + '. При текущем темпе расходов денежные средства закончатся через ' + daysLeft + ' дн.',
-                        node: 'CASH'
-                    });
-                }
-            }
-        }
+    if (cashNode && cashNode.value !== null && cashNode.value < 0) {
+        self.diagnostics.push({
+            code: 'C01',
+            level: 'critical',
+            message: 'Отрицательный остаток денежных средств (' + formatValue(cashNode.value) + '). Кассовый разрыв!',
+            node: 'CASH'
+        });
     }
 
-    var caNode = self.nodes['CURRENT_ASSETS'];
-    var stdNode = self.nodes['STD'];
-    var payNode = self.nodes['PAYABLES'];
-    if (caNode && payNode && caNode.value !== null && payNode.value !== null) {
-        var shortLiab = (stdNode && stdNode.value ? stdNode.value : 0) + (payNode.value || 0);
-        if (shortLiab > 0) {
-            var cr = caNode.value / shortLiab;
-            if (cr < 1.0) {
-                self.diagnostics.push({
-                    code: 'C04',
-                    level: 'critical',
-                    message: 'Текущая ликвидность = ' + cr.toFixed(2) + '. Оборотных активов недостаточно для покрытия краткосрочных обязательств.',
-                    node: 'CURRENT_ASSETS'
-                });
-            }
-        }
-    }
-
+    // C02: Debt/EBITDA
     var loansNode = self.nodes['LOANS'];
     var ebitdaNode = self.nodes['EBITDA'];
-    if (loansNode && ebitdaNode && loansNode.value !== null && ebitdaNode.value !== null && ebitdaNode.value > 0) {
-        var de = loansNode.value / ebitdaNode.value;
+    if (loansNode && ebitdaNode && loansNode.value > 0 && ebitdaNode.value !== 0) {
+        var de = Math.abs(loansNode.value / ebitdaNode.value);
         if (de > 3.0) {
             self.diagnostics.push({
                 code: 'C02',
                 level: 'critical',
-                message: 'Debt/EBITDA = ' + de.toFixed(1) + '. Превышен порог 3.0. Возможно нарушение ковенантов.',
+                message: 'Debt/EBITDA = ' + de.toFixed(1) + '. Превышен порог 3.0.',
                 node: 'LOANS'
             });
         }
     }
 
+    // C03: Interest Coverage
     var ebitNode = self.nodes['EBIT'];
     var intNode = self.nodes['INTEREST'];
-    if (ebitNode && intNode && ebitNode.value !== null && intNode.value !== null && intNode.value > 0) {
-        var ic = ebitNode.value / intNode.value;
+    if (ebitNode && intNode && ebitNode.value !== 0 && intNode.value !== 0) {
+        var ic = Math.abs(ebitNode.value / intNode.value);
         if (ic < 2.0) {
             self.diagnostics.push({
                 code: 'C03',
                 level: 'critical',
-                message: 'Покрытие процентов = ' + ic.toFixed(1) + '. Ниже порога 2.0. Риск дефолта по процентам.',
+                message: 'Покрытие процентов = ' + ic.toFixed(1) + '. Ниже порога 2.0.',
                 node: 'INTEREST'
             });
         }
