@@ -1258,14 +1258,14 @@
             if (!graph) return;
 
             var groups = [
-                { title: 'ПРОДАЖИ', keys: ['PRICE', 'VOLUME', 'RATE_PER', 'HOURLY_RATE', 'MONTHLY_RATE', 'UTILIZATION', 'HOURS_SOLD', 'SEASON'] },
-                { title: 'МАРКЕТИНГ', keys: ['MARKETING', 'COMPETITION'] },
-                { title: 'ПРОИЗВОДСТВО', keys: ['MATERIAL', 'ENERGY', 'LOGISTICS', 'DEFECT', 'PURCHASE', 'UNIT_', 'SCALE'] },
-                { title: 'ПЕРСОНАЛ', keys: ['HEADCOUNT', 'AVG_SALARY', 'PAYROLL', 'DEV_', 'PROD_', 'ADMIN_', 'STAFF_', 'SPECIALIST_', 'ENGAGEMENT', 'SPI'] },
-                { title: 'ОПЕРАЦИОННЫЕ', keys: ['RENT', 'IT_EXP', 'RD_EXP', 'TRAINING'] },
-                { title: 'АКТИВЫ', keys: ['FIXED_ASSETS', 'INTANGIBLE', 'INVENTORY', 'RECEIVABLES', 'PAYABLES', 'CASH_START', 'EQUITY', 'RETAINED_START'] },
-                { title: 'КРЕДИТЫ', keys: ['LOANS', 'LOAN_REPAYMENT', 'NEW_LOANS', 'BANK_SPREAD', 'CREDIT_RATING', 'RATE_TYPE'] },
-                { title: 'НАЛОГИ', keys: ['TAX_RATE'] },
+                { title: 'ПРОДАЖИ', keys: ['PRICE', 'VOLUME', 'RATE_PER', 'HOURLY_RATE', 'MONTHLY_RATE', 'UTILIZATION', 'HOURS_SOLD', 'SEASON', 'AVG_CHECK', 'CLIENT', 'REPEAT', 'EXPORT', 'BUSINESS_ACTIVITY', 'CONVERSION', 'LEAD'] },
+                { title: 'МАРКЕТИНГ', keys: ['MARKETING', 'COMPETITION', 'LTV', 'CAC'] },
+                { title: 'ПРОИЗВОДСТВО', keys: ['MATERIAL', 'ENERGY', 'LOGISTICS', 'DEFECT', 'PURCHASE', 'UNIT_', 'SCALE', 'CAPACITY', 'WEAR', 'SUPPLIER'] },
+                { title: 'ПЕРСОНАЛ', keys: ['HEADCOUNT', 'AVG_SALARY', 'PAYROLL', 'DEV_', 'PROD_', 'ADMIN_', 'STAFF_', 'SPECIALIST_', 'ENGAGEMENT', 'SPI', 'BONUS', 'ATTRITION', 'PRODUCTIVITY', 'TRAINING'] },
+                { title: 'ОПЕРАЦИОННЫЕ', keys: ['RENT', 'IT_EXP', 'RD_EXP', 'TRAVEL', 'LEGAL', 'INSURANCE', 'UTILITIES'] },
+                { title: 'АКТИВЫ', keys: ['FIXED_ASSETS', 'INTANGIBLE', 'INVENTORY', 'RECEIVABLES', 'PAYABLES', 'CASH_START', 'CASH', 'EQUITY', 'RETAINED_START', 'DA_RATE', 'CAPEX'] },
+                { title: 'КРЕДИТЫ', keys: ['LOAN', 'BANK_SPREAD', 'CREDIT_RATING', 'RATE_TYPE', 'INTEREST', 'DIVIDENDS'] },
+                { title: 'НАЛОГИ', keys: ['TAX_RATE', 'NDS_RATE', 'INSURANCE_RATE', 'PROPERTY_TAX', 'TRADE_FEE', 'PENALTIES'] },
                 { title: 'ПРОЧЕЕ', keys: [] }
             ];
 
