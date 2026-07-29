@@ -3113,7 +3113,7 @@
             window.updateNodeLabel = function (nodeId, value) { graph.nodes[nodeId].label = value; saveCurrentModel(); };
             window.updateNodeFormula = function (nodeId, value) { graph.nodes[nodeId].formula = value; saveCurrentModel(); };
             window.updateNodeValue = function (nodeId, value) { graph.nodes[nodeId].value = parseFloat(value); saveCurrentModel(); };
-            window.deleteEdge = function (from, to) { graph.edges = graph.edges.filter(function (e) { return !(e.from === from && e.to === to); }); saveCurrentModel(); renderAll(); selectEditorNode(to); };
+            window.deleteEdge = function (from, to) { graph.edges = graph.edges.filter(function (e) { return !(e.from === from && e.to === to); }); saveCurrentModel(); renderAll(); selectEditorNode(to); setTimeout(function () { renderEditorGraph(); }, 200); };
 
 
             window.addNodeToModel = function (nodeId) {
