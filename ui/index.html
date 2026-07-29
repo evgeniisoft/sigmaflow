@@ -1598,6 +1598,39 @@
             cascHtml += '</tbody></table>';
             document.getElementById('diagnostics-results').innerHTML += cascHtml;
 
+                // Выбросы
+            var outliers = graph.detectOutliers();
+            if (outliers.length > 0) {
+                var outHtml = '<div style="margin-top:16px;font-size:11px;color:var(--text-hint);">ВЫБРОСЫ В ДАННЫХ (' + outliers.length + ')</div>';
+                outHtml += '<table><thead><tr><th>УЗЕЛ</th><th>ПЕРИОД</th><th>ЗНАЧЕНИЕ</th><th>НИЖНЯЯ ГР.</th><th>ВЕРХНЯЯ ГР.</th></tr></thead><tbody>';
+                outliers.forEach(function (o) {
+                    outHtml += '<tr>';
+                    outHtml += '<td>' + o.label + '</td>';
+                    outHtml += '<td>' + o.period + '</td>';
+                    outHtml += '<td class="value-cell" style="color:var(--warning);">' + formatValue(o.value) + '</td>';
+                    outHtml += '<td class="value-cell">' + formatValue(o.lower) + '</td>';
+                    outHtml += '<td class="value-cell">' + formatValue(o.upper) + '</td>';
+                    outHtml += '</tr>';
+                });
+                outHtml += '</tbody></table>';
+                document.getElementById('diagnostics-results').innerHTML += outHtml;
+            }
+
+            // Пропущенные периоды
+            var missing = graph.findMissingPeriods();
+            if (missing.length > 0) {
+                var missHtml = '<div style="margin-top:16px;font-size:11px;color:var(--text-hint);">ПРОПУЩЕННЫЕ ПЕРИОДЫ (' + missing.length + ')</div>';
+                missHtml += '<div style="font-size:12px;">';
+                missing.forEach(function (m) {
+                    missHtml += 'Пропуск между ' + m.from + ' и ' + m.to + '<br>';
+                });
+                missHtml += '</div>';
+                document.getElementById('diagnostics-results').innerHTML += missHtml;
+            }
+
+            var outHtml = '';
+            var missHtml = '';
+
             var balance = graph.checkBalance();
             if (!balance.balanced) {
                 diag.push({ code: 'B01', level: 'warning', message: 'Баланс не сходится: активы ' + formatValue(balance.assets) + ', пассивы ' + formatValue(balance.liabilities) + ', расхождение ' + balance.pct.toFixed(1) + '%' });
@@ -1637,7 +1670,7 @@
                 html += '</tr>';
             });
             html += '</tbody></table>';
-            container.innerHTML = html + invHtml + fuzzHtml + crossHtml + cascHtml;
+            container.innerHTML = html + invHtml + fuzzHtml + crossHtml + cascHtml + (outHtml || '') + (missHtml || '');
             updateStatusBar('Диагностика: ' + counts.critical + ' критических, ' + counts.warning + ' предупреждений');
         }
         function buildCalendar() {
