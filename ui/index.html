@@ -35,6 +35,7 @@
         <button class="nav-btn" data-panel="calibrate">КАЛИБРОВКА</button>
         <button class="nav-btn" data-panel="live">ЖИВАЯ МОДЕЛЬ</button>
         <button class="nav-btn" data-panel="scenarios">СЦЕНАРИИ</button>
+        <button class="nav-btn" data-panel="editor">РЕДАКТОР</button>
         <button class="nav-btn" data-panel="company">НАСТРОЙКИ</button>
         <button class="nav-btn nav-btn-alert" data-panel="diagnostics" id="nav-diagnostics">ДИАГНОСТИКА</button>
     </nav>
@@ -323,6 +324,21 @@
             </div>
         </div>
 
+        <!-- ПАНЕЛЬ РЕДАКТОР -->
+        <div id="panel-editor" class="panel">
+            <div style="display:flex;height:100%;">
+                <div
+                    style="width:350px;padding:12px;overflow-y:auto;background:var(--bg-panel);border-right:1px solid var(--border);flex-shrink:0;">
+                    <input type="text" id="editor-search" placeholder="Поиск узла..."
+                        style="width:100%;margin-bottom:12px;font-size:12px;padding:4px 8px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);">
+                    <div id="editor-node-list"></div>
+                    <button id="btn-add-node" class="primary" style="width:100%;margin-top:12px;">+ ДОБАВИТЬ УЗЕЛ</button>
+                </div>
+                <div style="flex:1;padding:16px;overflow-y:auto;" id="editor-properties">
+                    <div style="color:var(--text-hint);text-align:center;padding-top:40px;">Выберите узел из списка слева</div>
+                </div>
+            </div>
+        </div>
 
         <!-- ПАНЕЛЬ НАСТРОЙКИ -->
         <div id="panel-company" class="panel">
@@ -2988,6 +3004,107 @@
                     location.reload();
                 }
             });
+
+            function renderEditorNodeList(filter) {
+                if (!graph) return;
+                var container = document.getElementById('editor-node-list');
+                var categories = {
+                    'ВЫРУЧКА': ['PRICE', 'VOLUME', 'CLIENTS', 'AVG_CHECK', 'NEW_CLIENTS', 'REPEAT_SHARE', 'EXPORT_SHARE', 'SEASON', 'BUSINESS_ACTIVITY'],
+                    'ПЕРСОНАЛ': ['PROD_HEADCOUNT', 'ADMIN_HEADCOUNT', 'SALES_HEADCOUNT', 'PROD_AVG_SALARY', 'ADMIN_AVG_SALARY', 'SALES_AVG_SALARY', 'PROD_PAYROLL', 'ADMIN_PAYROLL', 'SALES_PAYROLL', 'BONUS_PROFIT_PCT', 'BONUS_REVENUE_PCT', 'ATTRITION', 'ENGAGEMENT', 'PRODUCTIVITY', 'TRAINING_COST'],
+                    'МАРКЕТИНГ': ['MARKETING_BUDGET', 'COST_PER_LEAD', 'LEADS', 'CONVERSION', 'CAC', 'LTV', 'COMPETITION'],
+                    'ПРОИЗВОДСТВО': ['MATERIAL_COST', 'UNIT_MATERIAL', 'ENERGY_COST', 'LOGISTICS_COST', 'DEFECT_RATE', 'CAPACITY', 'CAPACITY_UTIL', 'WEAR', 'SUPPLIER_RISK'],
+                    'OPEX': ['RENT', 'IT_EXP', 'RD_EXP', 'LEGAL_COST', 'INSURANCE_COST', 'TRAVEL_COST', 'UTILITIES'],
+                    'АКТИВЫ': ['FIXED_ASSETS', 'INTANGIBLE_ASSETS', 'DA', 'DA_RATE', 'CAPEX', 'INVENTORY', 'RECEIVABLES', 'PAYABLES', 'CASH', 'CASH_START'],
+                    'ДОЛГ': ['LOANS', 'NEW_LOANS', 'LOAN_REPAYMENT', 'LOAN_RATE', 'BANK_SPREAD', 'INTEREST', 'INTEREST_INCOME', 'DIVIDENDS', 'CREDIT_RATING'],
+                    'ВНЕШНИЕ': ['CB_RATE', 'INFLATION', 'FX_RATE', 'PMI', 'CCI', 'HOUSEHOLD_INCOME', 'LABOR_INDEX', 'GEO_INDEX', 'SANCTIONS', 'TARIFFS'],
+                    'НАЛОГИ': ['TAX_RATE', 'NDS_RATE', 'INSURANCE_RATE', 'PROPERTY_TAX_RATE', 'TRADE_FEE', 'PENALTIES']
+                };
+
+                var html = '';
+                Object.keys(categories).forEach(function (cat) {
+                    var hasNodes = false;
+                    var catHtml = '';
+                    categories[cat].forEach(function (nodeId) {
+                        if (filter && nodeId.toLowerCase().indexOf(filter) === -1) return;
+                        var node = graph.nodes[nodeId];
+                        var isInModel = !!node;
+                        catHtml += '<div style="padding:4px 8px;cursor:pointer;font-size:12px;' + (isInModel ? 'color:var(--text-primary);' : 'color:var(--text-hint);opacity:0.5;') + '" onclick="selectEditorNode(\'' + nodeId + '\')">';
+                        catHtml += (isInModel ? '● ' : '○ ') + (ALLOWED_CONNECTIONS[nodeId] ? ALLOWED_CONNECTIONS[nodeId].label : nodeId);
+                        catHtml += '</div>';
+                        hasNodes = true;
+                    });
+                    if (hasNodes) {
+                        html += '<div style="font-size:10px;color:var(--text-hint);letter-spacing:1px;margin:8px 0 4px;">' + cat + '</div>';
+                        html += catHtml;
+                    }
+                });
+
+                container.innerHTML = html || '<div style="color:var(--text-hint);">Ничего не найдено</div>';
+            }
+
+            // Поиск
+            document.getElementById('editor-search').addEventListener('input', function () {
+                renderEditorNodeList(this.value.toLowerCase());
+            });
+
+            // Открытие редактора при переходе на вкладку
+            document.querySelector('[data-panel="editor"]').addEventListener('click', function () {
+                renderEditorNodeList('');
+            });
+
+            window.selectEditorNode = function (nodeId) {
+                var node = graph.nodes[nodeId];
+                var info = ALLOWED_CONNECTIONS[nodeId] || {};
+                var isInModel = !!node;
+
+                var html = '<h4 style="margin:0 0 12px;">' + (info.label || nodeId) + ' (' + nodeId + ')</h4>';
+
+                if (isInModel) {
+                    html += '<div class="form-group"><label>НАЗВАНИЕ</label><input type="text" value="' + (node.label || '') + '" onchange="updateNodeLabel(\'' + nodeId + '\', this.value)"></div>';
+                    html += '<div class="form-group"><label>ТИП</label><input type="text" value="' + node.type + '" readonly></div>';
+                    if (node.formula) {
+                        html += '<div class="form-group"><label>ФОРМУЛА</label><input type="text" value="' + node.formula + '" onchange="updateNodeFormula(\'' + nodeId + '\', this.value)"></div>';
+                    }
+                    html += '<div class="form-group"><label>ЗНАЧЕНИЕ</label><input type="number" value="' + (node.value || 0) + '" onchange="updateNodeValue(\'' + nodeId + '\', this.value)" ' + (node.type === 'INTERMEDIATE' || node.type === 'TARGET' ? 'readonly' : '') + '></div>';
+
+                    // Входящие связи
+                    var incoming = graph.edges.filter(function (e) { return e.to === nodeId; });
+                    html += '<div style="font-size:11px;color:var(--text-hint);margin-top:12px;">ВХОДЯЩИЕ СВЯЗИ</div>';
+                    incoming.forEach(function (e) {
+                        html += '<div style="font-size:11px;padding:2px 0;">' + (ALLOWED_CONNECTIONS[e.from] ? ALLOWED_CONNECTIONS[e.from].label : e.from) + ' → ' + nodeId + ' [' + e.coefficient + '] <span onclick="deleteEdge(\'' + e.from + '\',\'' + e.to + '\')" style="color:var(--critical);cursor:pointer;">✕</span></div>';
+                    });
+
+                    // Исходящие связи
+                    var outgoing = graph.edges.filter(function (e) { return e.from === nodeId; });
+                    html += '<div style="font-size:11px;color:var(--text-hint);margin-top:8px;">ИСХОДЯЩИЕ СВЯЗИ</div>';
+                    outgoing.forEach(function (e) {
+                        html += '<div style="font-size:11px;padding:2px 0;">' + nodeId + ' → ' + (ALLOWED_CONNECTIONS[e.to] ? ALLOWED_CONNECTIONS[e.to].label : e.to) + ' [' + e.coefficient + '] <span onclick="deleteEdge(\'' + e.from + '\',\'' + e.to + '\')" style="color:var(--critical);cursor:pointer;">✕</span></div>';
+                    });
+                } else {
+                    html += '<div style="color:var(--text-hint);margin-bottom:12px;">Этого узла нет в вашей модели.</div>';
+                }
+
+                // Добавить связь
+                html += '<div style="margin-top:12px;"><button onclick="showAddEdgeForm(\'' + nodeId + '\')" style="font-size:11px;">+ ДОБАВИТЬ СВЯЗЬ</button></div>';
+
+                // Добавить узел в модель
+                if (!isInModel) {
+                    html += '<button onclick="addNodeToModel(\'' + nodeId + '\')" class="primary" style="width:100%;margin-top:8px;">ДОБАВИТЬ В МОДЕЛЬ</button>';
+                } else {
+                    html += '<button onclick="removeNodeFromModel(\'' + nodeId + '\')" style="width:100%;margin-top:8px;color:var(--critical);border-color:var(--critical);">УДАЛИТЬ ИЗ МОДЕЛИ</button>';
+                }
+
+                document.getElementById('editor-properties').innerHTML = html;
+            };
+
+            window.updateNodeLabel = function (nodeId, value) { graph.nodes[nodeId].label = value; saveCurrentModel(); };
+            window.updateNodeFormula = function (nodeId, value) { graph.nodes[nodeId].formula = value; saveCurrentModel(); };
+            window.updateNodeValue = function (nodeId, value) { graph.nodes[nodeId].value = parseFloat(value); saveCurrentModel(); };
+            window.deleteEdge = function (from, to) { graph.edges = graph.edges.filter(function (e) { return !(e.from === from && e.to === to); }); saveCurrentModel(); renderAll(); selectEditorNode(to); };
+            window.addNodeToModel = function (nodeId) { /* реализуем позже */ };
+            window.removeNodeFromModel = function (nodeId) { /* реализуем позже */ };
+            window.showAddEdgeForm = function (nodeId) { /* реализуем позже */ };
+
 
             // Загружаем демо при старте
             loadDemo();
