@@ -3114,6 +3114,13 @@
                 var type = 'INPUT';
                 var node = new Node(nodeId, type, 0, null, null, 'manual', info.label || nodeId, true);
                 graph.addNode(node);
+                renderEditorGraph();
+                // Анимируем новый узел
+                setTimeout(function () {
+                    d3.select('#editor-graph-container').selectAll('circle')
+                        .filter(function (d) { return d.id === nodeId; })
+                        .transition().duration(500).attr('r', 14).transition().duration(300).attr('r', 7);
+                }, 100);
                 saveCurrentModel();
                 graph.compute();
                 renderAll();
@@ -3297,8 +3304,19 @@
                     .force('link', d3.forceLink(linkList).id(function (d) { return d.id; }).distance(60))
                     .force('charge', d3.forceManyBody().strength(-200))
                     .force('center', d3.forceCenter(width / 2, height / 2))
-                    .force('y', d3.forceY(function (d) { return 50 + d._level * 90; }).strength(0.3))
-                    .force('collision', d3.forceCollide(14));
+                    .force('y', d3.forceY(function (d) { return 40 + d._level * 60; }).strength(0.5))
+                    .force('collision', d3.forceCollide(12));
+
+                var selectedNodeId = null;
+                window._editorSelectedNode = null;
+
+                // Обновляем selectEditorNode для подсветки
+                var origSelectEditor = window.selectEditorNode;
+                window.selectEditorNode = function (nodeId) {
+                    origSelectEditor(nodeId);
+                    window._editorSelectedNode = nodeId;
+                    highlightEditorGraph(nodeId);
+                };
 
                 sim.on('tick', function () {
                     link.attr('x1', function (d) { return d.source.x; }).attr('y1', function (d) { return d.source.y; })
@@ -3306,7 +3324,42 @@
                     node.attr('transform', function (d) { return 'translate(' + d.x + ',' + d.y + ')'; });
                 });
             }
-            
+
+            function highlightEditorGraph(nodeId) {
+                // Все узлы
+                d3.select('#editor-graph-container').selectAll('circle').attr('opacity', 0.3);
+                // Все линии
+                d3.select('#editor-graph-container').selectAll('line').attr('opacity', 0.1).attr('stroke-width', 1);
+                // Все подписи
+                d3.select('#editor-graph-container').selectAll('text').attr('opacity', 0.3);
+
+                if (!nodeId) return;
+
+                // Подсвечиваем выбранный и связанные
+                var connected = {};
+                connected[nodeId] = true;
+                graph.edges.forEach(function (e) {
+                    if (e.from === nodeId) connected[e.to] = true;
+                    if (e.to === nodeId) connected[e.from] = true;
+                });
+
+                d3.select('#editor-graph-container').selectAll('g').each(function (d) {
+                    if (d.id === nodeId) {
+                        d3.select(this).select('circle').attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 3);
+                        d3.select(this).select('text').attr('opacity', 1).attr('fill', '#fff');
+                    } else if (connected[d.id]) {
+                        d3.select(this).select('circle').attr('opacity', 0.8);
+                        d3.select(this).select('text').attr('opacity', 0.8);
+                    }
+                });
+
+                d3.select('#editor-graph-container').selectAll('line').each(function (d) {
+                    if (d.source.id === nodeId || d.target.id === nodeId) {
+                        d3.select(this).attr('opacity', 1).attr('stroke', '#5a9fd4').attr('stroke-width', 2);
+                    }
+                });
+            }
+
             // Загружаем демо при старте
             loadDemo();
         });
