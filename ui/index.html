@@ -2441,25 +2441,46 @@
 
             window.renderInvestments = function () {
                 var list = document.getElementById('investments-list');
-                var total = 0;
-                var html = '<table><thead><tr><th>ПРОЕКТ</th><th>СТОИМОСТЬ</th><th>СТАРТ</th><th>ГРАФИК</th><th>СТАТУС</th><th></th></tr></thead><tbody>';
+                if (!list) return;
                 var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-                (graph.investments || []).forEach(function (inv, idx) {
-                    total += inv.cost;
-                    html += '<tr>';
-                    html += '<td>' + inv.name + '</td>';
+                if (!graph.investments || graph.investments.length === 0) {
+                    list.innerHTML = '<div style="color:var(--text-hint);padding:8px;">Нет проектов</div>';
+                    return;
+                }
+                var html = '<table><thead><tr><th>ПРОЕКТ</th><th>СТОИМОСТЬ</th><th>ПЛАТЁЖ</th><th>ВВОД</th><th></th></tr></thead><tbody>';
+                graph.investments.forEach(function (inv, idx) {
+                    html += '<tr style="cursor:pointer;" onclick="editInvestment(' + idx + ')">';
+                    html += '<td>' + (inv.name || '') + '</td>';
                     html += '<td class="value-cell" style="text-align:center;">' + formatValue(inv.cost) + '</td>';
                     html += '<td style="text-align:center;">' + months[inv.start || 0] + '</td>';
-                    html += '<td style="text-align:center;">' + (inv.schedule || []).map(function (v) { return formatValue(v); }).join(' / ') + '</td>';
-                    html += '<td>' + (inv.status || 'plan') + '</td>';
-                    html += '<td><button onclick="deleteInvestment(' + idx + ')" style="font-size:10px;padding:2px 6px;">X</button></td>';
+                    html += '<td style="text-align:center;">' + months[inv.commissioning !== undefined ? inv.commissioning : inv.start] + '</td>';
+                    html += '<td><button onclick="event.stopPropagation(); deleteInvestment(' + idx + ')" style="font-size:10px;padding:2px 6px;">X</button></td>';
                     html += '</tr>';
                 });
                 html += '</tbody></table>';
-                list.innerHTML = html || 'Нет инвестиционных проектов';
-                var capexEl = document.getElementById('capex-total');
-                if (capexEl) capexEl.textContent = formatValue(total);
-            }
+                list.innerHTML = html;
+            };
+
+            window.editInvestment = function (idx) {
+                var inv = graph.investments[idx];
+                if (!inv) return;
+                document.getElementById('investment-form').style.display = 'block';
+                document.getElementById('inv-name').value = inv.name || '';
+                document.getElementById('inv-cost').value = inv.cost || '';
+                document.getElementById('inv-start-month').value = inv.start || 0;
+                document.getElementById('inv-commissioning').value = inv.commissioning !== undefined ? inv.commissioning : inv.start;
+                document.getElementById('inv-payments-count').value = (inv.schedule || []).length || 1;
+                updateInvSchedule();
+                setTimeout(function () {
+                    var inputs = document.querySelectorAll('.inv-schedule-input');
+                    (inv.schedule || []).forEach(function (v, i) {
+                        if (inputs[i]) inputs[i].value = v;
+                    });
+                }, 50);
+                var saveBtn = document.getElementById('btn-save-investment');
+                saveBtn.textContent = 'ОБНОВИТЬ';
+                saveBtn.dataset.editIndex = idx;
+            };
 
             window.deleteInvestment = function (idx) {
                 if (!confirm('Удалить проект «' + (graph.investments[idx] ? graph.investments[idx].name : '') + '»?')) return;
@@ -2478,6 +2499,9 @@
 
             document.getElementById('btn-cancel-investment').addEventListener('click', function () {
                 document.getElementById('investment-form').style.display = 'none';
+                var saveBtn = document.getElementById('btn-save-investment');
+                saveBtn.textContent = 'СОХРАНИТЬ';
+                delete saveBtn.dataset.editIndex;
             });
 
             document.getElementById('inv-cost').addEventListener('input', function () {
@@ -2488,19 +2512,27 @@
                 var name = document.getElementById('inv-name').value;
                 var cost = parseFloat(document.getElementById('inv-cost').value);
                 var start = parseInt(document.getElementById('inv-start-month').value);
-                var count = parseInt(document.getElementById('inv-payments-count').value);
-                var affects = 'FIXED_ASSETS';
                 var commissioning = parseInt(document.getElementById('inv-commissioning').value) || start;
+                var count = parseInt(document.getElementById('inv-payments-count').value);
                 var schedule = [];
-                var inputs = document.querySelectorAll('.inv-schedule-input');
-                inputs.forEach(function (inp) { schedule.push(parseFloat(inp.value) || 0); });
+                document.querySelectorAll('.inv-schedule-input').forEach(function (inp) {
+                    schedule.push(parseFloat(inp.value) || 0);
+                });
                 if (!name || isNaN(cost)) { notify('Заполните название и стоимость', true); return; }
-                if (!graph) { notify('Модель не загружена', true); return; }
                 if (!graph.investments) graph.investments = [];
-                graph.investments.push({ name: name, cost: cost, start: start, commissioning: commissioning, schedule: schedule, affects: 'FIXED_ASSETS', status: 'planned' });
-                saveInvestments();
+
+                var editIndex = this.dataset.editIndex;
+                if (editIndex !== undefined) {
+                    graph.investments[editIndex] = { name: name, cost: cost, start: start, commissioning: commissioning, schedule: schedule, status: 'planned' };
+                    this.textContent = 'СОХРАНИТЬ';
+                    delete this.dataset.editIndex;
+                } else {
+                    graph.investments.push({ name: name, cost: cost, start: start, commissioning: commissioning, schedule: schedule, status: 'planned' });
+                }
+                saveCurrentModel();
                 document.getElementById('investment-form').style.display = 'none';
-                notify('Проект добавлен');
+                window.renderInvestments();
+                notify(editIndex !== undefined ? 'Проект обновлён' : 'Проект добавлен');
             });
 
             window.updateInvSchedule = function () {
@@ -2556,30 +2588,42 @@
 
             window.renderCredits = function () {
                 var list = document.getElementById('credits-list');
-                var total = 0;
-                var monthly = 0;
+                if (!list) return;
+                if (!graph.credits || graph.credits.length === 0) {
+                    list.innerHTML = '<div style="color:var(--text-hint);padding:8px;">Нет кредитов</div>';
+                    return;
+                }
                 var html = '<table><thead><tr><th>КРЕДИТ</th><th>БАНК</th><th>СУММА</th><th>СТАВКА</th><th>ПЛАТЁЖ/МЕС</th><th></th></tr></thead><tbody>';
-                (graph.credits || []).forEach(function (cr, idx) {
-                    total += cr.amount;
-                    monthly += cr.monthlyPayment || 0;
-                    html += '<tr>';
-                    html += '<td>' + cr.name + '</td>';
+                graph.credits.forEach(function (cr, idx) {
+                    html += '<tr style="cursor:pointer;" onclick="editCredit(' + idx + ')">';
+                    html += '<td>' + (cr.name || '') + '</td>';
                     html += '<td>' + (cr.bank || '') + '</td>';
                     html += '<td class="value-cell" style="text-align:center;">' + formatValue(cr.amount) + '</td>';
                     html += '<td class="value-cell" style="text-align:center;">' + (cr.rate ? (cr.rate * 100).toFixed(1) + '%' : '') + '</td>';
                     html += '<td class="value-cell" style="text-align:center;">' + formatValue(cr.monthlyPayment) + '</td>';
-                    html += '<td><button onclick="deleteCredit(' + idx + ')" style="font-size:10px;padding:2px 6px;">X</button></td>';
+                    html += '<td><button onclick="event.stopPropagation(); deleteCredit(' + idx + ')" style="font-size:10px;padding:2px 6px;">X</button></td>';
                     html += '</tr>';
                 });
                 html += '</tbody></table>';
-                list.innerHTML = html || 'Нет кредитов';
-                var loansEl = document.getElementById('loans-total');
-                if (loansEl) loansEl.textContent = formatValue(total);
-                var monthlyEl = document.getElementById('loans-monthly');
-                if (monthlyEl) monthlyEl.textContent = formatValue(monthly);
-                if (graph.nodes['LOANS']) graph.nodes['LOANS'].value = total;
-                if (graph.nodes['LOAN_REPAYMENT']) graph.nodes['LOAN_REPAYMENT'].value = monthly;
-            }
+                list.innerHTML = html;
+            };
+
+            window.editCredit = function (idx) {
+                var cr = graph.credits[idx];
+                if (!cr) return;
+                document.getElementById('credit-form').style.display = 'block';
+                document.getElementById('cr-name').value = cr.name || '';
+                document.getElementById('cr-bank').value = cr.bank || '';
+                document.getElementById('cr-amount').value = cr.amount || '';
+                document.getElementById('cr-rate').value = cr.rate ? (cr.rate * 100).toFixed(1) : '';
+                document.getElementById('cr-term').value = cr.term || 12;
+                document.getElementById('cr-start-month').value = cr.startMonth || 0;
+                document.getElementById('cr-repayment-type').value = cr.repaymentType || 'annuity';
+                updateCreditInfo();
+                var saveBtn = document.getElementById('btn-save-credit');
+                saveBtn.textContent = 'ОБНОВИТЬ';
+                saveBtn.dataset.editIndex = idx;
+            };
 
             window.deleteCredit = function (idx) {
                 if (!confirm('Удалить кредит «' + (graph.credits[idx] ? graph.credits[idx].name : '') + '»?')) return;
@@ -2600,43 +2644,47 @@
 
             document.getElementById('btn-cancel-credit').addEventListener('click', function () {
                 document.getElementById('credit-form').style.display = 'none';
+                var saveBtn = document.getElementById('btn-save-credit');
+                saveBtn.textContent = 'СОХРАНИТЬ';
+                delete saveBtn.dataset.editIndex;
             });
 
             document.getElementById('btn-save-credit').addEventListener('click', function () {
                 var name = document.getElementById('cr-name').value;
                 var bank = document.getElementById('cr-bank').value;
-                var amount = parseFloat(document.getElementById('cr-amount').value);
+                var amount = parseFloat(unformatInputValue(document.getElementById('cr-amount').value));
                 var rate = parseFloat(document.getElementById('cr-rate').value) / 100;
                 var term = parseInt(document.getElementById('cr-term').value);
-                var rateType = 'fixed';
                 var repaymentType = document.getElementById('cr-repayment-type').value;
-                if (!name || isNaN(amount) || isNaN(rate) || isNaN(term)) { notify('Заполните все поля', true); return; }
-                if (!graph) { notify('Модель не загружена', true); return; }
-                if (!graph.credits) graph.credits = [];
-                var monthlyRate = rate / 12;
-                var monthlyPayment;
-                if (repaymentType === 'annuity') {
-                    monthlyPayment = amount * (monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1);
-                } else {
-                    monthlyPayment = amount / term + amount * monthlyRate;
-                }
                 var startMonth = parseInt(document.getElementById('cr-start-month').value) || 0;
+                if (!name || isNaN(amount) || isNaN(rate) || isNaN(term)) { notify('Заполните все поля', true); return; }
+                var mr = rate / 12, mp;
+                if (repaymentType === 'annuity') {
+                    mp = amount * (mr * Math.pow(1 + mr, term)) / (Math.pow(1 + mr, term) - 1);
+                } else {
+                    mp = amount / term + amount * mr;
+                }
+                if (!graph.credits) graph.credits = [];
+
                 var covenants = [];
                 document.querySelectorAll('.cr-covenant-row').forEach(function (row) {
                     var type = row.querySelector('.cr-covenant-type').value;
                     var value = parseFloat(row.querySelector('.cr-covenant-value').value) || 0;
                     covenants.push({ type: type, value: value });
                 });
-                graph.credits.push({
-                    name: name, bank: bank, amount: amount, rate: rate, term: term,
-                    rateType: rateType, repaymentType: repaymentType,
-                    monthlyPayment: Math.round(monthlyPayment),
-                    startMonth: startMonth,
-                    covenants: covenants
-                });
-                saveCredits();
+
+                var editIndex = this.dataset.editIndex;
+                if (editIndex !== undefined) {
+                    graph.credits[editIndex] = { name: name, bank: bank, amount: amount, rate: rate, term: term, repaymentType: repaymentType, monthlyPayment: Math.round(mp), startMonth: startMonth, covenants: covenants };
+                    this.textContent = 'СОХРАНИТЬ';
+                    delete this.dataset.editIndex;
+                } else {
+                    graph.credits.push({ name: name, bank: bank, amount: amount, rate: rate, term: term, repaymentType: repaymentType, monthlyPayment: Math.round(mp), startMonth: startMonth, covenants: covenants });
+                }
+                saveCurrentModel();
                 document.getElementById('credit-form').style.display = 'none';
-                notify('Кредит добавлен');
+                window.renderCredits();
+                notify(editIndex !== undefined ? 'Кредит обновлён' : 'Кредит добавлен');
             });
 
             window.updateCreditInfo = function () {
