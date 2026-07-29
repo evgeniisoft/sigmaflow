@@ -2023,8 +2023,14 @@
                     date: new Date().toISOString(),
                     edges: graph.edges.map(function (e) { return { from: e.from, to: e.to, coefficient: e.coefficient }; })
                 };
-                var results = graph.calibrate();
-                if (results.error) { notify(results.error, true); return; }
+                var calResult = graph.calibrate();
+                if (calResult.error) { notify(calResult.error, true); return; }
+                var results = calResult.results;
+
+                // Выбросы
+                if (calResult.totalOutliers > 0) {
+                    notify('Найдено ' + calResult.totalOutliers + ' выбросов. Они исключены из калибровки.');
+                }
 
                 var html = '<table><thead><tr><th>СВЯЗЬ</th><th>БЫЛО</th><th>СТАЛО</th><th>R²</th><th>SE</th><th>p-value</th><th>ТОЧЕК</th><th>ПРИМЕНИТЬ</th></tr></thead><tbody>';
                 results.forEach(function (r, idx) {
