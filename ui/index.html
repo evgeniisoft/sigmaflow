@@ -3219,7 +3219,9 @@
 
                 var linkList = [];
                 graph.edges.forEach(function (e) {
-                    linkList.push({ source: e.from, target: e.to, coefficient: e.coefficient });
+                    if (graph.nodes[e.from] && graph.nodes[e.to]) {
+                        linkList.push({ source: e.from, target: e.to, coefficient: e.coefficient });
+                    }
                 });
 
                 var svg = d3.select('#editor-graph-container').append('svg').attr('width', width).attr('height', height);
