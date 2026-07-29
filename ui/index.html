@@ -1517,6 +1517,10 @@
                 return;
             }
             graph.compute();
+
+            var outHtml = '';
+            var missHtml = '';
+
             var diag = graph.selfCheck();
             var container = document.getElementById('diagnostics-results');
             if (diag.length === 0) {
@@ -1627,10 +1631,7 @@
                 missHtml += '</div>';
                 document.getElementById('diagnostics-results').innerHTML += missHtml;
             }
-
-            var outHtml = '';
-            var missHtml = '';
-
+            
             var balance = graph.checkBalance();
             if (!balance.balanced) {
                 diag.push({ code: 'B01', level: 'warning', message: 'Баланс не сходится: активы ' + formatValue(balance.assets) + ', пассивы ' + formatValue(balance.liabilities) + ', расхождение ' + balance.pct.toFixed(1) + '%' });
