@@ -648,7 +648,7 @@
                 history: graph.history || [],
                 planForecast: graph.planForecast || null,
                 calibrationLog: graph.calibrationLog || [],
-                edges: graph.edges.map(function (e) { return { from: e.from, to: e.to, coefficient: e.coefficient }; })
+                edges: graph.edges.map(function (e) { return { from: e.from, to: e.to, coefficient: e.coefficient }; }),
             };
             Object.keys(graph.nodes).forEach(function (key) {
                 var n = graph.nodes[key];
@@ -695,6 +695,17 @@
                             edge.coefficient = savedEdge.coefficient;
                         }
                     });
+                });
+            }
+            // Добавляем новые рёбра, которых нет в шаблоне
+            if (modelData.edges) {
+                modelData.edges.forEach(function (savedEdge) {
+                    var exists = graph.edges.some(function (e) {
+                        return e.from === savedEdge.from && e.to === savedEdge.to;
+                    });
+                    if (!exists) {
+                        graph.edges.push(new Edge(savedEdge.from, savedEdge.to, 'LIN', savedEdge.coefficient, 0));
+                    }
                 });
             }
 
@@ -3449,6 +3460,7 @@
             renderAll();
             selectEditorNode(to);
             notify('Связь добавлена: ' + from + ' → ' + to);
+            setTimeout(function () { renderEditorGraph(); }, 200);
         };
 
 
