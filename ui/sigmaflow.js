@@ -440,6 +440,98 @@ Graph.prototype.auditInvariants = function () {
     return results;
 };
 
+Graph.prototype.fuzzTest = function (iterations) {
+    var self = this;
+    iterations = iterations || 100;
+    var results = { total: iterations, passed: 0, failed: 0, errors: [], avgTime: 0 };
+    var totalTime = 0;
+
+    // Сохраняем исходные значения
+    var saved = {};
+    Object.keys(self.nodes).forEach(function (k) { saved[k] = self.nodes[k].value; });
+
+    for (var i = 0; i < iterations; i++) {
+        // Случайно меняем INPUT и EXTERNAL узлы в пределах ±50%
+        Object.keys(self.nodes).forEach(function (k) {
+            var n = self.nodes[k];
+            if ((n.type === 'INPUT' || n.type === 'EXTERNAL') && n.value !== null && n.value !== 0) {
+                var factor = 0.5 + Math.random();
+                n.value = saved[k] * factor;
+            }
+        });
+
+        var start = Date.now();
+        try {
+            self.compute();
+            results.passed++;
+        } catch (e) {
+            results.failed++;
+            results.errors.push({ iteration: i, error: e.message });
+        }
+        totalTime += Date.now() - start;
+
+        // Восстанавливаем значения
+        Object.keys(saved).forEach(function (k) { self.nodes[k].value = saved[k]; });
+    }
+
+    results.avgTime = Math.round(totalTime / iterations * 100) / 100;
+    self.compute();
+    return results;
+};
+
+Graph.prototype.crossValidate = function () {
+    var self = this;
+    var startMonth = new Date().getMonth();
+    var results = [];
+
+    // Получаем данные из всех источников
+    var pnl = self.getPnL(startMonth, 12);
+    var cal = self.getCashFlowCalendar(startMonth, 12);
+
+    if (!pnl || !cal) return results;
+
+    var pnlMonth0 = pnl.rows[0];
+    var calMonth0 = cal.periods[0];
+
+    // Список показателей для сравнения
+    var checks = [
+        { label: 'Выручка', data: self._valSigned('REVENUE'), pnl: pnlMonth0.revenue, cal: calMonth0.revenue },
+        { label: 'Себестоимость', data: Math.abs(self._valSigned('COGS')), pnl: Math.abs(pnlMonth0.cogs), cal: calMonth0.costs },
+        { label: 'EBITDA', data: self._valSigned('EBITDA'), pnl: pnlMonth0.ebitda, cal: null },
+        { label: 'EBIT', data: self._valSigned('EBIT'), pnl: pnlMonth0.ebit, cal: null },
+        { label: 'Чистая прибыль', data: self._valSigned('NET_PROFIT'), pnl: pnlMonth0.net, cal: null },
+        { label: 'Проценты', data: Math.abs(self._valSigned('INTEREST')), pnl: Math.abs(pnlMonth0.interest), cal: calMonth0.interest },
+        { label: 'Амортизация', data: Math.abs(self._valSigned('DA')), pnl: Math.abs(pnlMonth0.da), cal: calMonth0.da || 0 },
+        { label: 'CAPEX', data: Math.abs(self._valSigned('CAPEX')), pnl: null, cal: calMonth0.capex },
+        { label: 'ФОТ произв.', data: Math.abs(self._valSigned('DIRECT_LABOR')), pnl: null, cal: calMonth0.payrollProd },
+        { label: 'ФОТ АУП', data: Math.abs(self._valSigned('ADMIN_PAYROLL')), pnl: null, cal: calMonth0.payrollAdm }
+    ];
+
+    checks.forEach(function (c) {
+        var vals = [c.data, c.pnl, c.cal].filter(function (v) { return v !== null && v !== undefined; });
+        if (vals.length < 2) return;
+
+        var min = Math.min.apply(null, vals.map(Math.abs));
+        var max = Math.max.apply(null, vals.map(Math.abs));
+        var diff = max - min;
+        var avg = (max + min) / 2;
+        var pct = avg > 0 ? (diff / avg * 100) : 0;
+        var passed = pct < 5;
+
+        results.push({
+            label: c.label,
+            data: c.data,
+            pnl: c.pnl,
+            cal: c.cal,
+            diff: diff,
+            pct: pct.toFixed(1),
+            passed: passed
+        });
+    });
+
+    return results;
+};
+
 Graph.prototype.updateBalanceFromCredits = function () {
     var self = this;
     if (!self.credits || self.credits.length === 0) return; // не трогаем, если нет кредитов
