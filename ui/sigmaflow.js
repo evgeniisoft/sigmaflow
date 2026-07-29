@@ -1325,102 +1325,113 @@ function erf(x) {
 
 Graph.prototype.calibrate = function () {
     var self = this;
-    if (!self.history || self.history.length < 2) return { error: 'Недостаточно данных. Нужно минимум 2 периода.' };
-
     var results = [];
 
-    self.edges.forEach(function (edge) {
-        var fromNode = self.nodes[edge.from];
-        var toNode = self.nodes[edge.to];
-        if (!fromNode || !toNode) return;
-        if (toNode.formula) return; // формулы не калибруем
-        if (edge.type === 'THR') return; // пороговые связи пока не калибруем
+    if (!self.history || self.history.length < 3) {
+        return { error: 'Недостаточно данных. Нужно минимум 3 периода.' };
+    }
 
-        // Собираем данные из истории
-        var xData = [], yData = [];
-        self.history.forEach(function (h) {
-            if (!h.fact) return;
-            var x = h.fact[edge.from];
-            var y = h.fact[edge.to];
-            if (x !== undefined && x !== null && y !== undefined && y !== null && h.type === 'historical') {
+    // Собираем все периоды с fact
+    var allData = self.history.filter(function (h) {
+        return h.fact && Object.keys(h.fact).length > 0;
+    });
+
+    if (allData.length < 3) {
+        return { error: 'Недостаточно периодов с фактическими данными.' };
+    }
+
+    // Исключаем выбросы
+    var outliers = self.detectOutliers();
+    var excludedPeriods = [];
+    outliers.forEach(function (o) {
+        if (excludedPeriods.indexOf(o.period) === -1) {
+            excludedPeriods.push(o.period);
+        }
+    });
+
+    var cleanData = allData.filter(function (h) {
+        return excludedPeriods.indexOf(h.period) === -1;
+    });
+
+    if (cleanData.length < 3) {
+        return { error: 'После исключения выбросов осталось менее 3 периодов.' };
+    }
+
+    // Экономически осмысленные пары для калибровки
+    var meaningfulPairs = [
+        { from: 'PRICE', to: 'VOLUME', expectedSign: 'negative' },
+        { from: 'MARKETING', to: 'VOLUME', expectedSign: 'positive' },
+        { from: 'VOLUME', to: 'REVENUE', expectedSign: 'positive' },
+        { from: 'REVENUE', to: 'NET_PROFIT', expectedSign: 'positive' },
+        { from: 'COGS', to: 'NET_PROFIT', expectedSign: 'negative' },
+        { from: 'REVENUE', to: 'EBITDA', expectedSign: 'positive' },
+        { from: 'COGS', to: 'EBITDA', expectedSign: 'negative' },
+        { from: 'OPEX', to: 'NET_PROFIT', expectedSign: 'negative' },
+        { from: 'INTEREST', to: 'EBT', expectedSign: 'negative' },
+        { from: 'MARKETING', to: 'REVENUE', expectedSign: 'positive' },
+        { from: 'HEADCOUNT', to: 'COGS', expectedSign: 'positive' },
+        { from: 'AVG_SALARY', to: 'COGS', expectedSign: 'positive' }
+    ];
+
+    // Для каждой осмысленной пары, где оба узла есть в данных
+    meaningfulPairs.forEach(function (pair) {
+        var xData = [];
+        var yData = [];
+        var periods = [];
+
+        cleanData.forEach(function (h) {
+            var x = h.fact[pair.from];
+            var y = h.fact[pair.to];
+            if (x !== undefined && x !== null && y !== undefined && y !== null && x !== 0) {
                 xData.push(x);
                 yData.push(y);
+                periods.push(h.period);
             }
         });
 
         if (xData.length < 3) return;
 
-        // Парная регрессия: [1, x] → y
+        // Строим регрессию
         var X = xData.map(function (x) { return [1, x]; });
         var reg = linearRegression(X, yData);
         if (!reg) return;
 
-        var newCoeff = reg.coefficients[1]; // slope
-        var oldCoeff = edge.coefficient || 0;
+        var newCoeff = reg.coefficients[1];
+        var oldCoeff = 0;
+
+        // Ищем существующее ребро
+        self.edges.forEach(function (edge) {
+            if (edge.from === pair.from && edge.to === pair.to) {
+                oldCoeff = edge.coefficient || 0;
+            }
+        });
 
         // Проверка знака
-        var expectedSign = null;
-        var signPairs = {
-            'PRICE': { 'VOLUME': 'negative' },
-            'MARKETING': { 'VOLUME': 'positive' },
-            'COGS': { 'NET_PROFIT': 'negative' },
-            'INTEREST': { 'EBT': 'negative' },
-            'REVENUE': { 'NET_PROFIT': 'positive' }
-        };
-        // ... можно расширить
-
-        var signOk = true;
         var actualSign = newCoeff > 0 ? 'positive' : (newCoeff < 0 ? 'negative' : 'zero');
+        var signOk = !pair.expectedSign || pair.expectedSign === actualSign;
 
+        // SE и p-value
         var se = reg.se ? reg.se[1] : null;
         var pValue = reg.pValues ? reg.pValues[1] : null;
 
-        // Проверка стабильности (упрощённо — сравнение первой и второй половины данных)
-        var half = Math.floor(xData.length / 2);
-        var stable = true;
-        if (half >= 3) {
-            var X1 = xData.slice(0, half).map(function (x) { return [1, x]; });
-            var y1 = yData.slice(0, half);
-            var X2 = xData.slice(half).map(function (x) { return [1, x]; });
-            var y2 = yData.slice(half);
-            var reg1 = linearRegression(X1, y1);
-            var reg2 = linearRegression(X2, y2);
-            if (reg1 && reg2 && reg1.coefficients[1] !== 0) {
-                var change = Math.abs(reg2.coefficients[1] - reg1.coefficients[1]) / Math.abs(reg1.coefficients[1]);
-                stable = change < 0.5; // изменение менее 50% = стабильно
-            }
-        }
-
         results.push({
-            from: edge.from,
-            to: edge.to,
+            from: pair.from,
+            to: pair.to,
             oldCoefficient: oldCoeff,
             newCoefficient: Math.round(newCoeff * 10000) / 10000,
             r2: Math.round(reg.r2 * 100) / 100,
-            dataPoints: reg.dataPoints || xData.length,
+            dataPoints: xData.length,
             se: se !== null ? Math.round(se * 10000) / 10000 : null,
             pValue: pValue !== null ? Math.round(pValue * 1000) / 1000 : null,
             signOk: signOk,
             actualSign: actualSign,
-            vif: null  // пока null, позже добавим
-        });
-
-        results.push({
-            from: edge.from,
-            to: edge.to,
-            oldCoefficient: oldCoeff,
-            newCoefficient: Math.round(newCoeff * 10000) / 10000,
-            r2: Math.round(reg.r2 * 100) / 100,
-            dataPoints: reg.dataPoints || xData.length,
-            se: se !== null ? Math.round(se * 10000) / 10000 : null,
-            pValue: pValue !== null ? Math.round(pValue * 1000) / 1000 : null,
-            signOk: signOk,
-            actualSign: actualSign,
-            stable: stable
+            outlierCount: outliers.length,
+            excludedPeriods: excludedPeriods
         });
     });
 
-    return results;
+    results.sort(function (a, b) { return b.r2 - a.r2; });
+    return { results: results, totalOutliers: outliers.length, excludedPeriods: excludedPeriods };
 };
 
 Graph.prototype.detectOutliers = function () {
