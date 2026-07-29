@@ -2172,7 +2172,7 @@
                     var keyMetrics = ['REVENUE', 'COGS', 'NET_PROFIT', 'EBITDA', 'FCF', 'CASH'];
 
                     forecastHistory.forEach(function (h) {
-                        var first = true;
+                       
                         keyMetrics.forEach(function (nodeId) {
                             var planVal = h.plan[nodeId];
                             var factVal = h.fact[nodeId] !== undefined ? h.fact[nodeId] : null;
@@ -2185,10 +2185,7 @@
                             var label = n ? (n.label || n.id) : nodeId;
 
                             html += '<tr>';
-                            if (first) {
-                                html += '<td rowspan="' + keyMetrics.length + '" style="font-weight:500;">' + h.period + '</td>';
-                                first = false;
-                            }
+                            html += '<td style="font-weight:500;">' + h.period + '</td>';
                             html += '<td>' + label + '</td>';
                             html += '<td class="value-cell">' + formatValue(planVal) + '</td>';
                             html += '<td class="value-cell">' + (factVal !== null ? formatValue(factVal) : '—') + '</td>';
