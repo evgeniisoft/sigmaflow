@@ -26,6 +26,20 @@
     --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'Courier New', monospace;
 }
 
+body.light {
+    --bg-primary: #f0f2f5;
+    --bg-panel: #ffffff;
+    --bg-input: #e8eaed;
+    --border: #d0d3d8;
+    --text-primary: #1a1c20;
+    --text-heading: #0a0c10;
+    --text-hint: #5a5d63;
+    --accent: #1a5fa8;
+    --warning: #b8860b;
+    --critical: #b83030;
+    --ok: #2d7a3a;
+}
+
 body {
     background: var(--bg-primary);
     color: var(--text-primary);
