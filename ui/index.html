@@ -3222,49 +3222,28 @@
                 var width = container.clientWidth;
                 var height = container.clientHeight;
 
-                var HIERARCHY = {
-                    0: ['NET_PROFIT'],
-                    1: ['EBT', 'TAX', 'GROSS_PROFIT'],
-                    2: ['EBIT', 'INTEREST', 'OTHER_INCOME', 'OTHER_EXP', 'REVENUE', 'COGS', 'SELLING_EXP', 'ADMIN_EXP'],
-                    3: ['EBITDA', 'DA', 'PRICE', 'VOLUME', 'SEASON', 'MATERIAL_COST', 'DIRECT_LABOR', 'ENERGY_COST', 'LOGISTICS_COST', 'MARKETING', 'RENT', 'TAX_RATE']
-                };
-
                 var nodeList = [];
-                var nodeLevel = {};
-
                 Object.keys(graph.nodes).forEach(function (key) {
-                    var n = graph.nodes[key];
-                    var level = 4;
-                    for (var l = 0; l <= 3; l++) {
-                        if (HIERARCHY[l] && HIERARCHY[l].indexOf(key) >= 0) { level = l; break; }
-                    }
-                    nodeLevel[key] = level;
-                    n._level = level;
-                    nodeList.push(n);
+                    nodeList.push(graph.nodes[key]);
                 });
-
-                // Фиксируем чистую прибыль
-                if (graph.nodes['NET_PROFIT']) {
-                    graph.nodes['NET_PROFIT'].fx = width / 2;
-                    graph.nodes['NET_PROFIT'].fy = 50;
-                }
 
                 var linkList = [];
                 graph.edges.forEach(function (e) {
                     if (graph.nodes[e.from] && graph.nodes[e.to]) {
-                        linkList.push({ source: e.from, target: e.to, coefficient: e.coefficient });
+                        linkList.push({ source: e.from, target: e.to });
                     }
                 });
 
                 var svg = d3.select('#editor-graph-container').append('svg').attr('width', width).attr('height', height);
 
-                svg.append('defs').selectAll('marker').data(['arrow']).join('marker')
-                    .attr('id', 'editor-arrow').attr('viewBox', '0 -3 6 6').attr('refX', 14).attr('refY', 0)
-                    .attr('markerWidth', 4).attr('markerHeight', 4).attr('orient', 'auto')
-                    .append('path').attr('d', 'M0,-3L6,0L0,3').attr('fill', '#2a3040');
+                var sim = d3.forceSimulation(nodeList)
+                    .force('link', d3.forceLink(linkList).id(function (d) { return d.id; }).distance(50))
+                    .force('charge', d3.forceManyBody().strength(-150))
+                    .force('center', d3.forceCenter(width / 2, height / 2))
+                    .force('collision', d3.forceCollide(16));
 
                 var link = svg.append('g').selectAll('line').data(linkList).join('line')
-                    .attr('stroke', '#2a3040').attr('stroke-width', 1).attr('marker-end', 'url(#editor-arrow)');
+                    .attr('stroke', '#2a3040').attr('stroke-width', 1);
 
                 var node = svg.append('g').selectAll('g').data(nodeList).join('g')
                     .attr('cursor', 'pointer')
@@ -3272,11 +3251,10 @@
                     .call(d3.drag()
                         .on('start', function (event, d) { if (!event.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
                         .on('drag', function (event, d) { d.fx = event.x; d.fy = event.y; })
-                        .on('end', function (event, d) { if (!event.active) sim.alphaTarget(0); if (d.id !== 'NET_PROFIT') { d.fx = null; d.fy = null; } }));
+                        .on('end', function (event, d) { if (!event.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }));
 
-                // Кружки
                 node.append('circle')
-                    .attr('r', function (d) { return d._level === 0 ? 16 : (d._level <= 2 ? 10 : 7); })
+                    .attr('r', 14)
                     .attr('fill', function (d) {
                         switch (d.type) {
                             case 'TARGET': return '#5a9fd4';
@@ -3285,80 +3263,31 @@
                             default: return '#3a4a5a';
                         }
                     })
-                    .attr('stroke', function (d) { return d._level <= 1 ? '#5a9fd4' : 'none'; })
-                    .attr('stroke-width', function (d) { return d._level <= 1 ? 2 : 0; });
+                    .attr('stroke', '#1a1f2b')
+                    .attr('stroke-width', 2);
 
-                // Подписи
                 node.append('text')
-                    .attr('dy', function (d) { return d._level === 0 ? 28 : (d._level <= 2 ? 20 : 14); })
+                    .attr('dy', 24)
                     .attr('text-anchor', 'middle')
-                    .attr('fill', function (d) { return d._level <= 1 ? '#e0e3e8' : '#a0a4ac'; })
-                    .attr('font-size', function (d) { return d._level === 0 ? '11px' : (d._level <= 2 ? '9px' : '7px'); })
-                    .attr('font-weight', function (d) { return d._level <= 1 ? '600' : '400'; })
+                    .attr('fill', '#c8ccd4')
+                    .attr('font-size', '9px')
                     .text(function (d) {
                         var label = d.label || d.id;
-                        return label.length > 14 ? label.substring(0, 12) + '..' : label;
+                        return label.length > 16 ? label.substring(0, 14) + '..' : label;
                     });
-
-                var sim = d3.forceSimulation(nodeList)
-                    .force('link', d3.forceLink(linkList).id(function (d) { return d.id; }).distance(60))
-                    .force('charge', d3.forceManyBody().strength(-200))
-                    .force('center', d3.forceCenter(width / 2, height / 2))
-                    .force('y', d3.forceY(function (d) { return 40 + d._level * 60; }).strength(0.5))
-                    .force('collision', d3.forceCollide(12));
-
-                var selectedNodeId = null;
-                window._editorSelectedNode = null;
-
-                // Обновляем selectEditorNode для подсветки
-                var origSelectEditor = window.selectEditorNode;
-                window.selectEditorNode = function (nodeId) {
-                    origSelectEditor(nodeId);
-                    window._editorSelectedNode = nodeId;
-                    highlightEditorGraph(nodeId);
-                };
 
                 sim.on('tick', function () {
                     link.attr('x1', function (d) { return d.source.x; }).attr('y1', function (d) { return d.source.y; })
                         .attr('x2', function (d) { return d.target.x; }).attr('y2', function (d) { return d.target.y; });
-                    node.attr('transform', function (d) { return 'translate(' + d.x + ',' + d.y + ')'; });
+                    node.attr('transform', function (d) {
+                        d.x = Math.max(20, Math.min(width - 20, d.x));
+                        d.y = Math.max(20, Math.min(height - 20, d.y));
+                        return 'translate(' + d.x + ',' + d.y + ')';
+                    });
                 });
             }
 
-            function highlightEditorGraph(nodeId) {
-                // Все узлы
-                d3.select('#editor-graph-container').selectAll('circle').attr('opacity', 0.3);
-                // Все линии
-                d3.select('#editor-graph-container').selectAll('line').attr('opacity', 0.1).attr('stroke-width', 1);
-                // Все подписи
-                d3.select('#editor-graph-container').selectAll('text').attr('opacity', 0.3);
-
-                if (!nodeId) return;
-
-                // Подсвечиваем выбранный и связанные
-                var connected = {};
-                connected[nodeId] = true;
-                graph.edges.forEach(function (e) {
-                    if (e.from === nodeId) connected[e.to] = true;
-                    if (e.to === nodeId) connected[e.from] = true;
-                });
-
-                d3.select('#editor-graph-container').selectAll('g').each(function (d) {
-                    if (d.id === nodeId) {
-                        d3.select(this).select('circle').attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 3);
-                        d3.select(this).select('text').attr('opacity', 1).attr('fill', '#fff');
-                    } else if (connected[d.id]) {
-                        d3.select(this).select('circle').attr('opacity', 0.8);
-                        d3.select(this).select('text').attr('opacity', 0.8);
-                    }
-                });
-
-                d3.select('#editor-graph-container').selectAll('line').each(function (d) {
-                    if (d.source.id === nodeId || d.target.id === nodeId) {
-                        d3.select(this).attr('opacity', 1).attr('stroke', '#5a9fd4').attr('stroke-width', 2);
-                    }
-                });
-            }
+            
 
             // Загружаем демо при старте
             loadDemo();
