@@ -1664,7 +1664,8 @@
             html += '</div>';
             html += '<table><thead><tr><th>КОД</th><th>УРОВЕНЬ</th><th>СООБЩЕНИЕ</th></tr></thead><tbody>';
             diag.forEach(function (d) {
-                var color = d.level === 'critical' ? 'var(--critical)' : (d.level === 'warning' ? 'var(--warning)' : 'var(--text-hint)');
+                if (d.level === 'info') return; // скрываем информационные
+                var color = d.level === 'critical' ? 'var(--critical)' : 'var(--warning)';
                 html += '<tr>';
                 html += '<td>' + d.code + '</td>';
                 html += '<td style="color:' + color + ';font-weight:500;">' + d.level.toUpperCase() + '</td>';
