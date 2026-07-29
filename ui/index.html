@@ -658,6 +658,9 @@
             var data = parseYAML(yamlText);
             graph = Graph.fromDict(data);
             graph.industry = modelData.industry;
+            graph.investments = modelData.investments || [];
+            graph.credits = modelData.credits || [];
+            graph.company = modelData.company || {};
             graph.history = modelData.history || [];
             graph.planForecast = modelData.planForecast || null;
             graph.calibrationLog = modelData.calibrationLog || [];
@@ -673,9 +676,7 @@
                 });
             }
 
-            graph.investments = modelData.investments || [];
-            graph.credits = modelData.credits || [];
-            graph.company = modelData.company || {};
+            // Восстановление значений узлов ПОСЛЕ credits/investments
             if (modelData.nodes) {
                 Object.keys(modelData.nodes).forEach(function (key) {
                     if (graph.nodes[key] && !graph.nodes[key].formula) {
@@ -687,8 +688,8 @@
                     }
                 });
             }
-            graph.name = modelData.name || graph.name;
 
+            graph.name = modelData.name || graph.name;
             setCurrentCompanyId(companyId);
             graph.compute();
             elProjectName.textContent = graph.name;
