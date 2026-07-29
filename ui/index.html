@@ -1618,7 +1618,7 @@
                 html += '</tr>';
             });
             html += '</tbody></table>';
-            container.innerHTML = html + invHtml;
+            container.innerHTML = html + invHtml + fuzzHtml + crossHtml;
             updateStatusBar('Диагностика: ' + counts.critical + ' критических, ' + counts.warning + ' предупреждений');
         }
         function buildCalendar() {
