@@ -151,19 +151,12 @@ main {
 }
 
 .panel {
-    height: 0;
-    overflow: hidden;
-    opacity: 0;
-    pointer-events: none;
+    display: none;
     flex: 1;
     flex-direction: column;
 }
 
 .panel.active {
-    height: auto;
-    overflow: visible;
-    opacity: 1;
-    pointer-events: auto;
     display: flex;
 }
 
