@@ -27,17 +27,35 @@
 }
 
 body.light {
-    --bg-primary: #f0f2f5;
-    --bg-panel: #ffffff;
-    --bg-input: #e8eaed;
-    --border: #d0d3d8;
-    --text-primary: #1a1c20;
-    --text-heading: #0a0c10;
-    --text-hint: #5a5d63;
-    --accent: #1a5fa8;
-    --warning: #b8860b;
-    --critical: #b83030;
-    --ok: #2d7a3a;
+    --bg-primary: #f0f2f5 !important;
+    --bg-panel: #ffffff !important;
+    --bg-input: #e8eaed !important;
+    --border: #d0d3d8 !important;
+    --text-primary: #1a1c20 !important;
+    --text-heading: #0a0c10 !important;
+    --text-hint: #5a5d63 !important;
+    --accent: #1a5fa8 !important;
+    --warning: #b8860b !important;
+    --critical: #b83030 !important;
+    --ok: #2d7a3a !important;
+}
+
+body.light button {
+    color: #1a1c20 !important;
+}
+
+body.light button.active {
+    background: #d0e0f0 !important;
+    color: #0a0c10 !important;
+}
+
+body.light button.primary {
+    background: #d0e0f0 !important;
+    color: #0a0c10 !important;
+}
+
+body.light .nav-btn.active {
+    color: #0a0c10 !important;
 }
 
 body {
