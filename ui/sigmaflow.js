@@ -495,16 +495,31 @@ Graph.prototype.crossValidate = function () {
 
     // Список показателей для сравнения
     var checks = [
-        { label: 'Выручка', data: self._valSigned('REVENUE'), pnl: pnlMonth0.revenue, cal: calMonth0.revenue },
-        { label: 'Себестоимость', data: Math.abs(self._valSigned('COGS')), pnl: Math.abs(pnlMonth0.cogs), cal: calMonth0.costs },
-        { label: 'EBITDA', data: self._valSigned('EBITDA'), pnl: pnlMonth0.ebitda, cal: null },
-        { label: 'EBIT', data: self._valSigned('EBIT'), pnl: pnlMonth0.ebit, cal: null },
-        { label: 'Чистая прибыль', data: self._valSigned('NET_PROFIT'), pnl: pnlMonth0.net, cal: null },
-        { label: 'Проценты', data: Math.abs(self._valSigned('INTEREST')), pnl: Math.abs(pnlMonth0.interest), cal: calMonth0.interest },
-        { label: 'Амортизация', data: Math.abs(self._valSigned('DA')), pnl: Math.abs(pnlMonth0.da), cal: calMonth0.da || 0 },
-        { label: 'CAPEX', data: Math.abs(self._valSigned('CAPEX')), pnl: null, cal: calMonth0.capex },
-        { label: 'ФОТ произв.', data: Math.abs(self._valSigned('DIRECT_LABOR')), pnl: null, cal: calMonth0.payrollProd },
-        { label: 'ФОТ АУП', data: Math.abs(self._valSigned('ADMIN_PAYROLL')), pnl: null, cal: calMonth0.payrollAdm }
+        {
+            label: 'Выручка', data: self._valSigned('REVENUE'), pnl: pnlMonth0.revenue, cal: calMonth0.revenue,
+            note: calMonth0.revenue === 0 ? 'Отсрочка платежей' : null
+        },
+        { label: 'Себестоимость', data: Math.abs(self._valSigned('COGS')), pnl: Math.abs(pnlMonth0.cogs), cal: calMonth0.costs, note: null },
+        { label: 'EBITDA', data: self._valSigned('EBITDA'), pnl: pnlMonth0.ebitda, cal: null, note: null },
+        {
+            label: 'EBIT', data: self._valSigned('EBIT'), pnl: pnlMonth0.ebit, cal: null,
+            note: 'P&L считает налоги иначе'
+        },
+        {
+            label: 'Чистая прибыль', data: self._valSigned('NET_PROFIT'), pnl: pnlMonth0.net, cal: null,
+            note: 'P&L: налоги по кварталам, ДАННЫЕ: текущий узел'
+        },
+        { label: 'Проценты', data: Math.abs(self._valSigned('INTEREST')), pnl: Math.abs(pnlMonth0.interest), cal: calMonth0.interest, note: null },
+        {
+            label: 'Амортизация', data: Math.abs(self._valSigned('DA')), pnl: Math.abs(pnlMonth0.da), cal: calMonth0.da || 0,
+            note: 'P&L: getMonthlyDA, ДАННЫЕ: годовая / 12'
+        },
+        {
+            label: 'CAPEX', data: Math.abs(self._valSigned('CAPEX')), pnl: null, cal: calMonth0.capex,
+            note: calMonth0.capex === 0 ? 'Платёж в другом месяце' : null
+        },
+        { label: 'ФОТ произв.', data: Math.abs(self._valSigned('DIRECT_LABOR')), pnl: null, cal: calMonth0.payrollProd, note: null },
+        { label: 'ФОТ АУП', data: Math.abs(self._valSigned('ADMIN_PAYROLL')), pnl: null, cal: calMonth0.payrollAdm, note: null }
     ];
 
     checks.forEach(function (c) {
@@ -525,7 +540,8 @@ Graph.prototype.crossValidate = function () {
             cal: c.cal,
             diff: diff,
             pct: pct.toFixed(1),
-            passed: passed
+            passed: passed,
+            note: c.note
         });
     });
 
