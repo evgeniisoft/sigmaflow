@@ -3217,16 +3217,14 @@
 
                 var HIERARCHY = {
                     0: ['NET_PROFIT'],
-                    1: ['REVENUE', 'COGS', 'SELLING_EXP', 'ADMIN_EXP', 'TAX', 'EBT', 'EBIT', 'EBITDA', 'GROSS_PROFIT'],
-                    2: ['PRICE', 'VOLUME', 'SEASON', 'MATERIAL_COST', 'DIRECT_LABOR', 'ENERGY_COST', 'LOGISTICS_COST', 'MARKETING', 'RENT', 'TAX_RATE'],
-                    3: ['UNIT_MATERIAL', 'PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'CB_RATE', 'INFLATION', 'FX_RATE', 'LOANS', 'BANK_SPREAD', 'LOAN_RATE', 'INTEREST', 'CASH_START', 'FIXED_ASSETS', 'DA_RATE', 'CAPEX']
+                    1: ['EBT', 'TAX', 'GROSS_PROFIT'],
+                    2: ['EBIT', 'INTEREST', 'OTHER_INCOME', 'OTHER_EXP', 'REVENUE', 'COGS', 'SELLING_EXP', 'ADMIN_EXP'],
+                    3: ['EBITDA', 'DA', 'PRICE', 'VOLUME', 'SEASON', 'MATERIAL_COST', 'DIRECT_LABOR', 'ENERGY_COST', 'LOGISTICS_COST', 'MARKETING', 'RENT', 'TAX_RATE']
                 };
 
-                var nodesToShow = [];
+                var nodeList = [];
                 var nodeLevel = {};
-                var assigned = {};
 
-                // Распределяем узлы по уровням
                 Object.keys(graph.nodes).forEach(function (key) {
                     var n = graph.nodes[key];
                     var level = 4;
@@ -3234,35 +3232,16 @@
                         if (HIERARCHY[l] && HIERARCHY[l].indexOf(key) >= 0) { level = l; break; }
                     }
                     nodeLevel[key] = level;
-                    nodesToShow.push(n);
+                    n._level = level;
+                    nodeList.push(n);
                 });
 
-                // Позиции: уровни по Y, внутри уровня по X
-                var levelCounts = {};
-                var levelSpacing = 100;
-                var startY = 60;
+                // Фиксируем чистую прибыль
+                if (graph.nodes['NET_PROFIT']) {
+                    graph.nodes['NET_PROFIT'].fx = width / 2;
+                    graph.nodes['NET_PROFIT'].fy = 50;
+                }
 
-                nodesToShow.forEach(function (n) {
-                    var lv = nodeLevel[n.id];
-                    if (!levelCounts[lv]) levelCounts[lv] = 0;
-                    levelCounts[lv]++;
-                });
-
-                var levelXOffset = {};
-                Object.keys(levelCounts).forEach(function (lv) {
-                    levelXOffset[lv] = width / (levelCounts[lv] + 1);
-                });
-                var levelCounters = {};
-
-                nodesToShow.forEach(function (n) {
-                    var lv = nodeLevel[n.id];
-                    if (!levelCounters[lv]) levelCounters[lv] = 0;
-                    levelCounters[lv]++;
-                    n.fx = levelXOffset[lv] * levelCounters[lv];
-                    n.fy = startY + lv * levelSpacing;
-                });
-
-                // Связи
                 var linkList = [];
                 graph.edges.forEach(function (e) {
                     if (graph.nodes[e.from] && graph.nodes[e.to]) {
@@ -3270,64 +3249,64 @@
                     }
                 });
 
-                // D3
                 var svg = d3.select('#editor-graph-container').append('svg').attr('width', width).attr('height', height);
 
-                // Стрелки
                 svg.append('defs').selectAll('marker').data(['arrow']).join('marker')
-                    .attr('id', 'editor-arrow').attr('viewBox', '0 -3 6 6').attr('refX', 6).attr('refY', 0)
+                    .attr('id', 'editor-arrow').attr('viewBox', '0 -3 6 6').attr('refX', 14).attr('refY', 0)
                     .attr('markerWidth', 4).attr('markerHeight', 4).attr('orient', 'auto')
                     .append('path').attr('d', 'M0,-3L6,0L0,3').attr('fill', '#2a3040');
 
                 var link = svg.append('g').selectAll('line').data(linkList).join('line')
-                    .attr('stroke', '#2a3040').attr('stroke-width', 1.5).attr('marker-end', 'url(#editor-arrow)');
+                    .attr('stroke', '#2a3040').attr('stroke-width', 1).attr('marker-end', 'url(#editor-arrow)');
 
-                var node = svg.append('g').selectAll('g').data(nodesToShow).join('g')
+                var node = svg.append('g').selectAll('g').data(nodeList).join('g')
                     .attr('cursor', 'pointer')
                     .on('click', function (event, d) { selectEditorNode(d.id); })
                     .call(d3.drag()
-                        .on('start', function (event, d) { d.fx = d.x; d.fy = d.y; })
+                        .on('start', function (event, d) { if (!event.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
                         .on('drag', function (event, d) { d.fx = event.x; d.fy = event.y; })
-                        .on('end', function (event, d) { d.fx = d.fy = null; }));
+                        .on('end', function (event, d) { if (!event.active) sim.alphaTarget(0); if (d.id !== 'NET_PROFIT') { d.fx = null; d.fy = null; } }));
 
-                // Круги для INPUT/EXTERNAL, прямоугольники для остальных
-                node.each(function (d) {
-                    var el = d3.select(this);
-                    var lv = nodeLevel[d.id];
-                    var r = lv === 0 ? 14 : (lv <= 2 ? 10 : 7);
+                // Кружки
+                node.append('circle')
+                    .attr('r', function (d) { return d._level === 0 ? 16 : (d._level <= 2 ? 10 : 7); })
+                    .attr('fill', function (d) {
+                        switch (d.type) {
+                            case 'TARGET': return '#5a9fd4';
+                            case 'INPUT': return '#4b8c5a';
+                            case 'EXTERNAL': return '#d4a843';
+                            default: return '#3a4a5a';
+                        }
+                    })
+                    .attr('stroke', function (d) { return d._level <= 1 ? '#5a9fd4' : 'none'; })
+                    .attr('stroke-width', function (d) { return d._level <= 1 ? 2 : 0; });
 
-                    if (d.type === 'INPUT' || d.type === 'EXTERNAL') {
-                        el.append('circle').attr('r', r)
-                            .attr('fill', d.type === 'EXTERNAL' ? '#d4a843' : '#4b8c5a')
-                            .attr('stroke', d.id === 'NET_PROFIT' ? '#5a9fd4' : 'none')
-                            .attr('stroke-width', d.id === 'NET_PROFIT' ? 3 : 0);
-                    } else {
-                        el.append('rect')
-                            .attr('x', -r * 2).attr('y', -r)
-                            .attr('width', r * 4).attr('height', r * 2)
-                            .attr('rx', 4)
-                            .attr('fill', d.type === 'TARGET' ? '#1a3050' : '#131820')
-                            .attr('stroke', d.type === 'TARGET' ? '#5a9fd4' : '#2a3040')
-                            .attr('stroke-width', d.type === 'TARGET' ? 2 : 1);
-                    }
+                // Подписи
+                node.append('text')
+                    .attr('dy', function (d) { return d._level === 0 ? 28 : (d._level <= 2 ? 20 : 14); })
+                    .attr('text-anchor', 'middle')
+                    .attr('fill', function (d) { return d._level <= 1 ? '#e0e3e8' : '#a0a4ac'; })
+                    .attr('font-size', function (d) { return d._level === 0 ? '11px' : (d._level <= 2 ? '9px' : '7px'); })
+                    .attr('font-weight', function (d) { return d._level <= 1 ? '600' : '400'; })
+                    .text(function (d) {
+                        var label = d.label || d.id;
+                        return label.length > 14 ? label.substring(0, 12) + '..' : label;
+                    });
 
-                    el.append('text')
-                        .attr('dy', lv === 0 ? 24 : 18)
-                        .attr('text-anchor', 'middle')
-                        .attr('fill', lv === 0 ? '#e0e3e8' : '#c8ccd4')
-                        .attr('font-size', lv === 0 ? '12px' : (lv <= 2 ? '10px' : '8px'))
-                        .attr('font-weight', lv <= 1 ? '600' : '400')
-                        .text(function (d) { return d.label || d.id; });
+                var sim = d3.forceSimulation(nodeList)
+                    .force('link', d3.forceLink(linkList).id(function (d) { return d.id; }).distance(60))
+                    .force('charge', d3.forceManyBody().strength(-200))
+                    .force('center', d3.forceCenter(width / 2, height / 2))
+                    .force('y', d3.forceY(function (d) { return 50 + d._level * 90; }).strength(0.3))
+                    .force('collision', d3.forceCollide(14));
+
+                sim.on('tick', function () {
+                    link.attr('x1', function (d) { return d.source.x; }).attr('y1', function (d) { return d.source.y; })
+                        .attr('x2', function (d) { return d.target.x; }).attr('y2', function (d) { return d.target.y; });
+                    node.attr('transform', function (d) { return 'translate(' + d.x + ',' + d.y + ')'; });
                 });
-
-                // Фиксируем позиции
-                node.attr('transform', function (d) { return 'translate(' + d.fx + ',' + d.fy + ')'; });
-                link.attr('x1', function (d) { return graph.nodes[d.source] ? graph.nodes[d.source].fx : 0; })
-                    .attr('y1', function (d) { return graph.nodes[d.source] ? graph.nodes[d.source].fy : 0; })
-                    .attr('x2', function (d) { return graph.nodes[d.target] ? graph.nodes[d.target].fx : 0; })
-                    .attr('y2', function (d) { return graph.nodes[d.target] ? graph.nodes[d.target].fy : 0; });
             }
-
+            
             // Загружаем демо при старте
             loadDemo();
         });
