@@ -476,6 +476,25 @@ Graph.prototype._computeOnce = function () {
         }
     });
 
+    // Вычисляем CASH ПОСЛЕДНИМ, после всех остальных формул
+    var cashNode = self.nodes['CASH'];
+    if (cashNode && cashNode.formula && cashNode.enabled !== false) {
+        try {
+            cashNode.value = self._evalFormula(cashNode.formula);
+        } catch (e) {
+            cashNode.value = 0;
+        }
+    }
+    // Вычисляем NTEREST ПОСЛЕДНИМ, после всех остальных формул
+    var interestNode = self.nodes['INTEREST'];
+    if (interestNode && interestNode.formula && interestNode.enabled !== false) {
+        try {
+            interestNode.value = self._evalFormula(interestNode.formula);
+        } catch (e) {
+            interestNode.value = 0;
+        }
+    }
+
     // Шаг 2: сброс вычисляемых узлов без формул
     Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
