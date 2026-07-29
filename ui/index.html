@@ -1547,6 +1547,38 @@
             });
             invHtml += '</tbody></table>';
             document.getElementById('diagnostics-results').innerHTML += invHtml;
+
+            // Fuzz-тест
+            var fuzz = graph.fuzzTest(100);
+            var fuzzHtml = '<div style="margin-top:16px;font-size:11px;color:var(--text-hint);">FUZZ-ТЕСТ (' + fuzz.total + ' прогонов)</div>';
+            fuzzHtml += '<div style="font-size:12px;">';
+            fuzzHtml += 'Пройдено: <span style="color:var(--ok);">' + fuzz.passed + '</span> | ';
+            fuzzHtml += 'Ошибок: <span style="color:' + (fuzz.failed > 0 ? 'var(--critical)' : 'var(--ok)') + ';">' + fuzz.failed + '</span> | ';
+            fuzzHtml += 'Среднее время: ' + fuzz.avgTime + 'ms';
+            fuzzHtml += '</div>';
+            if (fuzz.errors.length > 0) {
+                fuzzHtml += '<div style="color:var(--critical);font-size:11px;">Ошибки: ' + fuzz.errors.map(function (e) { return '#' + e.iteration + ': ' + e.error; }).join('; ') + '</div>';
+            }
+            document.getElementById('diagnostics-results').innerHTML += fuzzHtml;
+
+            // Кросс-валидация
+            var cross = graph.crossValidate();
+            var crossHtml = '<div style="margin-top:16px;font-size:11px;color:var(--text-hint);">КРОСС-ВАЛИДАЦИЯ</div>';
+            crossHtml += '<table><thead><tr><th>ПОКАЗАТЕЛЬ</th><th>ДАННЫЕ</th><th>P&L</th><th>КАЛЕНДАРЬ</th><th>Δ</th><th>Δ%</th></tr></thead><tbody>';
+            cross.forEach(function (c) {
+                var color = c.passed ? 'var(--ok)' : 'var(--warning)';
+                crossHtml += '<tr>';
+                crossHtml += '<td>' + c.label + '</td>';
+                crossHtml += '<td class="value-cell">' + formatValue(c.data) + '</td>';
+                crossHtml += '<td class="value-cell">' + (c.pnl !== null ? formatValue(c.pnl) : '—') + '</td>';
+                crossHtml += '<td class="value-cell">' + (c.cal !== null ? formatValue(c.cal) : '—') + '</td>';
+                crossHtml += '<td class="value-cell" style="color:' + color + ';">' + formatValue(c.diff) + '</td>';
+                crossHtml += '<td class="value-cell" style="color:' + color + ';">' + c.pct + '%</td>';
+                crossHtml += '</tr>';
+            });
+            crossHtml += '</tbody></table>';
+            document.getElementById('diagnostics-results').innerHTML += crossHtml;
+
             var balance = graph.checkBalance();
             if (!balance.balanced) {
                 diag.push({ code: 'B01', level: 'warning', message: 'Баланс не сходится: активы ' + formatValue(balance.assets) + ', пассивы ' + formatValue(balance.liabilities) + ', расхождение ' + balance.pct.toFixed(1) + '%' });
