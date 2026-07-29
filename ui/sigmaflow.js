@@ -1275,6 +1275,39 @@ function linearRegression(X, y) {
     return { coefficients: beta, r2: r2, se: se, tStats: tStats, pValues: pValues, dataPoints: n };
 }
 
+function calculateVIF(data, excludeIndex) {
+    var n = data.length;
+    if (n < 3) return null;
+
+    var p = data[0].length;
+    var vifs = [];
+
+    for (var i = 0; i < p; i++) {
+        if (i === excludeIndex) { vifs.push(0); continue; }
+
+        // Строим X без i-го столбца
+        var X = [];
+        var y = [];
+        for (var k = 0; k < n; k++) {
+            var row = [1];
+            y.push(data[k][i]);
+            for (var j = 0; j < p; j++) {
+                if (j !== i) row.push(data[k][j]);
+            }
+            X.push(row);
+        }
+
+        var reg = linearRegression(X, y);
+        if (reg && reg.r2 < 1) {
+            vifs.push(1 / (1 - reg.r2));
+        } else {
+            vifs.push(999);
+        }
+    }
+
+    return vifs;
+}
+
 // Нормальное распределение (аппроксимация)
 function normCDF(x, df) {
     // Аппроксимация t-распределения Стьюдента через нормальное
@@ -1369,11 +1402,91 @@ Graph.prototype.calibrate = function () {
             pValue: pValue !== null ? Math.round(pValue * 1000) / 1000 : null,
             signOk: signOk,
             actualSign: actualSign,
+            vif: null  // пока null, позже добавим
+        });
+
+        results.push({
+            from: edge.from,
+            to: edge.to,
+            oldCoefficient: oldCoeff,
+            newCoefficient: Math.round(newCoeff * 10000) / 10000,
+            r2: Math.round(reg.r2 * 100) / 100,
+            dataPoints: reg.dataPoints || xData.length,
+            se: se !== null ? Math.round(se * 10000) / 10000 : null,
+            pValue: pValue !== null ? Math.round(pValue * 1000) / 1000 : null,
+            signOk: signOk,
+            actualSign: actualSign,
             stable: stable
         });
     });
 
     return results;
+};
+
+Graph.prototype.detectOutliers = function () {
+    var self = this;
+    var outliers = [];
+
+    if (!self.history) return outliers;
+
+    var historicalData = self.history.filter(function (h) { return h.type === 'historical' && h.fact; });
+    if (historicalData.length < 5) return outliers;
+
+    Object.keys(self.nodes).forEach(function (nodeId) {
+        var values = [];
+        historicalData.forEach(function (h) {
+            if (h.fact[nodeId] !== undefined) {
+                values.push({ period: h.period, value: h.fact[nodeId] });
+            }
+        });
+
+        if (values.length < 5) return;
+
+        var sorted = values.map(function (v) { return v.value; }).sort(function (a, b) { return a - b; });
+        var q1 = sorted[Math.floor(sorted.length * 0.25)];
+        var q3 = sorted[Math.floor(sorted.length * 0.75)];
+        var iqr = q3 - q1;
+        var lower = q1 - 1.5 * iqr;
+        var upper = q3 + 1.5 * iqr;
+
+        values.forEach(function (v) {
+            if (v.value < lower || v.value > upper) {
+                outliers.push({
+                    node: nodeId,
+                    label: self.nodes[nodeId] ? self.nodes[nodeId].label : nodeId,
+                    period: v.period,
+                    value: v.value,
+                    lower: lower,
+                    upper: upper
+                });
+            }
+        });
+    });
+
+    return outliers;
+};
+
+Graph.prototype.findMissingPeriods = function () {
+    var self = this;
+    var missing = [];
+
+    if (!self.history || self.history.length < 2) return missing;
+
+    var periods = self.history.map(function (h) { return h.period; }).sort();
+
+    for (var i = 1; i < periods.length; i++) {
+        var prev = new Date(periods[i - 1] + '-01');
+        var curr = new Date(periods[i] + '-01');
+        var expectedMonth = new Date(prev);
+        expectedMonth.setMonth(expectedMonth.getMonth() + 1);
+
+        var expected = expectedMonth.toISOString().substring(0, 7);
+        if (expected !== curr.toISOString().substring(0, 7)) {
+            missing.push({ from: periods[i - 1], to: periods[i] });
+        }
+    }
+
+    return missing;
 };
 
 Graph.prototype.importFactFromCSV = function (csvText) {
