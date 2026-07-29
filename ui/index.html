@@ -1579,6 +1579,24 @@
             crossHtml += '</tbody></table>';
             document.getElementById('diagnostics-results').innerHTML += crossHtml;
 
+            // Каскадный тест
+            var cascade = graph.cascadeTest();
+            var cascHtml = '<div style="margin-top:16px;font-size:11px;color:var(--text-hint);">КАСКАДНЫЙ ТЕСТ (топ-5 параметров по влиянию)</div>';
+            cascHtml += '<table><thead><tr><th>ПАРАМЕТР (+10%)</th><th>ИЗМЕНИЛОСЬ УЗЛОВ</th><th>ОСНОВНЫЕ ИЗМЕНЕНИЯ</th></tr></thead><tbody>';
+            cascade.slice(0, 5).forEach(function (c) {
+                var changes = c.changedNodes.map(function (ch) {
+                    var sign = ch.change >= 0 ? '+' : '';
+                    return ch.label + ': ' + sign + (ch.change * 100).toFixed(1) + '%';
+                }).join(', ');
+                cascHtml += '<tr>';
+                cascHtml += '<td>' + c.inputLabel + '</td>';
+                cascHtml += '<td class="value-cell">' + c.changedCount + '</td>';
+                cascHtml += '<td style="font-size:11px;">' + (changes || '—') + '</td>';
+                cascHtml += '</tr>';
+            });
+            cascHtml += '</tbody></table>';
+            document.getElementById('diagnostics-results').innerHTML += cascHtml;
+
             var balance = graph.checkBalance();
             if (!balance.balanced) {
                 diag.push({ code: 'B01', level: 'warning', message: 'Баланс не сходится: активы ' + formatValue(balance.assets) + ', пассивы ' + formatValue(balance.liabilities) + ', расхождение ' + balance.pct.toFixed(1) + '%' });
@@ -1618,7 +1636,7 @@
                 html += '</tr>';
             });
             html += '</tbody></table>';
-            container.innerHTML = html + invHtml + fuzzHtml + crossHtml;
+            container.innerHTML = html + invHtml + fuzzHtml + crossHtml + cascHtml;
             updateStatusBar('Диагностика: ' + counts.critical + ' критических, ' + counts.warning + ' предупреждений');
         }
         function buildCalendar() {
