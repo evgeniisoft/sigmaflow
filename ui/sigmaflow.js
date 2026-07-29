@@ -463,8 +463,12 @@ Graph.prototype.updateBalanceFromCredits = function () {
 Graph.prototype._computeOnce = function () {
     var self = this;
 
-    // Шаг 1: вычисляем узлы с формулами (используем стрелочные функции для сохранения this)
+    // Узлы, которые нужно вычислять последними (финансовая цепочка)
+    var lateNodes = ['TAX', 'NET_PROFIT', 'EBT', 'EBIT', 'EBITDA', 'CFO', 'CFI', 'CFF', 'FCF', 'INTEREST', 'CASH'];
+
+    // Шаг 1: вычисляем узлы с формулами, кроме lateNodes
     Object.keys(self.nodes).forEach(function (key) {
+        if (lateNodes.indexOf(key) >= 0) return; // пропускаем, посчитаем позже
         var n = self.nodes[key];
         if (n.formula && n.enabled !== false) {
             try {
@@ -475,25 +479,6 @@ Graph.prototype._computeOnce = function () {
             }
         }
     });
-
-    // Вычисляем CASH ПОСЛЕДНИМ, после всех остальных формул
-    var cashNode = self.nodes['CASH'];
-    if (cashNode && cashNode.formula && cashNode.enabled !== false) {
-        try {
-            cashNode.value = self._evalFormula(cashNode.formula);
-        } catch (e) {
-            cashNode.value = 0;
-        }
-    }
-    // Вычисляем NTEREST ПОСЛЕДНИМ, после всех остальных формул
-    var interestNode = self.nodes['INTEREST'];
-    if (interestNode && interestNode.formula && interestNode.enabled !== false) {
-        try {
-            interestNode.value = self._evalFormula(interestNode.formula);
-        } catch (e) {
-            interestNode.value = 0;
-        }
-    }
 
     // Шаг 2: сброс вычисляемых узлов без формул
     Object.keys(self.nodes).forEach(function (key) {
@@ -516,6 +501,18 @@ Graph.prototype._computeOnce = function () {
         var coeff = edge.coefficient !== null ? edge.coefficient : 1.0;
         var contrib = computeEdge(edge.type, coeff, fromNode.value, edge.threshold, edge.above, edge.below);
         toNode.value = (toNode.value || 0) + contrib;
+    });
+
+    // Шаг 4: вычисляем финансовую цепочку последней, в правильном порядке
+    lateNodes.forEach(function (key) {
+        var n = self.nodes[key];
+        if (n && n.formula && n.enabled !== false) {
+            try {
+                n.value = self._evalFormula(n.formula);
+            } catch (e) {
+                n.value = 0;
+            }
+        }
     });
 };
 
