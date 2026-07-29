@@ -3109,8 +3109,57 @@
             window.updateNodeFormula = function (nodeId, value) { graph.nodes[nodeId].formula = value; saveCurrentModel(); };
             window.updateNodeValue = function (nodeId, value) { graph.nodes[nodeId].value = parseFloat(value); saveCurrentModel(); };
             window.deleteEdge = function (from, to) { graph.edges = graph.edges.filter(function (e) { return !(e.from === from && e.to === to); }); saveCurrentModel(); renderAll(); selectEditorNode(to); };
-            window.addNodeToModel = function (nodeId) { /* реализуем позже */ };
-            window.removeNodeFromModel = function (nodeId) { /* реализуем позже */ };
+            
+
+            window.addNodeToModel = function (nodeId) {
+                var info = ALLOWED_CONNECTIONS[nodeId];
+                if (!info) return;
+                if (graph.nodes[nodeId]) { notify('Узел уже в модели', true); return; }
+
+                // Создаём новый узел
+                var type = info.isFormula ? 'INTERMEDIATE' : 'INPUT';
+                var node = new Node(nodeId, type, 0, null, null, 'manual', info.label || nodeId, true);
+                graph.addNode(node);
+                saveCurrentModel();
+                graph.compute();
+                renderAll();
+                renderEditorNodeList(document.getElementById('editor-search').value.toLowerCase());
+                selectEditorNode(nodeId);
+                notify('Узел «' + info.label + '» добавлен в модель');
+            };
+
+            window.removeNodeFromModel = function (nodeId) {
+                var node = graph.nodes[nodeId];
+                if (!node) return;
+
+                // Проверяем, не используется ли узел в формулах
+                var usedInFormula = false;
+                Object.keys(graph.nodes).forEach(function (k) {
+                    var f = graph.nodes[k].formula;
+                    if (f && f.indexOf(nodeId) >= 0) usedInFormula = true;
+                });
+
+                if (usedInFormula) {
+                    notify('Нельзя удалить: узел используется в формуле другого узла', true);
+                    return;
+                }
+
+                if (!confirm('Удалить узел «' + (node.label || nodeId) + '» и все его связи?')) return;
+
+                // Удаляем все связи, связанные с узлом
+                graph.edges = graph.edges.filter(function (e) {
+                    return e.from !== nodeId && e.to !== nodeId;
+                });
+
+                // Удаляем сам узел
+                delete graph.nodes[nodeId];
+                saveCurrentModel();
+                graph.compute();
+                renderAll();
+                renderEditorNodeList(document.getElementById('editor-search').value.toLowerCase());
+                document.getElementById('editor-properties').innerHTML = '<div style="color:var(--text-hint);text-align:center;padding-top:40px;">Узел удалён. Выберите другой.</div>';
+                notify('Узел удалён');
+            };
 
             window.showAddEdgeForm = function (nodeId) {
                 var info = ALLOWED_CONNECTIONS[nodeId] || {};
