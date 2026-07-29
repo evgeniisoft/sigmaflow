@@ -532,6 +532,71 @@ Graph.prototype.crossValidate = function () {
     return results;
 };
 
+Graph.prototype.cascadeTest = function () {
+    var self = this;
+    var results = [];
+
+    // Сохраняем исходные значения
+    var saved = {};
+    Object.keys(self.nodes).forEach(function (k) { saved[k] = self.nodes[k].value; });
+
+    // Базовые значения
+    self.compute();
+    var baseValues = {};
+    Object.keys(self.nodes).forEach(function (k) { baseValues[k] = self.nodes[k].value; });
+
+    // Проверяем каждый INPUT и EXTERNAL узел
+    Object.keys(self.nodes).forEach(function (key) {
+        var n = self.nodes[key];
+        if (n.type !== 'INPUT' && n.type !== 'EXTERNAL') return;
+        if (n.value === null || n.value === 0) return;
+        if (n.enabled === false) return;
+
+        // Восстанавливаем
+        Object.keys(saved).forEach(function (k) { self.nodes[k].value = saved[k]; });
+
+        // Меняем на +10%
+        n.value = n.value * 1.1;
+        self.compute();
+
+        // Проверяем, какие узлы изменились
+        var changedNodes = [];
+        Object.keys(self.nodes).forEach(function (k) {
+            if (k === key) return;
+            var oldVal = baseValues[k];
+            var newVal = self.nodes[k].value;
+            if (oldVal === null || newVal === null) return;
+            if (oldVal === 0 && newVal === 0) return;
+            var change = oldVal !== 0 ? (newVal - oldVal) / Math.abs(oldVal) : (newVal !== 0 ? 1 : 0);
+            if (Math.abs(change) > 0.001) {
+                changedNodes.push({
+                    node: k,
+                    label: self.nodes[k].label || k,
+                    oldVal: oldVal,
+                    newVal: newVal,
+                    change: change
+                });
+            }
+        });
+
+        results.push({
+            inputNode: key,
+            inputLabel: n.label || key,
+            changedCount: changedNodes.length,
+            changedNodes: changedNodes.slice(0, 5) // топ-5 изменений
+        });
+    });
+
+    // Восстанавливаем
+    Object.keys(saved).forEach(function (k) { self.nodes[k].value = saved[k]; });
+    self.compute();
+
+    // Сортируем по количеству изменённых узлов
+    results.sort(function (a, b) { return b.changedCount - a.changedCount; });
+
+    return results;
+};
+
 Graph.prototype.updateBalanceFromCredits = function () {
     var self = this;
     if (!self.credits || self.credits.length === 0) return; // не трогаем, если нет кредитов
