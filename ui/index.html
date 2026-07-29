@@ -59,7 +59,7 @@
                     </div>
                 </div>
                 <div id="dashboard-graph-panel"
-                    style="flex:1;background:var(--bg-primary);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;">
+                    style="flex:1;background:var(--bg-primary);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;margin-left:16px;">
                     <div
                         style="padding:8px 12px;background:var(--bg-panel);border-bottom:1px solid var(--border);font-size:11px;color:var(--text-hint);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
                         <span>ГРАФ МОДЕЛИ <span id="graph-selected-node"></span></span>
@@ -1602,7 +1602,7 @@
             cascHtml += '</tbody></table>';
             document.getElementById('diagnostics-results').innerHTML += cascHtml;
 
-                // Выбросы
+            // Выбросы
             var outliers = graph.detectOutliers();
             if (outliers.length > 0) {
                 var outHtml = '<div style="margin-top:16px;font-size:11px;color:var(--text-hint);">ВЫБРОСЫ В ДАННЫХ (' + outliers.length + ')</div>';
@@ -1631,7 +1631,7 @@
                 missHtml += '</div>';
                 document.getElementById('diagnostics-results').innerHTML += missHtml;
             }
-            
+
             var balance = graph.checkBalance();
             if (!balance.balanced) {
                 diag.push({ code: 'B01', level: 'warning', message: 'Баланс не сходится: активы ' + formatValue(balance.assets) + ', пассивы ' + formatValue(balance.liabilities) + ', расхождение ' + balance.pct.toFixed(1) + '%' });
@@ -2172,7 +2172,7 @@
                     var keyMetrics = ['REVENUE', 'COGS', 'NET_PROFIT', 'EBITDA', 'FCF', 'CASH'];
 
                     forecastHistory.forEach(function (h) {
-                       
+
                         keyMetrics.forEach(function (nodeId) {
                             var planVal = h.plan[nodeId];
                             var factVal = h.fact[nodeId] !== undefined ? h.fact[nodeId] : null;
