@@ -738,7 +738,6 @@
 
             graph.name = modelData.name || graph.name;
             setCurrentCompanyId(companyId);
-            console.log('TAX value перед compute:', graph.nodes['TAX'] ? graph.nodes['TAX'].value : 'нет узла');
             graph.compute();
             elProjectName.textContent = graph.name;
             return true;
@@ -2869,7 +2868,6 @@
                 if (!id) return;
                 if (loadCompany(id)) {
                     graph.compute();
-                    console.log('TAX сразу после compute:', graph.nodes['TAX'].value);
                     elProjectName.textContent = graph.name;
                     elProjectName.textContent = graph.name;
                     renderAll();
