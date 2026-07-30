@@ -740,6 +740,7 @@
             setCurrentCompanyId(companyId);
             graph.compute();
             elProjectName.textContent = graph.name;
+            setTimeout(function () { graph.compute(); }, 100);
             return true;
         }
 
