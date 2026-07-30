@@ -448,6 +448,7 @@ var TEMPLATE_UNIVERSAL = [
     '    label: "Маркетинг"',
     '    value: 0',
     '    min: 0',
+    '    max: 10000000',
     '    source: manual',
     '    enabled: true',
     '',
