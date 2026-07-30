@@ -1178,7 +1178,7 @@ Graph.prototype.getMarginalEffects = function () {
         'DEFECT_RATE', 'RETURN_RATE', 'ATTRITION', 'ENGAGEMENT',
         'CAPACITY', 'WEAR', 'CASH_START', 'RETAINED_START',
         'delta_RECEIVABLES', 'delta_PAYABLES', 'delta_INVENTORY',
-        'INTEREST_INCOME', 'PENALTIES', 'DIVIDENDS'
+        'INTEREST_INCOME', 'PENALTIES', 'DIVIDENDS', 'MARKETING'
     ];
 
     var effects = [];
