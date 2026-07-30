@@ -1377,8 +1377,8 @@
             row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 1.1)" style="font-size:10px;padding:2px 6px;">+</button>';
             row += '<button class="btn-delta" onclick="deltaNode(\'' + n.id + '\', 0.9)" style="font-size:10px;padding:2px 6px;margin-left:2px;">-</button>';
             row += '</td>';
-            row += '<td class="value-cell"><input type="text" class="table-input-min" data-node-id="' + n.id + '" value="' + (n.min !== null ? formatInputValue(n.min) : '') + '" onfocus="this.value=unformatInputValue(this.value)" onblur="this.value=formatInputValue(this.value)" style="width:80px;font-size:11px;padding:2px 4px;text-align:center;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);"></td>';
-            row += '<td class="value-cell"><input type="text" class="table-input-max" data-node-id="' + n.id + '" value="' + (n.max !== null ? formatInputValue(n.max) : '') + '" onfocus="this.value=unformatInputValue(this.value)" onblur="this.value=formatInputValue(this.value)" style="width:80px;font-size:11px;padding:2px 4px;text-align:center;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);"></td>';
+            row += '<td class="value-cell"><input type="text" class="table-input-min" data-node-id="' + n.id + '" value="' + (n.min !== null ? formatInputValue(n.min) : '') + '" onfocus="this.value=unformatInputValue(this.value)" style="width:80px;font-size:11px;padding:2px 4px;text-align:center;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);"></td>';
+            row += '<td class="value-cell"><input type="text" class="table-input-max" data-node-id="' + n.id + '" value="' + (n.max !== null ? formatInputValue(n.max) : '') + '" onfocus="this.value=unformatInputValue(this.value)" style="width:80px;font-size:11px;padding:2px 4px;text-align:center;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);"></td>';
             row += '</tr>';
             row += '</tr>';
             return row;
