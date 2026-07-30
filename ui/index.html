@@ -3030,7 +3030,7 @@
                 }
             });
 
-            function renderEditorNodeList(filter) {
+            window.renderEditorNodeList = function (filter) {
                 if (!graph) return;
                 var container = document.getElementById('editor-node-list');
                 var categories = {
