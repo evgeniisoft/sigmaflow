@@ -780,6 +780,7 @@
             // Загружаем текущую компанию
             var loaded = loadCompany(currentId);
             if (loaded) {
+                graph.compute();
                 elProjectName.textContent = graph.name;
                 updateStatusBar('Компания загружена');
                 renderAll();
