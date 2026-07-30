@@ -780,13 +780,9 @@
             // Загружаем текущую компанию
             var loaded = loadCompany(currentId);
             if (loaded) {
-                console.log('NET_PROFIT до compute:', graph.nodes['NET_PROFIT'].value);
-                graph.compute();
-                console.log('NET_PROFIT после compute:', graph.nodes['NET_PROFIT'].value);
                 elProjectName.textContent = graph.name;
                 updateStatusBar('Компания загружена');
                 renderAll();
-                console.log('NET_PROFIT после renderAll:', graph.nodes['NET_PROFIT'].value);
                 window.renderInvestments();
                 window.renderCredits();
                 renderScenarios();
