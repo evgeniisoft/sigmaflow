@@ -1162,7 +1162,9 @@ Graph.prototype.getMarginalEffects = function () {
         var n = self.nodes[key];
         if (n.type !== 'INPUT') return;
         if (n.enabled === false) return;
-        if (n.value === null || n.value === 0) return;
+        if (n.value === null) return;
+        var isZero = (n.value === 0);
+        if (isZero && n.min === null && n.max === null) return;
         allowedNodes[key] = true;
     });
 
