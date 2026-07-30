@@ -637,7 +637,7 @@ Graph.prototype._computeOnce = function () {
     var self = this;
 
     // Узлы, которые нужно вычислять последними (финансовая цепочка)
-    var lateNodes = ['TAX', 'EBT', 'EBIT', 'EBITDA', 'CFO', 'CFI', 'CFF', 'FCF', 'INTEREST', 'CASH'];
+    var lateNodes = ['EBITDA', 'EBIT', 'EBT', 'TAX', 'INTEREST', 'CFO', 'CFI', 'CFF', 'FCF', 'CASH'];
 
     // Шаг 1: вычисляем узлы с формулами, кроме lateNodes
     Object.keys(self.nodes).forEach(function (key) {
