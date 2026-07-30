@@ -326,6 +326,13 @@
 
         <!-- ПАНЕЛЬ РЕДАКТОР -->
         <div id="panel-editor" class="panel">
+            <div
+                style="padding:4px 12px;background:var(--bg-panel);border-bottom:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;">
+                <button id="btn-undo" onclick="undo()" style="font-size:11px;padding:4px 10px;" disabled>↩
+                    ОТМЕНИТЬ</button>
+                <button id="btn-redo" onclick="redo()" style="font-size:11px;padding:4px 10px;" disabled>↪
+                    ПОВТОРИТЬ</button>
+            </div>
             <div style="display:flex;height:100%;">
                 <div
                     style="width:280px;padding:12px;overflow-y:auto;background:var(--bg-panel);border-right:1px solid var(--border);flex-shrink:0;">
@@ -600,6 +607,9 @@
         // ============================================================
 
         var graph = null;
+        var undoStack = [];
+        var redoStack = [];
+        var MAX_UNDO = 30;
         var selectedNodeId = null;
 
         // DOM-элементы
@@ -3106,14 +3116,23 @@
                     }
                 }
 
-                                
+
                 document.getElementById('editor-properties').innerHTML = html;
             };
 
             window.updateNodeLabel = function (nodeId, value) { graph.nodes[nodeId].label = value; saveCurrentModel(); };
             window.updateNodeFormula = function (nodeId, value) { graph.nodes[nodeId].formula = value; saveCurrentModel(); };
             window.updateNodeValue = function (nodeId, value) { graph.nodes[nodeId].value = parseFloat(value); saveCurrentModel(); };
-            window.deleteEdge = function (from, to) { graph.edges = graph.edges.filter(function (e) { return !(e.from === from && e.to === to); }); saveCurrentModel(); renderAll(); selectEditorNode(to); setTimeout(function () { renderEditorGraph(); }, 200); };
+            window.deleteEdge = function (from, to) {
+                var edge = graph.edges.filter(function (e) { return e.from === from && e.to === to; })[0];
+                if (edge) {
+                    pushUndo({ type: 'deleteEdge', from: from, to: to, coefficient: edge.coefficient });
+                } graph.edges = graph.edges.filter(function (e) { return !(e.from === from && e.to === to); });
+                saveCurrentModel();
+                renderAll();
+                selectEditorNode(to);
+                setTimeout(function () { renderEditorGraph(); }, 200);
+            };
 
 
             window.addNodeToModel = function (nodeId) {
@@ -3125,6 +3144,7 @@
                 var type = 'INPUT';
                 var node = new Node(nodeId, type, 0, null, null, 'manual', info.label || nodeId, true);
                 graph.addNode(node);
+                pushUndo({ type: 'addNode', nodeId: nodeId });
                 renderEditorGraph();
                 // Анимируем новый узел
                 setTimeout(function () {
@@ -3162,6 +3182,12 @@
                 graph.edges = graph.edges.filter(function (e) {
                     return e.from !== nodeId && e.to !== nodeId;
                 });
+
+                var snapshot = {
+                    node: graph.nodes[nodeId],
+                    edges: graph.edges.filter(function (e) { return e.from === nodeId || e.to === nodeId; }).map(function (e) { return { from: e.from, to: e.to, coefficient: e.coefficient }; })
+                };
+                pushUndo({ type: 'removeNode', nodeId: nodeId, snapshot: snapshot });
 
                 // Удаляем сам узел
                 delete graph.nodes[nodeId];
@@ -3298,7 +3324,19 @@
                 });
             }
 
-            
+
+            function updateUndoButtons() {
+                var u = document.getElementById('btn-undo');
+                var r = document.getElementById('btn-redo');
+                if (u) {
+                    u.disabled = undoStack.length === 0;
+                    u.textContent = '↩ ОТМЕНИТЬ' + (undoStack.length > 0 ? ' (' + undoStack.length + ')' : '');
+                }
+                if (r) {
+                    r.disabled = redoStack.length === 0;
+                    r.textContent = '↪ ПОВТОРИТЬ' + (redoStack.length > 0 ? ' (' + redoStack.length + ')' : '');
+                }
+            }
 
             // Загружаем демо при старте
             loadDemo();
@@ -3446,7 +3484,7 @@
             notify('Модель откачена к версии #' + (idx + 1));
         };
 
-        
+
 
         window.addEdge = function (from, to, coeff) {
             if (!from || !to || isNaN(coeff)) return;
@@ -3455,6 +3493,7 @@
             if (exists) { notify('Такая связь уже существует', true); return; }
             // Добавляем
             graph.edges.push(new Edge(from, to, 'LIN', coeff, 0));
+            pushUndo({ type: 'addEdge', from: from, to: to, coefficient: coeff });
             saveCurrentModel();
             graph.compute();
             renderAll();
@@ -3462,6 +3501,79 @@
             notify('Связь добавлена: ' + from + ' → ' + to);
             setTimeout(function () { renderEditorGraph(); }, 200);
         };
+
+
+        function pushUndo(action) {
+            undoStack.push(action);
+            if (undoStack.length > MAX_UNDO) undoStack.shift();
+            redoStack = [];
+            updateUndoButtons();
+        }
+
+        function undo() {
+            if (undoStack.length === 0) return;
+            var action = undoStack.pop();
+            redoStack.push(action);
+            applyUndoAction(action, 'undo');
+            updateUndoButtons();
+        }
+
+        function redo() {
+            if (redoStack.length === 0) return;
+            var action = redoStack.pop();
+            undoStack.push(action);
+            applyUndoAction(action, 'redo');
+            updateUndoButtons();
+        }
+
+        function applyUndoAction(action, direction) {
+            if (action.type === 'addNode' && direction === 'undo') {
+                removeNodeSilent(action.nodeId);
+            } else if (action.type === 'addNode' && direction === 'redo') {
+                restoreNodeSilent(action.nodeId, action.snapshot);
+            } else if (action.type === 'removeNode' && direction === 'undo') {
+                restoreNodeSilent(action.nodeId, action.snapshot);
+            } else if (action.type === 'removeNode' && direction === 'redo') {
+                removeNodeSilent(action.nodeId);
+            } else if (action.type === 'addEdge' && direction === 'undo') {
+                removeEdgeSilent(action.from, action.to);
+            } else if (action.type === 'addEdge' && direction === 'redo') {
+                restoreEdgeSilent(action.from, action.to, action.coefficient);
+            } else if (action.type === 'deleteEdge' && direction === 'undo') {
+                restoreEdgeSilent(action.from, action.to, action.coefficient);
+            } else if (action.type === 'deleteEdge' && direction === 'redo') {
+                removeEdgeSilent(action.from, action.to);
+            }
+            graph.compute();
+            saveCurrentModel();
+            renderAll();
+            renderEditorGraph();
+            renderEditorNodeList(document.getElementById('editor-search').value.toLowerCase());
+        }
+
+        function removeNodeSilent(nodeId) {
+            var node = graph.nodes[nodeId];
+            if (!node) return;
+            delete graph.nodes[nodeId];
+            graph.edges = graph.edges.filter(function (e) { return e.from !== nodeId && e.to !== nodeId; });
+        }
+
+        function restoreNodeSilent(nodeId, snapshot) {
+            graph.nodes[nodeId] = snapshot.node;
+            (snapshot.edges || []).forEach(function (e) {
+                var exists = graph.edges.some(function (ex) { return ex.from === e.from && ex.to === e.to; });
+                if (!exists) graph.edges.push(new Edge(e.from, e.to, 'LIN', e.coefficient, 0));
+            });
+        }
+
+        function removeEdgeSilent(from, to) {
+            graph.edges = graph.edges.filter(function (e) { return !(e.from === from && e.to === to); });
+        }
+
+        function restoreEdgeSilent(from, to, coeff) {
+            var exists = graph.edges.some(function (e) { return e.from === from && e.to === to; });
+            if (!exists) graph.edges.push(new Edge(from, to, 'LIN', coeff, 0));
+        }
 
 
     </script>
