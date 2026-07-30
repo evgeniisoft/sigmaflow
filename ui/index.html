@@ -2879,6 +2879,8 @@
                         loadCompany(getCurrentCompanyId());
                         graph.compute();
                         renderAll();
+                        if (document.getElementById('pnl-body').innerHTML) buildPnL();
+                        if (document.getElementById('calendar-table-body').innerHTML) buildCalendar();
                         window.renderInvestments();
                         window.renderCredits();
                         renderScenarios();
@@ -2914,13 +2916,12 @@
             window.applyScenario = function (idx) {
                 var sc = graph.scenarios[idx];
                 if (!sc) return;
-                (sc.shocks || []).forEach(function (shock) {
-                    var n = graph.nodes[shock.node];
-                    if (n) n.value = shock.value;
-                });
+                (sc.shocks || []).forEach(function (s) { var n = graph.nodes[s.node]; if (n) n.value = s.value; });
                 graph.compute();
                 renderAll();
-                updateStatusBar('Применён сценарий: ' + sc.name);
+                if (document.getElementById('pnl-body').innerHTML) buildPnL();
+                if (document.getElementById('calendar-table-body').innerHTML) buildCalendar();
+                updateStatusBar('Сценарий применён: ' + sc.name);
                 notify('Сценарий «' + sc.name + '» применён');
             };
 
@@ -3399,6 +3400,8 @@
                 saveCurrentModel();
                 notify('Изменения применены к модели');
                 renderAll();
+                if (document.getElementById('pnl-body').innerHTML) buildPnL();
+                if (document.getElementById('calendar-table-body').innerHTML) buildCalendar();
             });
 
             document.getElementById('btn-live-save-scenario').addEventListener('click', function () {
