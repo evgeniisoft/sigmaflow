@@ -2951,21 +2951,18 @@
             function addShockRow() {
                 var container = document.getElementById('scenario-shocks');
                 var html = '<div class="shock-row" style="display:flex;gap:8px;margin-bottom:4px;">';
-                html += '<select class="shock-node" style="flex:1;font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">';
+                html += '<select class="shock-node" style="flex:1;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">';
                 if (graph && graph.nodes) {
-                    var nodeIds = Object.keys(graph.nodes).filter(function (k) {
-                        return graph.nodes[k].type === 'INPUT' || graph.nodes[k].type === 'EXTERNAL';
-                    }).sort();
-                    nodeIds.forEach(function (id) {
-                        html += '<option value="' + id + '">' + (graph.nodes[id].label || id) + ' (' + id + ')</option>';
+                    Object.keys(graph.nodes).filter(function (k) { return graph.nodes[k].type === 'INPUT' || graph.nodes[k].type === 'EXTERNAL'; }).sort().forEach(function (id) {
+                        var n = graph.nodes[id];
+                        html += '<option value="' + id + '">' + (n.label || id) + ' (' + formatValue(n.value) + ')</option>';
                     });
                 }
                 html += '</select>';
-                html += '<input type="number" class="shock-value" placeholder="Новое значение" step="any" style="width:150px;font-family:var(--font-mono);font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">';
+                html += '<input type="number" class="shock-value" placeholder="Новое значение" step="any" style="width:150px;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">';
                 html += '<button class="btn-remove-shock" style="font-size:10px;padding:2px 6px;">X</button>';
                 html += '</div>';
                 container.insertAdjacentHTML('beforeend', html);
-
                 container.lastElementChild.querySelector('.btn-remove-shock').addEventListener('click', function () {
                     this.parentElement.remove();
                 });
