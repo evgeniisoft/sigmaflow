@@ -1137,7 +1137,7 @@ var TEMPLATE_UNIVERSAL = [
     '  - from: UTILIZATION',
     '    to: REVENUE',
     '    type: LIN',
-    '    coefficient: 1.0',
+    '    coefficient: 0.01',
     '',
     '  - from: HOURLY_RATE',
     '    to: REVENUE',
