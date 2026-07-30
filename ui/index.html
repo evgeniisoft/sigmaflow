@@ -688,7 +688,7 @@
             if (!modelData) return false;
 
             var yamlText = TEMPLATE_UNIVERSAL;
-            
+
 
             var data = parseYAML(yamlText);
             graph = Graph.fromDict(data);
@@ -730,13 +730,12 @@
                         if (nd.value !== undefined) graph.nodes[key].value = nd.value;
                         if (nd.enabled !== undefined) graph.nodes[key].enabled = nd.enabled;
                         if (nd.min !== undefined) graph.nodes[key].min = nd.min;
-                        console.log('Восстановлен min для ' + key + ':', graph.nodes[key].min);
                         if (nd.max !== undefined) graph.nodes[key].max = nd.max;
                     }
                 });
             }
 
-            
+
             graph.name = modelData.name || graph.name;
             setCurrentCompanyId(companyId);
             graph.compute();
@@ -780,9 +779,10 @@
 
             // Загружаем текущую компанию
             var loaded = loadCompany(currentId);
-            console.log('NET_PROFIT после loadCompany:', graph.nodes['NET_PROFIT'].value);
             if (loaded) {
-                console.log('NET_PROFIT перед renderAll:', graph.nodes['NET_PROFIT'].value);
+                console.log('NET_PROFIT до compute:', graph.nodes['NET_PROFIT'].value);
+                graph.compute();
+                console.log('NET_PROFIT после compute:', graph.nodes['NET_PROFIT'].value);
                 elProjectName.textContent = graph.name;
                 updateStatusBar('Компания загружена');
                 renderAll();
@@ -812,7 +812,7 @@
             } else {
                 showSetupWizard();
             }
-            
+
         }
 
         function loadFromStorage() {
