@@ -2347,14 +2347,14 @@
                 document.querySelectorAll('.table-input-min').forEach(function (inp) {
                     var node = graph.nodes[inp.dataset.nodeId];
                     if (node) {
-                        var v = parseFloat(inp.value);
+                        var v = parseFloat(unformatInputValue(inp.value));
                         node.min = isNaN(v) ? null : v;
                     }
                 });
                 document.querySelectorAll('.table-input-max').forEach(function (inp) {
                     var node = graph.nodes[inp.dataset.nodeId];
                     if (node) {
-                        var v = parseFloat(inp.value);
+                        var v = parseFloat(unformatInputValue(inp.value));
                         node.max = isNaN(v) ? null : v;
                     }
                 });
