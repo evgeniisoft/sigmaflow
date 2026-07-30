@@ -1506,11 +1506,16 @@
             var yamlText = 'project: "' + graph.name + '"\n\n';
             yamlText += '# Настройки компании\n';
             yamlText += 'company:\n';
-            yamlText += '  tax_system: ' + (graph.company.tax_system || 'OSNO') + '\n';
-            yamlText += '  nds_rate: ' + (graph.company.nds_rate || 0.22) + '\n';
-            yamlText += '  profit_tax_rate: ' + (graph.company.profit_tax_rate || 0.25) + '\n';
-            yamlText += '  insurance_rate: ' + (graph.company.insurance_rate || 0.30) + '\n';
-            yamlText += '  receivables_days: ' + (graph.company.receivables_days || 30) + '\n';
+            yamlText += '  tax_system: ' + (graph.company ? graph.company.tax_system || 'OSNO' : 'OSNO') + '\n';
+            yamlText += '  nds_rate: ' + (graph.company ? graph.company.nds_rate || 0.22 : 0.22) + '\n';
+            yamlText += '  profit_tax_rate: ' + (graph.company ? graph.company.profit_tax_rate || 0.25 : 0.25) + '\n';
+            yamlText += '  insurance_rate: ' + (graph.company ? graph.company.insurance_rate || 0.30 : 0.30) + '\n';
+            yamlText += '  receivables_days: ' + (graph.company ? graph.company.receivables_days || 30 : 30) + '\n';
+            yamlText += '  prepay_pct: ' + (graph.company ? graph.company.prepay_pct || 0 : 0) + '\n';
+            yamlText += '  prepay_days: ' + (graph.company ? graph.company.prepay_days || 0 : 0) + '\n';
+            yamlText += '  prepay_share: ' + (graph.company ? graph.company.prepay_share || 0 : 0) + '\n';
+            yamlText += '  season: [' + (graph.company && graph.company.season ? graph.company.season.join(', ') : '1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1') + ']\n\n';
+            yamlText += toYAML(graph);
 
             yamlText += '\n# Инвестиции\n';
             yamlText += 'investments:\n';
@@ -1533,15 +1538,6 @@
 
             yamlText += '\n# Модель\n';
             yamlText += toYAML(graph);
-
-            var yt = 'project: "' + graph.name + '"\n\n';
-            yt += '# Настройки компании\n';
-            yt += 'company:\n';
-            yt += '  tax_system: ' + (graph.company ? graph.company.tax_system || 'OSNO' : 'OSNO') + '\n';
-            yt += '  nds_rate: ' + (graph.company ? graph.company.nds_rate || 0.22 : 0.22) + '\n';
-            yt += '  profit_tax_rate: ' + (graph.company ? graph.company.profit_tax_rate || 0.25 : 0.25) + '\n';
-            yt += '  insurance_rate: ' + (graph.company ? graph.company.insurance_rate || 0.30 : 0.30) + '\n\n';
-            yt += toYAML(graph);
 
             var blob = new Blob([yamlText], { type: 'text/yaml;charset=utf-8' });
             var url = URL.createObjectURL(blob);
