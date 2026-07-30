@@ -2869,6 +2869,8 @@
                 if (!id) return;
                 if (loadCompany(id)) {
                     graph.compute();
+                    console.log('TAX сразу после compute:', graph.nodes['TAX'].value);
+                    elProjectName.textContent = graph.name;
                     elProjectName.textContent = graph.name;
                     renderAll();
                     window.renderInvestments();
