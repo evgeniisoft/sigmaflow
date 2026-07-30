@@ -397,8 +397,18 @@
                                 <option value="0.15">15% (МСП)</option>
                                 <option value="0.076">7.6% (IT)</option>
                             </select></div>
-                        <div class="form-group"><label>ОТСРОЧКА ПЛАТЕЖЕЙ (дней)</label><input type="number"
+                        <div style="font-size:11px;color:var(--text-hint);margin-top:12px;">УСЛОВИЯ ОПЛАТЫ</div>
+                        <div class="form-group"><label>ОТСРОЧКА (дней, постоплата)</label><input type="number"
                                 id="company-receivables-days" value="30" min="0" max="180" style="width:100%;"></div>
+                        <div class="form-group"><label>ПРЕДОПЛАТА (%)</label><input type="number"
+                                id="company-prepay-pct" value="0" min="0" max="100" style="width:100%;"></div>
+                        <div class="form-group"><label>СРОК ПРЕДОПЛАТЫ (дней до отгрузки)</label><input type="number"
+                                id="company-prepay-days" value="0" min="0" max="90" style="width:100%;"></div>
+                        <div class="form-group"><label>ДОЛЯ КЛИЕНТОВ С ПРЕДОПЛАТОЙ (%)</label><input type="number"
+                                id="company-prepay-share" value="0" min="0" max="100" style="width:100%;"></div>
+                        <div style="font-size:11px;color:var(--text-hint);margin-top:12px;">СЕЗОННОСТЬ (коэффициенты по
+                            месяцам)</div>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;" id="season-grid"></div>
                         <!-- Секция: Основные средства -->
                         <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
                             <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
@@ -793,11 +803,16 @@
                     if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
                     if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
                     if (graph.company.receivables_days !== undefined) document.getElementById('company-receivables-days').value = graph.company.receivables_days;
+                    if (graph.company.prepay_pct !== undefined) document.getElementById('company-prepay-pct').value = graph.company.prepay_pct;
+                    if (graph.company.prepay_days !== undefined) document.getElementById('company-prepay-days').value = graph.company.prepay_days;
+                    if (graph.company.prepay_share !== undefined) document.getElementById('company-prepay-share').value = graph.company.prepay_share;
                     if (graph.company.fa_start_value !== undefined) document.getElementById('fa-start-value').value = graph.company.fa_start_value;
                     if (graph.company.fa_start_da !== undefined) document.getElementById('fa-start-da').value = graph.company.fa_start_da;
                     if (graph.company.fa_da_rate !== undefined) document.getElementById('fa-da-rate').value = (graph.company.fa_da_rate * 100).toFixed(1);
                     if (graph.company.fa_remaining_months !== undefined) document.getElementById('fa-remaining-months').value = graph.company.fa_remaining_months;
+                    renderSeasonGrid();
                 }
+
             } else {
                 showSetupWizard();
             }
@@ -2435,6 +2450,18 @@
                     graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
                 }
 
+                // Сезонность
+                if (!graph.company.season) graph.company.season = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+                document.querySelectorAll('.season-input').forEach(function (inp) {
+                    graph.company.season[parseInt(inp.dataset.idx)] = parseFloat(inp.value) || 1;
+                });
+
+                // Условия оплаты
+                graph.company.prepay_pct = parseInt(document.getElementById('company-prepay-pct').value) || 0;
+                graph.company.prepay_days = parseInt(document.getElementById('company-prepay-days').value) || 0;
+                graph.company.prepay_share = parseInt(document.getElementById('company-prepay-share').value) || 0;
+
+
                 saveCurrentModel();
                 var statusEl = document.getElementById('company-status');
                 if (statusEl) statusEl.textContent = 'Настройки применены.';
@@ -2793,7 +2820,13 @@
                         if (graph.company.fa_start_da !== undefined) document.getElementById('fa-start-da').value = graph.company.fa_start_da;
                         if (graph.company.fa_da_rate !== undefined) document.getElementById('fa-da-rate').value = (graph.company.fa_da_rate * 100).toFixed(1);
                         if (graph.company.fa_remaining_months !== undefined) document.getElementById('fa-remaining-months').value = graph.company.fa_remaining_months;
+                        if (graph.company.prepay_pct !== undefined) document.getElementById('company-prepay-pct').value = graph.company.prepay_pct;
+                        if (graph.company.prepay_days !== undefined) document.getElementById('company-prepay-days').value = graph.company.prepay_days;
+                        if (graph.company.prepay_share !== undefined) document.getElementById('company-prepay-share').value = graph.company.prepay_share;
+                        renderSeasonGrid();
                     }
+                    
+
                     updateStatusBar('Компания загружена');
                 }
             });
@@ -3646,6 +3679,19 @@
         }
 
 
+        function renderSeasonGrid() {
+            var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+            if (!graph.company) graph.company = {};
+            if (!graph.company.season) graph.company.season = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+            var html = '';
+            months.forEach(function (m, i) {
+                html += '<div style="display:flex;align-items:center;gap:2px;">';
+                html += '<span style="font-size:10px;width:28px;">' + m + '</span>';
+                html += '<input type="number" class="season-input" data-idx="' + i + '" value="' + (graph.company.season[i] || 1) + '" step="0.1" min="0.1" max="3.0" style="width:100%;font-size:11px;padding:2px 4px;text-align:center;">';
+                html += '</div>';
+            });
+            document.getElementById('season-grid').innerHTML = html;
+        }
 
     </script>
 
