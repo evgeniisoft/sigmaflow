@@ -2939,7 +2939,7 @@
                 var html = '<div class="shock-row" style="display:flex;gap:8px;margin-bottom:4px;">';
                 html += '<select class="shock-node" style="flex:1;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">';
                 if (graph && graph.nodes) {
-                    Object.keys(graph.nodes).filter(function (k) { return graph.nodes[k].type === 'INPUT' || graph.nodes[k].type === 'EXTERNAL'; }).sort().forEach(function (id) {
+                    Object.keys(graph.nodes).filter(function (k) { return (graph.nodes[k].type === 'INPUT' || graph.nodes[k].type === 'EXTERNAL') && k !== 'SEASON'; }).sort().forEach(function (id) {
                         var n = graph.nodes[id];
                         html += '<option value="' + id + '">' + (n.label || id) + ' (' + formatValue(n.value) + ')</option>';
                     });
@@ -3729,6 +3729,7 @@
         var BACKOFFICE = ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'RENT', 'IT_EXP', 'LEGAL_COST', 'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAINING_COST', 'TRAVEL_COST', 'MARKETING', 'RD_EXP'];
 
         function isNodeVisible(nodeId) {
+            if (nodeId === 'SEASON') return false;
             if (!graph || !graph.industry) return true;
             var required = REQUIRED_FOR_INDUSTRY[graph.industry] || [];
             if (required.indexOf(nodeId) >= 0) return true;
