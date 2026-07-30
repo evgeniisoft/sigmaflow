@@ -1315,6 +1315,7 @@
                 Object.keys(graph.nodes).forEach(function (key) {
                     var n = graph.nodes[key];
                     if (n.type !== 'INPUT') return;
+                    if (!isNodeVisible(key)) return;
                     var match = group.keys.length === 0;
                     group.keys.forEach(function (kw) {
                         if (key.indexOf(kw) >= 0) match = true;
@@ -3732,6 +3733,25 @@
             var row = document.querySelector('#scenarios-list tr[onclick*="toggleScenarioDetail(' + idx + ')"]');
             if (row) row.insertAdjacentHTML('afterend', detailHtml);
         };
+
+        var REQUIRED_FOR_INDUSTRY = {
+                'production': ['PRICE', 'VOLUME', 'UNIT_MATERIAL', 'PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'ENERGY_COST', 'LOGISTICS_COST', 'DEFECT_RATE'],
+                'retail': ['PRICE', 'VOLUME', 'UNIT_PURCHASE', 'SALES_HEADCOUNT', 'SALES_AVG_SALARY', 'WAREHOUSE_STAFF', 'WAREHOUSE_AVG_SALARY', 'LOGISTICS_COST', 'RETURN_RATE'],
+                'services': ['HOURLY_RATE', 'HOURS_SOLD', 'AVG_CHECK', 'SPECIALIST_HEADCOUNT', 'SPECIALIST_AVG_SALARY'],
+                'it': ['MONTHLY_RATE_PER_DEV', 'DEV_HEADCOUNT', 'DEV_AVG_SALARY', 'UTILIZATION']
+            };
+
+            var BACKOFFICE = ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'RENT', 'IT_EXP', 'LEGAL_COST', 'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAINING_COST', 'TRAVEL_COST', 'MARKETING', 'RD_EXP'];
+
+            function isNodeVisible(nodeId) {
+                if (!graph || !graph.industry) return true;
+                var required = REQUIRED_FOR_INDUSTRY[graph.industry] || [];
+                if (required.indexOf(nodeId) >= 0) return true;
+                if (BACKOFFICE.indexOf(nodeId) >= 0) return true;
+                var node = graph.nodes[nodeId];
+                if (node && node.value !== null && node.value !== 0) return true;
+                return false;
+            }
 
     </script>
 
