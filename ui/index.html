@@ -693,7 +693,7 @@
                 case 'retail': yamlText = TEMPLATE_UNIVERSAL; break;
                 case 'services': yamlText = TEMPLATE_UNIVERSAL; break;
                 case 'it': yamlText = TEMPLATE_UNIVERSAL; break;
-                
+
             }
 
             var data = parseYAML(yamlText);
@@ -930,7 +930,7 @@
                 case 'retail': yamlText = TEMPLATE_UNIVERSAL; break;
                 case 'services': yamlText = TEMPLATE_UNIVERSAL; break;
                 case 'it': yamlText = TEMPLATE_UNIVERSAL; break;
-                
+
             }
 
             if (!yamlText) {
@@ -2315,8 +2315,8 @@
                         html += '</tr>';
                     });
 
-                                     
-                    
+
+
                     html += '</tbody></table>';
 
                     html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 8px;">РЕКОМЕНДАЦИИ</div>';
@@ -2788,7 +2788,7 @@
                         if (graph.company.prepay_share !== undefined) document.getElementById('company-prepay-share').value = graph.company.prepay_share;
                         renderSeasonGrid();
                     }
-                    
+
 
                     updateStatusBar('Компания загружена');
                 }
@@ -2856,7 +2856,7 @@
                     var diffColor = diff === null ? 'var(--text-hint)' : (diff >= 0 ? 'var(--ok)' : 'var(--critical)');
                     var diffText = diff === null ? '—' : (diff >= 0 ? '+' : '') + formatValue(diff);
 
-                    html += '<tr>';
+                    html += '<tr style="cursor:pointer;" onclick="toggleScenarioDetail(' + idx + ')">';
                     html += '<td>' + sc.name + '</td>';
                     html += '<td>' + (sc.desc || '') + '</td>';
                     html += '<td class="value-cell" style="color:' + (profit >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(profit) + '</td>';
@@ -3691,6 +3691,39 @@
             });
             document.getElementById('season-grid').innerHTML = html;
         }
+
+        window.toggleScenarioDetail = function (idx) {
+            var sc = graph.scenarios[idx];
+            if (!sc) return;
+
+            var existing = document.getElementById('scenario-detail-' + idx);
+            if (existing) { existing.remove(); return; }
+
+            var detailHtml = '<tr id="scenario-detail-' + idx + '"><td colspan="5" style="padding:8px;background:var(--bg-input);">';
+            detailHtml += '<div style="font-size:12px;font-weight:500;margin-bottom:4px;">' + sc.name + '</div>';
+            detailHtml += '<table style="width:100%;font-size:11px;"><thead><tr><th>ПАРАМЕТР</th><th>БЫЛО</th><th>СТАЛО</th><th>Δ</th></tr></thead><tbody>';
+
+            (sc.shocks || []).forEach(function (shock) {
+                var node = graph.nodes[shock.node];
+                var label = node ? (node.label || node.id) : shock.node;
+                var oldVal = liveBaseValues[shock.node] !== undefined ? liveBaseValues[shock.node] : (node ? node.value : 0);
+                var newVal = shock.value;
+                var delta = newVal - oldVal;
+                var color = delta >= 0 ? 'var(--ok)' : 'var(--critical)';
+
+                detailHtml += '<tr>';
+                detailHtml += '<td>' + label + '</td>';
+                detailHtml += '<td class="value-cell">' + formatValue(oldVal) + '</td>';
+                detailHtml += '<td class="value-cell">' + formatValue(newVal) + '</td>';
+                detailHtml += '<td class="value-cell" style="color:' + color + ';">' + (delta >= 0 ? '+' : '') + formatValue(delta) + '</td>';
+                detailHtml += '</tr>';
+            });
+
+            detailHtml += '</tbody></table></td></tr>';
+
+            var row = document.querySelector('#scenarios-list tr[onclick*="toggleScenarioDetail(' + idx + ')"]');
+            if (row) row.insertAdjacentHTML('afterend', detailHtml);
+        };
 
     </script>
 
