@@ -1973,7 +1973,9 @@ function formatValue(v) {
 }
 
 function formatInputValue(v) {
-    if (v === null || v === undefined || v === '') return '';
+    if (v === null || v === undefined) return '';
+    if (v === 0) return '0';
+    if (v === '') return '';
     var num = parseFloat(v);
     if (isNaN(num)) return v;
     return num.toLocaleString('ru-RU', { maximumFractionDigits: 2 });
