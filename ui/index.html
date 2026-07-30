@@ -3416,7 +3416,11 @@
                 });
                 if (shocks.length === 0) { notify('Нет изменений для сохранения'); return; }
                 if (!graph.scenarios) graph.scenarios = [];
-                graph.scenarios.push({ name: 'Живая модель ' + new Date().toLocaleString(), desc: '', shocks: shocks });
+                var baseValues = {};
+                shocks.forEach(function (s) {
+                    baseValues[s.node] = liveBaseValues[s.node] !== undefined ? liveBaseValues[s.node] : 0;
+                });
+                graph.scenarios.push({ name: 'Живая модель ' + new Date().toLocaleString(), desc: '', shocks: shocks, baseValues: baseValues });
                 saveScenarios();
                 notify('Сценарий сохранён');
             });
