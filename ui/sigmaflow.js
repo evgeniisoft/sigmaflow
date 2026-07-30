@@ -930,14 +930,37 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     // Отсрочка платежей клиентов
     var receivablesDays = self._company('receivables_days', 30);
     var receivablesDelay = Math.round(receivablesDays / 30); // в месяцах
+    var season = self.company ? (self.company.season || [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+    var prepayPct = self._company('prepay_pct', 0) / 100;
+    var prepayDays = self._company('prepay_days', 0);
+    var prepayShare = self._company('prepay_share', 0) / 100;
+    var receivablesDelay = Math.round(self._company('receivables_days', 30) / 30);
+
     var revenueReceived = [];
     for (var i = 0; i < horizon; i++) revenueReceived.push(0);
+
     for (var i = 0; i < horizon; i++) {
-        var targetMonth = i + receivablesDelay;
-        if (targetMonth < horizon) {
-            revenueReceived[targetMonth] = (revenueReceived[targetMonth] || 0) + revY;
-        } else {
-            revenueReceived[i] = (revenueReceived[i] || 0) + revY;
+        var mo = (startMonth + i) % 12;
+        var monthlyRev = revY * (season[mo] || 1);
+
+        // Постоплата: деньги приходят с задержкой
+        var postIdx = i + receivablesDelay;
+        if (postIdx < horizon) {
+            revenueReceived[postIdx] += monthlyRev * (1 - prepayShare);
+        }
+
+        // Предоплата: деньги приходят до отгрузки
+        var prepayMonths = Math.round(prepayDays / 30);
+        var preIdx = i - prepayMonths;
+        if (preIdx >= 0 && preIdx < horizon) {
+            revenueReceived[preIdx] += monthlyRev * prepayShare * prepayPct;
+        }
+        // Доплата после отгрузки (оставшаяся часть предоплаты)
+        if (prepayPct < 1) {
+            var postPreIdx = i + receivablesDelay;
+            if (postPreIdx < horizon) {
+                revenueReceived[postPreIdx] += monthlyRev * prepayShare * (1 - prepayPct);
+            }
         }
     }
     var monthlyNDSaccrued = monthlyRevenueForNDS * ndsRate / (1 + ndsRate);
