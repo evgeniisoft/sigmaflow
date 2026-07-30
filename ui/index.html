@@ -736,8 +736,7 @@
                 });
             }
 
-            console.log('PRICE в modelData.nodes:', modelData.nodes['PRICE']);
-
+            
             graph.name = modelData.name || graph.name;
             setCurrentCompanyId(companyId);
             graph.compute();
@@ -781,10 +780,13 @@
 
             // Загружаем текущую компанию
             var loaded = loadCompany(currentId);
+            console.log('NET_PROFIT после loadCompany:', graph.nodes['NET_PROFIT'].value);
             if (loaded) {
+                console.log('NET_PROFIT перед renderAll:', graph.nodes['NET_PROFIT'].value);
                 elProjectName.textContent = graph.name;
                 updateStatusBar('Компания загружена');
                 renderAll();
+                console.log('NET_PROFIT после renderAll:', graph.nodes['NET_PROFIT'].value);
                 window.renderInvestments();
                 window.renderCredits();
                 renderScenarios();
@@ -810,6 +812,7 @@
             } else {
                 showSetupWizard();
             }
+            
         }
 
         function loadFromStorage() {
