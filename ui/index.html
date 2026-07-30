@@ -3325,19 +3325,6 @@
             }
 
 
-            function updateUndoButtons() {
-                var u = document.getElementById('btn-undo');
-                var r = document.getElementById('btn-redo');
-                if (u) {
-                    u.disabled = undoStack.length === 0;
-                    u.textContent = '↩ ОТМЕНИТЬ' + (undoStack.length > 0 ? ' (' + undoStack.length + ')' : '');
-                }
-                if (r) {
-                    r.disabled = redoStack.length === 0;
-                    r.textContent = '↪ ПОВТОРИТЬ' + (redoStack.length > 0 ? ' (' + redoStack.length + ')' : '');
-                }
-            }
-
             // Загружаем демо при старте
             loadDemo();
         });
@@ -3574,6 +3561,20 @@
             var exists = graph.edges.some(function (e) { return e.from === from && e.to === to; });
             if (!exists) graph.edges.push(new Edge(from, to, 'LIN', coeff, 0));
         }
+
+        function updateUndoButtons() {
+            var u = document.getElementById('btn-undo');
+            var r = document.getElementById('btn-redo');
+            if (u) {
+                u.disabled = undoStack.length === 0;
+                u.textContent = '↩ ОТМЕНИТЬ' + (undoStack.length > 0 ? ' (' + undoStack.length + ')' : '');
+            }
+            if (r) {
+                r.disabled = redoStack.length === 0;
+                r.textContent = '↪ ПОВТОРИТЬ' + (redoStack.length > 0 ? ' (' + redoStack.length + ')' : '');
+            }
+        }
+
 
 
     </script>
