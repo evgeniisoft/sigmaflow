@@ -2983,7 +2983,11 @@
                 });
 
                 if (!graph.scenarios) graph.scenarios = [];
-                graph.scenarios.push({ name: name, desc: desc, shocks: shocks });
+                var baseValues = {};
+                shocks.forEach(function (s) {
+                    baseValues[s.node] = graph.nodes[s.node] ? graph.nodes[s.node].value : 0;
+                });
+                graph.scenarios.push({ name: name, desc: desc, shocks: shocks, baseValues: baseValues });
                 saveScenarios();
                 document.getElementById('scenario-form').style.display = 'none';
                 renderScenarios();
@@ -3706,7 +3710,7 @@
             (sc.shocks || []).forEach(function (shock) {
                 var node = graph.nodes[shock.node];
                 var label = node ? (node.label || node.id) : shock.node;
-                var oldVal = liveBaseValues[shock.node] !== undefined ? liveBaseValues[shock.node] : (node ? node.value : 0);
+                var oldVal = (sc.baseValues && sc.baseValues[shock.node] !== undefined) ? sc.baseValues[shock.node] : 0;
                 var newVal = shock.value;
                 var delta = newVal - oldVal;
                 var color = delta >= 0 ? 'var(--ok)' : 'var(--critical)';
