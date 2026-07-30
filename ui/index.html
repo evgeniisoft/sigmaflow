@@ -2344,18 +2344,22 @@
             document.getElementById('btn-apply-table').addEventListener('click', function () {
                 if (!graph) { notify('Сначала загрузите модель', true); return; }
                 var inputs = document.querySelectorAll('.table-input');
+                var minChanged = false;
                 document.querySelectorAll('.table-input-min').forEach(function (inp) {
                     var node = graph.nodes[inp.dataset.nodeId];
                     if (node) {
                         var v = parseFloat(unformatInputValue(inp.value));
-                        node.min = isNaN(v) ? null : v;
+                        var newMin = isNaN(v) ? null : v;
+                        if (node.min !== newMin) { node.min = newMin; minChanged = true; }
                     }
                 });
+                var maxChanged = false;
                 document.querySelectorAll('.table-input-max').forEach(function (inp) {
                     var node = graph.nodes[inp.dataset.nodeId];
                     if (node) {
                         var v = parseFloat(unformatInputValue(inp.value));
-                        node.max = isNaN(v) ? null : v;
+                        var newMax = isNaN(v) ? null : v;
+                        if (node.max !== newMax) { node.max = newMax; maxChanged = true; }
                     }
                 });
                 var changed = 0;
@@ -2370,12 +2374,12 @@
                         }
                     }
                 });
-                if (changed > 0) {
+                if (changed > 0 || minChanged || maxChanged) {
                     graph.compute();
-                    updateStatusBar('Применено ' + changed + ' изменений, модель пересчитана');
-                    notify('Применено ' + changed + ' изменений');
-                    renderAll();
                     saveCurrentModel();
+                    renderAll();
+                    updateStatusBar('Применено ' + changed + ' изменений');
+                    notify('Применено ' + changed + ' изменений');
                 } else {
                     notify('Нет изменений для применения');
                 }
