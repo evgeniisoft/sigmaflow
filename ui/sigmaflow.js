@@ -1147,35 +1147,61 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
     return { rows: rows, totals: totals, endCumulative: cumulative };
 };
 
-Graph.prototype.getMarginalEffects = function() {
+Graph.prototype.getMarginalEffects = function () {
     var self = this;
     var saved = {};
-    Object.keys(self.nodes).forEach(function(key) {
-        saved[key] = self.nodes[key].value;
-    });
-    
+    Object.keys(self.nodes).forEach(function (key) { saved[key] = self.nodes[key].value; });
+
     self.compute();
     var baseProfit = self.nodes['NET_PROFIT'] ? self.nodes['NET_PROFIT'].value : 0;
     var baseRevenue = self.nodes['REVENUE'] ? Math.abs(self.nodes['REVENUE'].value) : 1;
-    
-    var effects = [];
-    
-    Object.keys(self.nodes).forEach(function(key) {
+
+    // Только реальные управленческие рычаги
+    var allowedNodes = {};
+    Object.keys(self.nodes).forEach(function (key) {
         var n = self.nodes[key];
-        if (n.type !== 'INPUT' && n.type !== 'EXTERNAL') return;
-        if (n.value === null || n.value === 0) return;
+        if (n.type !== 'INPUT') return;
         if (n.enabled === false) return;
-        
-        var delta = n.value * 0.01;
-        if (Math.abs(delta) < 0.001) delta = 0.01;
-        
-        Object.keys(saved).forEach(function(k) { self.nodes[k].value = saved[k]; });
-        
+        if (n.value === null || n.value === 0) return;
+        allowedNodes[key] = true;
+    });
+
+    // Исключаем то, что не управляется ползунком
+    var excludeFromSliders = [
+        'SEASON', 'FIXED_ASSETS', 'INTANGIBLE_ASSETS', 'DA_RATE',
+        'CB_RATE', 'INFLATION', 'FX_RATE', 'PMI', 'CCI', 'HOUSEHOLD_INCOME',
+        'LABOR_INDEX', 'GEO_INDEX', 'SANCTIONS', 'TARIFFS', 'SUPPLIER_RISK',
+        'TAX_RATE', 'NDS_RATE', 'INSURANCE_RATE', 'PROPERTY_TAX_RATE', 'TRADE_FEE',
+        'BANK_SPREAD', 'CREDIT_RATING', 'COMPETITION',
+        'DEFECT_RATE', 'RETURN_RATE', 'ATTRITION', 'ENGAGEMENT',
+        'CAPACITY', 'WEAR', 'CASH_START', 'RETAINED_START',
+        'delta_RECEIVABLES', 'delta_PAYABLES', 'delta_INVENTORY',
+        'INTEREST_INCOME', 'PENALTIES', 'DIVIDENDS'
+    ];
+
+    var effects = [];
+
+    Object.keys(allowedNodes).forEach(function (key) {
+        if (excludeFromSliders.indexOf(key) >= 0) return;
+        var n = self.nodes[key];
+
+        var delta = n.value * 0.05; // 5% изменение для реалистичности
+        if (Math.abs(delta) < 1) delta = n.value > 0 ? 1 : -1;
+        if (n.min !== null && n.value + delta < n.min) delta = n.min - n.value;
+        if (n.max !== null && n.value + delta > n.max) delta = n.max - n.value;
+        if (delta === 0) return;
+
+        // Восстанавливаем ВСЕ значения
+        Object.keys(saved).forEach(function (k) { self.nodes[k].value = saved[k]; });
+
+        // Меняем узел и делаем ПОЛНЫЙ compute
         n.value = n.value + delta;
         self.compute();
+
         var newProfit = self.nodes['NET_PROFIT'] ? self.nodes['NET_PROFIT'].value : 0;
         var profitDelta = newProfit - baseProfit;
-        
+        var profitDelta10 = profitDelta * 2; // экстраполяция на +10%
+
         effects.push({
             node: key,
             label: n.label || key,
@@ -1183,17 +1209,18 @@ Graph.prototype.getMarginalEffects = function() {
             currentValue: saved[key],
             min: n.min,
             max: n.max,
-            step: Number.isInteger(saved[key]) ? 1 : (Math.abs(saved[key]) > 100 ? Math.round(Math.abs(saved[key]) / 100) : 0.01),
+            step: Number.isInteger(saved[key]) ? 1 : (Math.abs(saved[key]) > 1000 ? Math.round(Math.abs(saved[key]) / 100) : 0.01),
             profitDelta: profitDelta,
-            profitDelta10: profitDelta * 10,
+            profitDelta10: profitDelta10,
             impactPct: baseRevenue !== 0 ? (Math.abs(profitDelta) / baseRevenue * 100).toFixed(1) : 0
         });
     });
-    
-    Object.keys(saved).forEach(function(k) { self.nodes[k].value = saved[k]; });
+
+    // Восстанавливаем модель
+    Object.keys(saved).forEach(function (k) { self.nodes[k].value = saved[k]; });
     self.compute();
-    
-    effects.sort(function(a, b) { return Math.abs(b.profitDelta) - Math.abs(a.profitDelta); });
+
+    effects.sort(function (a, b) { return Math.abs(b.profitDelta) - Math.abs(a.profitDelta); });
     return effects;
 };
 
