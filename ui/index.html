@@ -942,6 +942,14 @@
             graph = Graph.fromDict(data);
             graph.name = companyName || graph.name;
             graph.industry = industry;
+            // Отраслевая формула выручки
+            if (industry === 'it') {
+                if (graph.nodes['REVENUE']) graph.nodes['REVENUE'].formula = 'MONTHLY_RATE_PER_DEV * DEV_HEADCOUNT * UTILIZATION * 0.01';
+            } else if (industry === 'services') {
+                if (graph.nodes['REVENUE']) graph.nodes['REVENUE'].formula = 'HOURLY_RATE * HOURS_SOLD + AVG_CHECK * CLIENTS';
+            } else {
+                if (graph.nodes['REVENUE']) graph.nodes['REVENUE'].formula = 'VOLUME * PRICE * SEASON';
+            }
 
 
             // Налоговый режим
