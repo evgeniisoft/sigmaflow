@@ -738,6 +738,7 @@
 
             graph.name = modelData.name || graph.name;
             setCurrentCompanyId(companyId);
+            console.log('TAX value перед compute:', graph.nodes['TAX'] ? graph.nodes['TAX'].value : 'нет узла');
             graph.compute();
             elProjectName.textContent = graph.name;
             return true;
