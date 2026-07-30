@@ -2315,40 +2315,8 @@
                         html += '</tr>';
                     });
 
-                    document.getElementById('btn-live-apply').addEventListener('click', function () {
-                        if (!graph) return;
-                        Object.keys(graph.nodes).forEach(function (key) {
-                            liveBaseValues[key] = graph.nodes[key].value;
-                        });
-                        saveCurrentModel();
-                        notify('Изменения применены к модели');
-                        renderAll();
-                    });
-
-                    document.getElementById('btn-live-save-scenario').addEventListener('click', function () {
-                        if (!graph) return;
-                        var shocks = [];
-                        window._liveTop5.forEach(function (e) {
-                            var newVal = graph.nodes[e.node].value;
-                            if (newVal !== liveBaseValues[e.node]) {
-                                shocks.push({ node: e.node, value: newVal });
-                            }
-                        });
-                        if (shocks.length === 0) { notify('Нет изменений для сохранения'); return; }
-                        if (!graph.scenarios) graph.scenarios = [];
-                        graph.scenarios.push({ name: 'Живая модель ' + new Date().toLocaleString(), desc: '', shocks: shocks });
-                        saveScenarios();
-                        notify('Сценарий сохранён');
-                    });
-
-                    document.getElementById('btn-live-reset').addEventListener('click', function () {
-                        Object.keys(liveBaseValues).forEach(function (key) {
-                            if (graph.nodes[key]) graph.nodes[key].value = liveBaseValues[key];
-                        });
-                        graph.compute();
-                        buildLiveModel();
-                        notify('Модель сброшена');
-                    });
+                                     
+                    
                     html += '</tbody></table>';
 
                     html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 8px;">РЕКОМЕНДАЦИИ</div>';
@@ -3422,6 +3390,42 @@
                 };
                 reader.readAsText(file, 'UTF-8');
             });
+
+            document.getElementById('btn-live-apply').addEventListener('click', function () {
+                if (!graph) return;
+                Object.keys(graph.nodes).forEach(function (key) {
+                    liveBaseValues[key] = graph.nodes[key].value;
+                });
+                saveCurrentModel();
+                notify('Изменения применены к модели');
+                renderAll();
+            });
+
+            document.getElementById('btn-live-save-scenario').addEventListener('click', function () {
+                if (!graph) return;
+                var shocks = [];
+                window._liveTop5.forEach(function (e) {
+                    var newVal = graph.nodes[e.node].value;
+                    if (newVal !== liveBaseValues[e.node]) {
+                        shocks.push({ node: e.node, value: newVal });
+                    }
+                });
+                if (shocks.length === 0) { notify('Нет изменений для сохранения'); return; }
+                if (!graph.scenarios) graph.scenarios = [];
+                graph.scenarios.push({ name: 'Живая модель ' + new Date().toLocaleString(), desc: '', shocks: shocks });
+                saveScenarios();
+                notify('Сценарий сохранён');
+            });
+
+            document.getElementById('btn-live-reset').addEventListener('click', function () {
+                Object.keys(liveBaseValues).forEach(function (key) {
+                    if (graph.nodes[key]) graph.nodes[key].value = liveBaseValues[key];
+                });
+                graph.compute();
+                buildLiveModel();
+                notify('Модель сброшена');
+            });
+
 
             // Загружаем демо при старте
             loadDemo();
