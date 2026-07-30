@@ -1,350 +1,117 @@
 var ALLOWED_CONNECTIONS = {
-    // ============ ВЫРУЧКА ============
-    'PRICE': {
-        canInfluence: ['VOLUME', 'REVENUE'],
-        canBeInfluencedBy: ['COMPETITION', 'INFLATION', 'GEO_INDEX', 'NDS_RATE'],
-        label: 'Цена'
-    },
-    'VOLUME': {
-        canInfluence: ['REVENUE', 'MATERIAL_COST', 'ENERGY_COST', 'LOGISTICS_COST', 'COGS'],
-        canBeInfluencedBy: ['PRICE', 'MARKETING_BUDGET', 'COMPETITION', 'CCI', 'HOUSEHOLD_INCOME', 'BUSINESS_ACTIVITY', 'SEASON', 'CAPACITY'],
-        label: 'Объём продаж'
-    },
-    'CLIENTS': {
-        canInfluence: ['REVENUE'],
-        canBeInfluencedBy: ['MARKETING_BUDGET', 'NEW_CLIENTS', 'REPEAT_SHARE', 'CONVERSION', 'CCI'],
-        label: 'Количество клиентов'
-    },
-    'AVG_CHECK': {
-        canInfluence: ['REVENUE'],
-        canBeInfluencedBy: ['PRICE', 'HOUSEHOLD_INCOME', 'INFLATION'],
-        label: 'Средний чек',
-        isFormula: true
-    },
-    'NEW_CLIENTS': {
-        canInfluence: ['CLIENTS', 'REVENUE'],
-        canBeInfluencedBy: ['MARKETING_BUDGET', 'CONVERSION', 'LEADS'],
-        label: 'Новые клиенты'
-    },
-    'REPEAT_SHARE': {
-        canInfluence: ['CLIENTS', 'REVENUE'],
-        canBeInfluencedBy: ['PRODUCTIVITY', 'ENGAGEMENT'],
-        label: 'Доля повторных продаж'
-    },
-    'EXPORT_SHARE': {
-        canInfluence: ['REVENUE'],
-        canBeInfluencedBy: ['FX_RATE', 'SANCTIONS', 'GEO_INDEX'],
-        label: 'Доля экспорта'
-    },
-    'SEASON': {
-        canInfluence: ['VOLUME', 'REVENUE'],
-        canBeInfluencedBy: [],
-        label: 'Сезонный коэффициент'
-    },
-    'BUSINESS_ACTIVITY': {
-        canInfluence: ['VOLUME', 'CLIENTS', 'REVENUE'],
-        canBeInfluencedBy: ['PMI', 'CB_RATE', 'CCI', 'GEO_INDEX'],
-        label: 'Деловая активность'
-    },
-
-    // ============ ПЕРСОНАЛ ============
-    'PROD_HEADCOUNT': {
-        canInfluence: ['PROD_PAYROLL', 'PRODUCTIVITY', 'COGS'],
-        canBeInfluencedBy: ['ATTRITION', 'CAPACITY', 'VOLUME'],
-        label: 'Численность произв. персонала'
-    },
-    'ADMIN_HEADCOUNT': {
-        canInfluence: ['ADMIN_PAYROLL', 'OPEX'],
-        canBeInfluencedBy: ['ATTRITION'],
-        label: 'Численность АУП'
-    },
-    'SALES_HEADCOUNT': {
-        canInfluence: ['SALES_PAYROLL', 'SELLING_EXP'],
-        canBeInfluencedBy: ['ATTRITION'],
-        label: 'Численность продавцов'
-    },
-    'PROD_AVG_SALARY': {
-        canInfluence: ['PROD_PAYROLL', 'COGS'],
-        canBeInfluencedBy: ['LABOR_INDEX', 'INFLATION', 'SPI'],
-        label: 'Средняя ЗП произв.'
-    },
-    'ADMIN_AVG_SALARY': {
-        canInfluence: ['ADMIN_PAYROLL', 'OPEX'],
-        canBeInfluencedBy: ['LABOR_INDEX', 'INFLATION', 'SPI'],
-        label: 'Средняя ЗП АУП'
-    },
-    'SALES_AVG_SALARY': {
-        canInfluence: ['SALES_PAYROLL', 'SELLING_EXP'],
-        canBeInfluencedBy: ['LABOR_INDEX', 'INFLATION'],
-        label: 'Средняя ЗП продавцов'
-    },
-    'PROD_PAYROLL': {
-        canInfluence: ['COGS'],
-        canBeInfluencedBy: ['PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'BONUS_PROFIT_PCT', 'INSURANCE_RATE'],
-        label: 'ФОТ произв.',
-        isFormula: true
-    },
-    'ADMIN_PAYROLL': {
-        canInfluence: ['OPEX'],
-        canBeInfluencedBy: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'BONUS_PROFIT_PCT', 'INSURANCE_RATE'],
-        label: 'ФОТ АУП',
-        isFormula: true
-    },
-    'SALES_PAYROLL': {
-        canInfluence: ['SELLING_EXP'],
-        canBeInfluencedBy: ['SALES_HEADCOUNT', 'SALES_AVG_SALARY', 'BONUS_REVENUE_PCT', 'BONUS_PROFIT_PCT'],
-        label: 'ФОТ продавцов',
-        isFormula: true
-    },
-    'BONUS_PROFIT_PCT': {
-        canInfluence: ['PROD_PAYROLL', 'ADMIN_PAYROLL', 'SALES_PAYROLL', 'COGS', 'OPEX'],
-        canBeInfluencedBy: ['NET_PROFIT', 'EBITDA'],
-        label: 'Премия (% от прибыли)'
-    },
-    'BONUS_REVENUE_PCT': {
-        canInfluence: ['SALES_PAYROLL', 'SELLING_EXP'],
-        canBeInfluencedBy: ['REVENUE'],
-        label: 'Премия (% от выручки)'
-    },
-    'ATTRITION': {
-        canInfluence: ['PROD_HEADCOUNT', 'ADMIN_HEADCOUNT', 'SALES_HEADCOUNT', 'TRAINING_COST', 'PRODUCTIVITY'],
-        canBeInfluencedBy: ['ENGAGEMENT', 'LABOR_INDEX', 'SPI'],
-        label: 'Текучесть'
-    },
-    'ENGAGEMENT': {
-        canInfluence: ['ATTRITION', 'PRODUCTIVITY'],
-        canBeInfluencedBy: ['TRAINING_COST', 'SPI'],
-        label: 'Вовлечённость'
-    },
-    'PRODUCTIVITY': {
-        canInfluence: ['REVENUE'],
-        canBeInfluencedBy: ['PROD_HEADCOUNT', 'ENGAGEMENT', 'TRAINING_COST', 'ATTRITION'],
-        label: 'Производительность',
-        isFormula: true
-    },
-    'TRAINING_COST': {
-        canInfluence: ['PRODUCTIVITY', 'ENGAGEMENT', 'OPEX'],
-        canBeInfluencedBy: ['ATTRITION'],
-        label: 'Затраты на обучение'
-    },
+    // ============ ПРОДАЖИ ============
+    'PRICE': { category: 'ПРОДАЖИ', canInfluence: ['VOLUME', 'REVENUE'], canBeInfluencedBy: ['COMPETITION', 'INFLATION', 'GEO_INDEX', 'NDS_RATE'], label: 'Цена' },
+    'VOLUME': { category: 'ПРОДАЖИ', canInfluence: ['REVENUE', 'MATERIAL_COST', 'ENERGY_COST', 'LOGISTICS_COST', 'COGS'], canBeInfluencedBy: ['PRICE', 'MARKETING', 'COMPETITION', 'CCI', 'HOUSEHOLD_INCOME', 'BUSINESS_ACTIVITY', 'SEASON', 'CAPACITY'], label: 'Объём продаж' },
+    'CLIENTS': { category: 'ПРОДАЖИ', canInfluence: ['REVENUE'], canBeInfluencedBy: ['MARKETING', 'NEW_CLIENTS', 'REPEAT_SHARE', 'CONVERSION', 'CCI'], label: 'Количество клиентов' },
+    'AVG_CHECK': { category: 'ПРОДАЖИ', canInfluence: ['REVENUE'], canBeInfluencedBy: ['PRICE', 'HOUSEHOLD_INCOME', 'INFLATION'], label: 'Средний чек', isFormula: true },
+    'NEW_CLIENTS': { category: 'ПРОДАЖИ', canInfluence: ['CLIENTS', 'REVENUE'], canBeInfluencedBy: ['MARKETING', 'CONVERSION', 'LEADS'], label: 'Новые клиенты' },
+    'REPEAT_SHARE': { category: 'ПРОДАЖИ', canInfluence: ['CLIENTS', 'REVENUE'], canBeInfluencedBy: ['PRODUCTIVITY', 'ENGAGEMENT'], label: 'Доля повторных продаж' },
+    'EXPORT_SHARE': { category: 'ПРОДАЖИ', canInfluence: ['REVENUE'], canBeInfluencedBy: ['FX_RATE', 'SANCTIONS', 'GEO_INDEX'], label: 'Доля экспорта' },
+    'SEASON': { category: 'ПРОДАЖИ', canInfluence: ['VOLUME', 'REVENUE'], canBeInfluencedBy: [], label: 'Сезонный коэффициент' },
+    'BUSINESS_ACTIVITY': { category: 'ПРОДАЖИ', canInfluence: ['VOLUME', 'CLIENTS', 'REVENUE'], canBeInfluencedBy: ['PMI', 'CB_RATE', 'CCI', 'GEO_INDEX'], label: 'Деловая активность' },
+    'HOURLY_RATE': { category: 'ПРОДАЖИ', canInfluence: ['REVENUE'], canBeInfluencedBy: ['COMPETITION', 'INFLATION'], label: 'Ставка часа' },
+    'HOURS_SOLD': { category: 'ПРОДАЖИ', canInfluence: ['REVENUE'], canBeInfluencedBy: ['MARKETING', 'BUSINESS_ACTIVITY'], label: 'Оплачиваемые часы' },
+    'MONTHLY_RATE_PER_DEV': { category: 'ПРОДАЖИ', canInfluence: ['REVENUE'], canBeInfluencedBy: ['COMPETITION', 'INFLATION'], label: 'Ставка за разработчика' },
+    'UTILIZATION': { category: 'ПРОДАЖИ', canInfluence: ['REVENUE'], canBeInfluencedBy: ['DEV_HEADCOUNT', 'ENGAGEMENT'], label: 'Утилизация' },
+    'CONVERSION': { category: 'ПРОДАЖИ', canInfluence: ['NEW_CLIENTS', 'CLIENTS'], canBeInfluencedBy: [], label: 'Конверсия в клиента' },
+    'LEADS': { category: 'ПРОДАЖИ', canInfluence: ['NEW_CLIENTS'], canBeInfluencedBy: ['MARKETING'], label: 'Количество лидов' },
+    'UNIT_PURCHASE': { category: 'ПРОДАЖИ', canInfluence: ['COGS'], canBeInfluencedBy: ['INFLATION', 'FX_RATE'], label: 'Закупочная цена' },
 
     // ============ МАРКЕТИНГ ============
-    'MARKETING_BUDGET': {
-        canInfluence: ['LEADS', 'VOLUME', 'NEW_CLIENTS', 'CLIENTS', 'SELLING_EXP'],
-        canBeInfluencedBy: ['NET_PROFIT', 'REVENUE', 'COMPETITION', 'LTV'],
-        label: 'Бюджет маркетинга'
-    },
-    'COST_PER_LEAD': {
-        canInfluence: ['MARKETING_BUDGET'],
-        canBeInfluencedBy: ['MARKETING_BUDGET', 'LEADS'],
-        label: 'Стоимость лида',
-        isFormula: true
-    },
-    'LEADS': {
-        canInfluence: ['NEW_CLIENTS'],
-        canBeInfluencedBy: ['MARKETING_BUDGET'],
-        label: 'Количество лидов'
-    },
-    'CONVERSION': {
-        canInfluence: ['NEW_CLIENTS', 'CLIENTS'],
-        canBeInfluencedBy: [],
-        label: 'Конверсия в клиента'
-    },
-    'CAC': {
-        canInfluence: ['MARKETING_BUDGET'],
-        canBeInfluencedBy: ['MARKETING_BUDGET', 'NEW_CLIENTS'],
-        label: 'Стоимость привлечения клиента',
-        isFormula: true
-    },
-    'LTV': {
-        canInfluence: ['MARKETING_BUDGET'],
-        canBeInfluencedBy: ['REVENUE', 'CLIENTS'],
-        label: 'Пожизненная ценность клиента'
-    },
-    'COMPETITION': {
-        canInfluence: ['PRICE', 'VOLUME', 'MARKETING_BUDGET'],
-        canBeInfluencedBy: ['GEO_INDEX'],
-        label: 'Уровень конкуренции'
-    },
+    'MARKETING': { category: 'МАРКЕТИНГ', canInfluence: ['LEADS', 'VOLUME', 'NEW_CLIENTS', 'CLIENTS', 'SELLING_EXP'], canBeInfluencedBy: ['NET_PROFIT', 'REVENUE', 'COMPETITION', 'LTV'], label: 'Маркетинг' },
+    'COMPETITION': { category: 'МАРКЕТИНГ', canInfluence: ['PRICE', 'VOLUME', 'MARKETING'], canBeInfluencedBy: ['GEO_INDEX'], label: 'Уровень конкуренции' },
+    'LTV': { category: 'МАРКЕТИНГ', canInfluence: ['MARKETING'], canBeInfluencedBy: ['REVENUE', 'CLIENTS'], label: 'Пожизненная ценность клиента' },
+    'CAC': { category: 'МАРКЕТИНГ', canInfluence: ['MARKETING'], canBeInfluencedBy: ['MARKETING', 'NEW_CLIENTS'], label: 'Стоимость привлечения клиента', isFormula: true },
+    'COST_PER_LEAD': { category: 'МАРКЕТИНГ', canInfluence: ['MARKETING'], canBeInfluencedBy: ['MARKETING', 'LEADS'], label: 'Стоимость лида', isFormula: true },
 
     // ============ ПРОИЗВОДСТВО ============
-    'MATERIAL_COST': {
-        canInfluence: ['COGS'],
-        canBeInfluencedBy: ['VOLUME', 'UNIT_MATERIAL', 'DEFECT_RATE', 'SUPPLIER_RISK'],
-        label: 'Сырьё и материалы',
-        isFormula: true
-    },
-    'UNIT_MATERIAL': {
-        canInfluence: ['MATERIAL_COST', 'COGS'],
-        canBeInfluencedBy: ['INFLATION', 'FX_RATE', 'TARIFFS', 'GEO_INDEX', 'SUPPLIER_RISK'],
-        label: 'Цена сырья за единицу'
-    },
-    'ENERGY_COST': {
-        canInfluence: ['COGS'],
-        canBeInfluencedBy: ['VOLUME', 'TARIFFS'],
-        label: 'Энергозатраты'
-    },
-    'LOGISTICS_COST': {
-        canInfluence: ['COGS'],
-        canBeInfluencedBy: ['VOLUME', 'TARIFFS', 'FX_RATE'],
-        label: 'Логистика'
-    },
-    'DEFECT_RATE': {
-        canInfluence: ['MATERIAL_COST', 'COGS', 'REVENUE'],
-        canBeInfluencedBy: ['WEAR', 'PRODUCTIVITY'],
-        label: 'Брак (%)'
-    },
-    'CAPACITY': {
-        canInfluence: ['VOLUME'],
-        canBeInfluencedBy: ['CAPEX', 'WEAR'],
-        label: 'Производственная мощность'
-    },
-    'CAPACITY_UTIL': {
-        canInfluence: ['COGS'],
-        canBeInfluencedBy: ['VOLUME', 'CAPACITY'],
-        label: 'Загрузка мощностей',
-        isFormula: true
-    },
-    'WEAR': {
-        canInfluence: ['DEFECT_RATE', 'DA', 'CAPACITY'],
-        canBeInfluencedBy: ['CAPEX', 'CAPACITY_UTIL'],
-        label: 'Износ оборудования'
-    },
-    'SUPPLIER_RISK': {
-        canInfluence: ['UNIT_MATERIAL', 'MATERIAL_COST'],
-        canBeInfluencedBy: ['GEO_INDEX', 'SANCTIONS'],
-        label: 'Риск дефолта поставщика'
-    },
+    'MATERIAL_COST': { category: 'ПРОИЗВОДСТВО', canInfluence: ['COGS'], canBeInfluencedBy: ['VOLUME', 'UNIT_MATERIAL', 'DEFECT_RATE', 'SUPPLIER_RISK'], label: 'Сырьё и материалы', isFormula: true },
+    'UNIT_MATERIAL': { category: 'ПРОИЗВОДСТВО', canInfluence: ['MATERIAL_COST', 'COGS'], canBeInfluencedBy: ['INFLATION', 'FX_RATE', 'TARIFFS', 'GEO_INDEX', 'SUPPLIER_RISK'], label: 'Цена сырья за единицу' },
+    'ENERGY_COST': { category: 'ПРОИЗВОДСТВО', canInfluence: ['COGS'], canBeInfluencedBy: ['VOLUME', 'TARIFFS'], label: 'Энергозатраты' },
+    'LOGISTICS_COST': { category: 'ПРОИЗВОДСТВО', canInfluence: ['COGS', 'SELLING_EXP'], canBeInfluencedBy: ['VOLUME', 'TARIFFS', 'FX_RATE'], label: 'Логистика' },
+    'DEFECT_RATE': { category: 'ПРОИЗВОДСТВО', canInfluence: ['MATERIAL_COST', 'COGS', 'REVENUE'], canBeInfluencedBy: ['WEAR', 'PRODUCTIVITY'], label: 'Брак (%)' },
+    'DEFECT_COST': { category: 'ПРОИЗВОДСТВО', canInfluence: ['COGS'], canBeInfluencedBy: ['MATERIAL_COST', 'DEFECT_RATE'], label: 'Потери от брака', isFormula: true },
+    'WAREHOUSE_COST': { category: 'ПРОИЗВОДСТВО', canInfluence: ['COGS'], canBeInfluencedBy: ['VOLUME', 'INFLATION'], label: 'Стоимость хранения' },
+    'RETURN_RATE': { category: 'ПРОИЗВОДСТВО', canInfluence: ['REVENUE', 'COGS'], canBeInfluencedBy: ['DEFECT_RATE', 'PRODUCTIVITY'], label: 'Процент возвратов' },
+    'CAPACITY': { category: 'ПРОИЗВОДСТВО', canInfluence: ['VOLUME'], canBeInfluencedBy: ['CAPEX', 'WEAR'], label: 'Производственная мощность' },
+    'WEAR': { category: 'ПРОИЗВОДСТВО', canInfluence: ['DEFECT_RATE', 'DA', 'CAPACITY'], canBeInfluencedBy: ['CAPEX', 'CAPACITY_UTIL'], label: 'Износ оборудования' },
+    'SUPPLIER_RISK': { category: 'ПРОИЗВОДСТВО', canInfluence: ['UNIT_MATERIAL', 'MATERIAL_COST'], canBeInfluencedBy: ['GEO_INDEX', 'SANCTIONS'], label: 'Риск дефолта поставщика' },
+    'CAPACITY_UTIL': { category: 'ПРОИЗВОДСТВО', canInfluence: ['COGS'], canBeInfluencedBy: ['VOLUME', 'CAPACITY'], label: 'Загрузка мощностей', isFormula: true },
+    // ============ ПЕРСОНАЛ ============
+    'PROD_HEADCOUNT': { category: 'ПЕРСОНАЛ', canInfluence: ['DIRECT_LABOR', 'PRODUCTIVITY', 'COGS'], canBeInfluencedBy: ['ATTRITION', 'CAPACITY', 'VOLUME'], label: 'Численность произв. персонала' },
+    'ADMIN_HEADCOUNT': { category: 'ПЕРСОНАЛ', canInfluence: ['ADMIN_PAYROLL', 'ADMIN_EXP'], canBeInfluencedBy: ['ATTRITION'], label: 'Численность АУП' },
+    'SALES_HEADCOUNT': { category: 'ПЕРСОНАЛ', canInfluence: ['SELLING_EXP'], canBeInfluencedBy: ['ATTRITION'], label: 'Численность продавцов' },
+    'WAREHOUSE_STAFF': { category: 'ПЕРСОНАЛ', canInfluence: ['COGS'], canBeInfluencedBy: ['ATTRITION'], label: 'Численность персонала склада' },
+    'SPECIALIST_HEADCOUNT': { category: 'ПЕРСОНАЛ', canInfluence: ['COGS'], canBeInfluencedBy: ['ATTRITION'], label: 'Численность специалистов' },
+    'DEV_HEADCOUNT': { category: 'ПЕРСОНАЛ', canInfluence: ['REVENUE'], canBeInfluencedBy: ['ATTRITION'], label: 'Количество разработчиков' },
+    'PROD_AVG_SALARY': { category: 'ПЕРСОНАЛ', canInfluence: ['DIRECT_LABOR', 'COGS'], canBeInfluencedBy: ['LABOR_INDEX', 'INFLATION'], label: 'Средняя ЗП произв.' },
+    'ADMIN_AVG_SALARY': { category: 'ПЕРСОНАЛ', canInfluence: ['ADMIN_PAYROLL', 'ADMIN_EXP'], canBeInfluencedBy: ['LABOR_INDEX', 'INFLATION'], label: 'Средняя ЗП АУП' },
+    'SALES_AVG_SALARY': { category: 'ПЕРСОНАЛ', canInfluence: ['SELLING_EXP'], canBeInfluencedBy: ['LABOR_INDEX', 'INFLATION'], label: 'Средняя ЗП продавцов' },
+    'WAREHOUSE_AVG_SALARY': { category: 'ПЕРСОНАЛ', canInfluence: ['COGS'], canBeInfluencedBy: ['LABOR_INDEX', 'INFLATION'], label: 'Средняя ЗП склада' },
+    'SPECIALIST_AVG_SALARY': { category: 'ПЕРСОНАЛ', canInfluence: ['COGS'], canBeInfluencedBy: ['LABOR_INDEX', 'INFLATION'], label: 'Средняя ЗП специалистов' },
+    'DEV_AVG_SALARY': { category: 'ПЕРСОНАЛ', canInfluence: ['COGS'], canBeInfluencedBy: ['LABOR_INDEX', 'INFLATION'], label: 'Средняя ЗП разработчика' },
+    'DIRECT_LABOR': { category: 'ПЕРСОНАЛ', canInfluence: ['COGS'], canBeInfluencedBy: ['PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'BONUS_PROFIT_PCT'], label: 'ФОТ произв.', isFormula: true },
+    'ADMIN_PAYROLL': { category: 'ПЕРСОНАЛ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'BONUS_PROFIT_PCT'], label: 'ФОТ АУП', isFormula: true },
+    'BONUS_PROFIT_PCT': { category: 'ПЕРСОНАЛ', canInfluence: ['DIRECT_LABOR', 'ADMIN_PAYROLL', 'COGS', 'ADMIN_EXP'], canBeInfluencedBy: ['NET_PROFIT', 'EBITDA'], label: 'Премия (% от прибыли)' },
+    'BONUS_REVENUE_PCT': { category: 'ПЕРСОНАЛ', canInfluence: ['SELLING_EXP'], canBeInfluencedBy: ['REVENUE'], label: 'Премия (% от выручки)' },
+    'ATTRITION': { category: 'ПЕРСОНАЛ', canInfluence: ['PROD_HEADCOUNT', 'ADMIN_HEADCOUNT', 'SALES_HEADCOUNT', 'TRAINING_COST', 'PRODUCTIVITY'], canBeInfluencedBy: ['ENGAGEMENT', 'LABOR_INDEX'], label: 'Текучесть' },
+    'ENGAGEMENT': { category: 'ПЕРСОНАЛ', canInfluence: ['ATTRITION', 'PRODUCTIVITY'], canBeInfluencedBy: ['TRAINING_COST'], label: 'Вовлечённость' },
+    'PRODUCTIVITY': { category: 'ПЕРСОНАЛ', canInfluence: ['REVENUE'], canBeInfluencedBy: ['PROD_HEADCOUNT', 'ENGAGEMENT', 'TRAINING_COST', 'ATTRITION'], label: 'Производительность', isFormula: true },
+    'TRAINING_COST': { category: 'ПЕРСОНАЛ', canInfluence: ['PRODUCTIVITY', 'ENGAGEMENT', 'ADMIN_EXP'], canBeInfluencedBy: ['ATTRITION'], label: 'Затраты на обучение' },
+    'OUTSOURCE_COST': { category: 'ПЕРСОНАЛ', canInfluence: ['COGS', 'ADMIN_EXP'], canBeInfluencedBy: ['PROD_HEADCOUNT', 'VOLUME'], label: 'Затраты на аутсорсинг' },
 
-    // ============ OPEX ============
-    'RENT': { canInfluence: ['OPEX'], canBeInfluencedBy: ['INFLATION'], label: 'Аренда' },
-    'IT_EXP': { canInfluence: ['OPEX'], canBeInfluencedBy: ['HEADCOUNT'], label: 'IT-расходы' },
-    'RD_EXP': { canInfluence: ['OPEX'], canBeInfluencedBy: ['NET_PROFIT'], label: 'R&D расходы' },
-    'LEGAL_COST': { canInfluence: ['OPEX'], canBeInfluencedBy: [], label: 'Юридические расходы' },
-    'INSURANCE_COST': { canInfluence: ['OPEX'], canBeInfluencedBy: [], label: 'Страхование' },
-    'TRAVEL_COST': { canInfluence: ['OPEX'], canBeInfluencedBy: ['HEADCOUNT'], label: 'Командировочные' },
-    'UTILITIES': { canInfluence: ['OPEX'], canBeInfluencedBy: ['TARIFFS', 'INFLATION'], label: 'Коммунальные платежи' },
-
+    // ============ ОПЕРАЦИОННЫЕ ============
+    'RENT': { category: 'ОПЕРАЦИОННЫЕ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: ['INFLATION'], label: 'Аренда' },
+    'IT_EXP': { category: 'ОПЕРАЦИОННЫЕ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: [], label: 'IT-расходы' },
+    'RD_EXP': { category: 'ОПЕРАЦИОННЫЕ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: ['NET_PROFIT'], label: 'R&D расходы' },
+    'LEGAL_COST': { category: 'ОПЕРАЦИОННЫЕ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: [], label: 'Юридические услуги' },
+    'BANK_FEES': { category: 'ОПЕРАЦИОННЫЕ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: [], label: 'Комиссии банка' },
+    'INSURANCE_COST': { category: 'ОПЕРАЦИОННЫЕ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: [], label: 'Страхование' },
+    'UTILITIES': { category: 'ОПЕРАЦИОННЫЕ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: ['TARIFFS', 'INFLATION'], label: 'Коммунальные платежи' },
+    'OFFICE_EXP': { category: 'ОПЕРАЦИОННЫЕ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: [], label: 'Офисные расходы' },
+    'TRAVEL_COST': { category: 'ОПЕРАЦИОННЫЕ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: [], label: 'Командировочные' },
     // ============ АКТИВЫ ============
-    'FIXED_ASSETS': {
-        canInfluence: ['DA', 'ASSETS'],
-        canBeInfluencedBy: ['CAPEX'],
-        label: 'Основные средства'
-    },
-    'INTANGIBLE_ASSETS': {
-        canInfluence: ['DA', 'ASSETS'],
-        canBeInfluencedBy: ['CAPEX'],
-        label: 'Нематериальные активы'
-    },
-    'DA': {
-        canInfluence: ['EBIT', 'NET_PROFIT', 'CFO'],
-        canBeInfluencedBy: ['FIXED_ASSETS', 'INTANGIBLE_ASSETS', 'DA_RATE'],
-        label: 'Амортизация',
-        isFormula: true
-    },
-    'DA_RATE': {
-        canInfluence: ['DA'],
-        canBeInfluencedBy: ['WEAR'],
-        label: 'Норма амортизации'
-    },
-    'CAPEX': {
-        canInfluence: ['FIXED_ASSETS', 'INTANGIBLE_ASSETS', 'CASH', 'WEAR'],
-        canBeInfluencedBy: ['NET_PROFIT', 'LOANS'],
-        label: 'Капитальные затраты'
-    },
-    'INVENTORY': {
-        canInfluence: ['CASH', 'COGS'],
-        canBeInfluencedBy: ['VOLUME'],
-        label: 'Товарные запасы'
-    },
-    'RECEIVABLES': {
-        canInfluence: ['CASH', 'CFO'],
-        canBeInfluencedBy: ['REVENUE'],
-        label: 'Дебиторская задолженность'
-    },
-    'PAYABLES': {
-        canInfluence: ['CASH', 'CFO'],
-        canBeInfluencedBy: ['MATERIAL_COST', 'COGS'],
-        label: 'Кредиторская задолженность'
-    },
-    'CASH': {
-        canInfluence: ['CFO'],
-        canBeInfluencedBy: ['CASH_START', 'FCF', 'CAPEX', 'NEW_LOANS', 'LOAN_REPAYMENT', 'RECEIVABLES', 'PAYABLES', 'INVENTORY'],
-        label: 'Денежные средства',
-        isFormula: true
-    },
-    'CASH_START': {
-        canInfluence: ['CASH'],
-        canBeInfluencedBy: [],
-        label: 'Остаток на начало'
-    },
+    'FIXED_ASSETS': { category: 'АКТИВЫ', canInfluence: ['DA', 'ASSETS'], canBeInfluencedBy: ['CAPEX'], label: 'Основные средства' },
+    'INTANGIBLE_ASSETS': { category: 'АКТИВЫ', canInfluence: ['DA', 'ASSETS'], canBeInfluencedBy: ['CAPEX'], label: 'Нематериальные активы' },
+    'DA': { category: 'АКТИВЫ', canInfluence: ['EBIT', 'NET_PROFIT', 'CFO'], canBeInfluencedBy: ['FIXED_ASSETS', 'INTANGIBLE_ASSETS', 'DA_RATE'], label: 'Амортизация', isFormula: true },
+    'DA_RATE': { category: 'АКТИВЫ', canInfluence: ['DA'], canBeInfluencedBy: ['WEAR'], label: 'Норма амортизации' },
+    'CAPEX': { category: 'АКТИВЫ', canInfluence: ['FIXED_ASSETS', 'INTANGIBLE_ASSETS', 'CASH', 'WEAR'], canBeInfluencedBy: ['NET_PROFIT', 'LOANS'], label: 'Капитальные затраты' },
+    'INVENTORY': { category: 'АКТИВЫ', canInfluence: ['CASH', 'COGS'], canBeInfluencedBy: ['VOLUME'], label: 'Товарные запасы' },
+    'RECEIVABLES': { category: 'АКТИВЫ', canInfluence: ['CASH', 'CFO'], canBeInfluencedBy: ['REVENUE'], label: 'Дебиторская задолженность' },
+    'PAYABLES': { category: 'АКТИВЫ', canInfluence: ['CASH', 'CFO'], canBeInfluencedBy: ['MATERIAL_COST', 'COGS'], label: 'Кредиторская задолженность' },
+    'CASH': { category: 'АКТИВЫ', canInfluence: ['CFO'], canBeInfluencedBy: ['CASH_START', 'FCF', 'CAPEX', 'NEW_LOANS', 'LOAN_REPAYMENT', 'RECEIVABLES', 'PAYABLES', 'INVENTORY'], label: 'Денежные средства', isFormula: true },
+    'CASH_START': { category: 'АКТИВЫ', canInfluence: ['CASH'], canBeInfluencedBy: [], label: 'Остаток на начало' },
 
     // ============ ДОЛГ ============
-    'LOANS': {
-        canInfluence: ['INTEREST', 'CASH', 'DEBT_EBITDA'],
-        canBeInfluencedBy: ['NEW_LOANS', 'LOAN_REPAYMENT'],
-        label: 'Кредитный портфель'
-    },
-    'NEW_LOANS': {
-        canInfluence: ['LOANS', 'CASH', 'CFF'],
-        canBeInfluencedBy: ['CREDIT_RATING'],
-        label: 'Новые кредиты'
-    },
-    'LOAN_REPAYMENT': {
-        canInfluence: ['LOANS', 'CASH', 'CFF'],
-        canBeInfluencedBy: [],
-        label: 'Погашение тела'
-    },
-    'LOAN_RATE': {
-        canInfluence: ['INTEREST'],
-        canBeInfluencedBy: ['CB_RATE', 'BANK_SPREAD', 'CREDIT_RATING'],
-        label: 'Средняя ставка',
-        isFormula: true
-    },
-    'BANK_SPREAD': {
-        canInfluence: ['LOAN_RATE'],
-        canBeInfluencedBy: ['CREDIT_RATING'],
-        label: 'Спред банка'
-    },
-    'INTEREST': {
-        canInfluence: ['EBT', 'NET_PROFIT'],
-        canBeInfluencedBy: ['LOANS', 'LOAN_RATE'],
-        label: 'Проценты к уплате',
-        isFormula: true
-    },
-    'INTEREST_INCOME': {
-        canInfluence: ['EBT', 'NET_PROFIT'],
-        canBeInfluencedBy: [],
-        label: 'Проценты к получению'
-    },
-    'DIVIDENDS': {
-        canInfluence: ['CASH', 'RETAINED_EARNINGS', 'CFF'],
-        canBeInfluencedBy: ['NET_PROFIT'],
-        label: 'Дивиденды'
-    },
-    'CREDIT_RATING': {
-        canInfluence: ['BANK_SPREAD', 'LOAN_RATE', 'NEW_LOANS'],
-        canBeInfluencedBy: ['DEBT_EBITDA', 'NET_PROFIT'],
-        label: 'Кредитный рейтинг'
-    },
+    'LOANS': { category: 'КРЕДИТЫ', canInfluence: ['INTEREST', 'CASH', 'DEBT_EBITDA'], canBeInfluencedBy: ['NEW_LOANS', 'LOAN_REPAYMENT'], label: 'Кредитный портфель' },
+    'NEW_LOANS': { category: 'КРЕДИТЫ', canInfluence: ['LOANS', 'CASH', 'CFF'], canBeInfluencedBy: ['CREDIT_RATING'], label: 'Новые кредиты' },
+    'LOAN_REPAYMENT': { category: 'КРЕДИТЫ', canInfluence: ['LOANS', 'CASH', 'CFF'], canBeInfluencedBy: [], label: 'Погашение тела' },
+    'LOAN_RATE': { category: 'КРЕДИТЫ', canInfluence: ['INTEREST'], canBeInfluencedBy: ['CB_RATE', 'BANK_SPREAD', 'CREDIT_RATING'], label: 'Средняя ставка', isFormula: true },
+    'BANK_SPREAD': { category: 'КРЕДИТЫ', canInfluence: ['LOAN_RATE'], canBeInfluencedBy: ['CREDIT_RATING'], label: 'Спред банка' },
+    'INTEREST': { category: 'КРЕДИТЫ', canInfluence: ['EBT', 'NET_PROFIT'], canBeInfluencedBy: ['LOANS', 'LOAN_RATE'], label: 'Проценты к уплате', isFormula: true },
+    'INTEREST_INCOME': { category: 'КРЕДИТЫ', canInfluence: ['EBT', 'NET_PROFIT'], canBeInfluencedBy: [], label: 'Проценты к получению' },
+    'DIVIDENDS': { category: 'КРЕДИТЫ', canInfluence: ['CASH', 'RETAINED_EARNINGS', 'CFF'], canBeInfluencedBy: ['NET_PROFIT'], label: 'Дивиденды' },
+    'CREDIT_RATING': { category: 'КРЕДИТЫ', canInfluence: ['BANK_SPREAD', 'LOAN_RATE', 'NEW_LOANS'], canBeInfluencedBy: ['DEBT_EBITDA', 'NET_PROFIT'], label: 'Кредитный рейтинг' },
 
     // ============ ВНЕШНИЕ ============
-    'CB_RATE': { canInfluence: ['LOAN_RATE', 'BUSINESS_ACTIVITY'], canBeInfluencedBy: [], label: 'Ключевая ставка ЦБ' },
-    'INFLATION': { canInfluence: ['UNIT_MATERIAL', 'AVG_SALARY', 'PRICE', 'RENT'], canBeInfluencedBy: [], label: 'Инфляция' },
-    'FX_RATE': { canInfluence: ['UNIT_MATERIAL', 'EXPORT_SHARE', 'REVENUE'], canBeInfluencedBy: ['GEO_INDEX', 'SANCTIONS'], label: 'Курс USD/RUB' },
-    'PMI': { canInfluence: ['BUSINESS_ACTIVITY', 'VOLUME'], canBeInfluencedBy: [], label: 'Индекс PMI' },
-    'CCI': { canInfluence: ['VOLUME', 'CLIENTS', 'BUSINESS_ACTIVITY'], canBeInfluencedBy: [], label: 'Потребительская уверенность' },
-    'HOUSEHOLD_INCOME': { canInfluence: ['AVG_CHECK', 'VOLUME'], canBeInfluencedBy: [], label: 'Доходы населения' },
-    'LABOR_INDEX': { canInfluence: ['AVG_SALARY', 'ATTRITION'], canBeInfluencedBy: [], label: 'Индекс рынка труда' },
-    'GEO_INDEX': { canInfluence: ['SUPPLIER_RISK', 'FX_RATE', 'SANCTIONS', 'BUSINESS_ACTIVITY'], canBeInfluencedBy: [], label: 'Геополитический индекс' },
-    'SANCTIONS': { canInfluence: ['EXPORT_SHARE', 'UNIT_MATERIAL', 'FX_RATE'], canBeInfluencedBy: ['GEO_INDEX'], label: 'Санкционный индекс' },
-    'TARIFFS': { canInfluence: ['ENERGY_COST', 'LOGISTICS_COST', 'UTILITIES', 'UNIT_MATERIAL'], canBeInfluencedBy: [], label: 'Тарифы монополий' },
+    'CB_RATE': { category: 'ВНЕШНИЕ', canInfluence: ['LOAN_RATE', 'BUSINESS_ACTIVITY'], canBeInfluencedBy: [], label: 'Ключевая ставка ЦБ' },
+    'INFLATION': { category: 'ВНЕШНИЕ', canInfluence: ['UNIT_MATERIAL', 'AVG_SALARY', 'PRICE', 'RENT'], canBeInfluencedBy: [], label: 'Инфляция' },
+    'FX_RATE': { category: 'ВНЕШНИЕ', canInfluence: ['UNIT_MATERIAL', 'EXPORT_SHARE', 'REVENUE'], canBeInfluencedBy: ['GEO_INDEX', 'SANCTIONS'], label: 'Курс USD/RUB' },
+    'PMI': { category: 'ВНЕШНИЕ', canInfluence: ['BUSINESS_ACTIVITY', 'VOLUME'], canBeInfluencedBy: [], label: 'Индекс PMI' },
+    'CCI': { category: 'ВНЕШНИЕ', canInfluence: ['VOLUME', 'CLIENTS', 'BUSINESS_ACTIVITY'], canBeInfluencedBy: [], label: 'Потребительская уверенность' },
+    'HOUSEHOLD_INCOME': { category: 'ВНЕШНИЕ', canInfluence: ['AVG_CHECK', 'VOLUME'], canBeInfluencedBy: [], label: 'Доходы населения' },
+    'LABOR_INDEX': { category: 'ВНЕШНИЕ', canInfluence: ['AVG_SALARY', 'ATTRITION'], canBeInfluencedBy: [], label: 'Индекс рынка труда' },
+    'GEO_INDEX': { category: 'ВНЕШНИЕ', canInfluence: ['SUPPLIER_RISK', 'FX_RATE', 'SANCTIONS', 'BUSINESS_ACTIVITY'], canBeInfluencedBy: [], label: 'Геополитический индекс' },
+    'SANCTIONS': { category: 'ВНЕШНИЕ', canInfluence: ['EXPORT_SHARE', 'UNIT_MATERIAL', 'FX_RATE'], canBeInfluencedBy: ['GEO_INDEX'], label: 'Санкционный индекс' },
+    'TARIFFS': { category: 'ВНЕШНИЕ', canInfluence: ['ENERGY_COST', 'LOGISTICS_COST', 'UTILITIES', 'UNIT_MATERIAL'], canBeInfluencedBy: [], label: 'Тарифы монополий' },
 
     // ============ НАЛОГИ ============
-    'TAX_RATE': { canInfluence: ['TAX', 'NET_PROFIT'], canBeInfluencedBy: [], label: 'Ставка налога на прибыль' },
-    'NDS_RATE': { canInfluence: ['PRICE'], canBeInfluencedBy: [], label: 'Ставка НДС' },
-    'INSURANCE_RATE': { canInfluence: ['PROD_PAYROLL', 'ADMIN_PAYROLL'], canBeInfluencedBy: [], label: 'Ставка страховых взносов' },
-    'PROPERTY_TAX_RATE': { canInfluence: ['OPEX'], canBeInfluencedBy: [], label: 'Налог на имущество' },
-    'TRADE_FEE': { canInfluence: ['OPEX'], canBeInfluencedBy: [], label: 'Торговый сбор' },
-    'PENALTIES': { canInfluence: ['EBT', 'CASH'], canBeInfluencedBy: [], label: 'Штрафы и пени' }
+    'TAX_RATE': { category: 'НАЛОГИ', canInfluence: ['TAX', 'NET_PROFIT'], canBeInfluencedBy: [], label: 'Ставка налога на прибыль' },
+    'NDS_RATE': { category: 'НАЛОГИ', canInfluence: ['PRICE'], canBeInfluencedBy: [], label: 'Ставка НДС' },
+    'INSURANCE_RATE': { category: 'НАЛОГИ', canInfluence: ['DIRECT_LABOR', 'ADMIN_PAYROLL'], canBeInfluencedBy: [], label: 'Ставка страховых взносов' },
+    'PROPERTY_TAX_RATE': { category: 'НАЛОГИ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: [], label: 'Налог на имущество' },
+    'TRADE_FEE': { category: 'НАЛОГИ', canInfluence: ['ADMIN_EXP'], canBeInfluencedBy: [], label: 'Торговый сбор' },
+    'PENALTIES': { category: 'НАЛОГИ', canInfluence: ['EBT', 'CASH'], canBeInfluencedBy: [], label: 'Штрафы и пени' },
+    'OTHER_INCOME': { category: 'НАЛОГИ', canInfluence: ['EBT'], canBeInfluencedBy: [], label: 'Прочие доходы' },
+    'OTHER_EXP': { category: 'НАЛОГИ', canInfluence: ['EBT'], canBeInfluencedBy: [], label: 'Прочие расходы' }
 };
