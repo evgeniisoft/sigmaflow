@@ -998,6 +998,7 @@
             notify('Компания "' + graph.name + '" создана. Настройте параметры на вкладке КОМПАНИЯ.');
 
             renderAll();
+            setTimeout(function () { renderSeasonGrid(); }, 300);
             window.renderInvestments();
             window.renderCredits();
             renderScenarios();
