@@ -687,14 +687,8 @@
             var modelData = companies[companyId];
             if (!modelData) return false;
 
-            var yamlText;
-            switch (modelData.industry) {
-                case 'production': yamlText = TEMPLATE_UNIVERSAL; break;
-                case 'retail': yamlText = TEMPLATE_UNIVERSAL; break;
-                case 'services': yamlText = TEMPLATE_UNIVERSAL; break;
-                case 'it': yamlText = TEMPLATE_UNIVERSAL; break;
-
-            }
+            var yamlText = TEMPLATE_UNIVERSAL;
+            
 
             var data = parseYAML(yamlText);
             graph = Graph.fromDict(data);
@@ -741,6 +735,8 @@
                     }
                 });
             }
+
+            console.log('PRICE в modelData.nodes:', modelData.nodes['PRICE']);
 
             graph.name = modelData.name || graph.name;
             setCurrentCompanyId(companyId);
