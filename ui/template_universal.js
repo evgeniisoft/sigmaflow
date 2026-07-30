@@ -12,6 +12,7 @@ var TEMPLATE_UNIVERSAL = [
     '    type: TARGET',
     '    label: "Чистая прибыль"',
     '    source: computed',
+    '    formula: "EBIT - INTEREST + OTHER_INCOME - OTHER_EXP - PENALTIES"',
     '',
     '  - id: EBT',
     '    type: INTERMEDIATE',
