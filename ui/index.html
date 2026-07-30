@@ -2286,53 +2286,146 @@
             document.getElementById('btn-analysis').addEventListener('click', function () {
                 if (!graph) { notify('Сначала загрузите модель', true); return; }
                 graph.compute();
-                var effects = graph.getMarginalEffects();
                 var panel = document.getElementById('dashboard-analysis-panel');
 
                 if (panel.style.display === 'none') {
                     panel.style.display = 'block';
-                    this.textContent = '▼ АНАЛИЗ И РЕКОМЕНДАЦИИ';
+                    this.textContent = '▼ АНАЛИЗ';
 
-                    var html = '<div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">ПРЕДЕЛЬНЫЕ ЭФФЕКТЫ (изменение прибыли при +1% параметра)</div>';
-                    html += '<table style="width:100%;table-layout:fixed;font-size:11px;"><thead><tr><th style="width:45%;">ПАРАМЕТР</th><th style="width:20%;">ТЕКУЩЕЕ</th><th style="width:20%;">Δ ПРИБЫЛИ</th><th style="width:15%;">ВЛИЯНИЕ</th></tr></thead><tbody>';
-                    effects.slice(0, 10).forEach(function (e) {
-                        var sign = e.profitDelta >= 0 ? '+' : '';
-                        var color = e.profitDelta >= 0 ? 'var(--ok)' : 'var(--critical)';
-                        html += '<tr>';
-                        html += '<td style="word-break:break-word;white-space:normal;">' + e.label + '</td>';
-                        html += '<td class="value-cell" style="text-align:center;">' + formatValue(e.currentValue) + '</td>';
-                        html += '<td class="value-cell" style="text-align:center;color:' + color + ';">' + sign + formatValue(e.profitDelta) + '</td>';
-                        html += '<td class="value-cell" style="text-align:center;">' + (e.impactPct) + '%</td>';
-                        html += '</tr>';
+                    var rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 1;
+                    var np = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
+                    var effects = graph.getMarginalEffects();
+
+                    // ===================== БЛОК 1: ДЕКОМПОЗИЦИЯ ПРИБЫЛИ =====================
+                    var html = '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">📊 ПОЧЕМУ ПРИБЫЛЬ = ' + formatValue(np) + '</div>';
+                    html += '<table style="width:100%;font-size:11px;">';
+
+                    function decompRow(label, val, indent, isTotal) {
+                        var color = val >= 0 ? 'var(--ok)' : 'var(--critical)';
+                        var pct = rev > 0 ? (Math.abs(val) / rev * 100).toFixed(1) : 0;
+                        var barW = Math.min(Math.abs(val) / rev * 200, 200);
+                        var style = isTotal ? 'font-weight:600;border-top:1px solid var(--border);' : '';
+                        return '<tr style="' + style + '"><td style="padding-left:' + (indent || 0) + 'px;font-size:' + (isTotal ? '12px' : '11px') + ';">' + label + '</td><td class="value-cell" style="color:' + color + ';">' + formatValue(val) + '</td><td class="value-cell" style="color:var(--text-hint);">' + pct + '%</td><td><div style="background:var(--bg-primary);height:4px;width:100%;"><div style="background:' + color + ';height:4px;width:' + barW + 'px;"></div></div></td></tr>';
+                    }
+
+                    var cogs = graph.nodes['COGS'] ? Math.abs(graph.nodes['COGS'].value) : 0;
+                    var gp = graph.nodes['GROSS_PROFIT'] ? graph.nodes['GROSS_PROFIT'].value : 0;
+                    var sell = graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : 0;
+                    var adm = graph.nodes['ADMIN_EXP'] ? Math.abs(graph.nodes['ADMIN_EXP'].value) : 0;
+                    var ebitda = graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0;
+                    var da = graph.nodes['DA'] ? Math.abs(graph.nodes['DA'].value) : 0;
+                    var interest = graph.nodes['INTEREST'] ? Math.abs(graph.nodes['INTEREST'].value) : 0;
+
+                    html += decompRow('Выручка', rev);
+                    html += decompRow('Себестоимость', -cogs);
+                    html += decompRow('  Сырьё', -(graph.nodes['MATERIAL_COST'] ? Math.abs(graph.nodes['MATERIAL_COST'].value) : 0), 8);
+                    html += decompRow('  ФОТ произв.', -(graph.nodes['DIRECT_LABOR'] ? Math.abs(graph.nodes['DIRECT_LABOR'].value) : 0), 8);
+                    html += decompRow('  Энергия', -(graph.nodes['ENERGY_COST'] ? Math.abs(graph.nodes['ENERGY_COST'].value) : 0), 8);
+                    html += decompRow('  Логистика', -(graph.nodes['LOGISTICS_COST'] ? Math.abs(graph.nodes['LOGISTICS_COST'].value) : 0), 8);
+                    html += decompRow('Валовая прибыль', gp, 0, true);
+                    html += decompRow('Коммерческие', -sell);
+                    html += decompRow('Управленческие', -adm);
+                    html += decompRow('  ФОТ АУП', -(graph.nodes['ADMIN_PAYROLL'] ? Math.abs(graph.nodes['ADMIN_PAYROLL'].value) : 0), 8);
+                    html += decompRow('  Аренда', -(graph.nodes['RENT'] ? Math.abs(graph.nodes['RENT'].value) : 0), 8);
+                    html += decompRow('EBITDA', ebitda, 0, true);
+                    html += decompRow('Амортизация', -da);
+                    html += decompRow('Проценты', -interest);
+                    html += decompRow('ЧИСТАЯ ПРИБЫЛЬ', np, 0, true);
+                    html += '</table>';
+
+                    // Ключевые пожиратели
+                    var consumers = [
+                        { label: 'Амортизация', val: da },
+                        { label: 'ФОТ произв.', val: graph.nodes['DIRECT_LABOR'] ? Math.abs(graph.nodes['DIRECT_LABOR'].value) : 0 },
+                        { label: 'ФОТ АУП', val: graph.nodes['ADMIN_PAYROLL'] ? Math.abs(graph.nodes['ADMIN_PAYROLL'].value) : 0 }
+                    ];
+                    consumers.sort(function (a, b) { return b.val - a.val; });
+                    html += '<div style="font-size:10px;color:var(--text-hint);margin-top:6px;">Ключевые статьи расходов:</div>';
+                    consumers.slice(0, 3).forEach(function (c) {
+                        html += '<div style="font-size:10px;">▌ ' + c.label + ': ' + formatValue(c.val) + ' (' + (rev > 0 ? (c.val / rev * 100).toFixed(1) : 0) + '% от выручки)</div>';
                     });
 
+                    // ===================== БЛОК 2: ЧТО БУДЕТ, ЕСЛИ =====================
+                    html += '<div style="font-size:13px;font-weight:600;margin:16px 0 10px;">🎯 ЧТО БУДЕТ, ЕСЛИ</div>';
+                    html += '<table style="width:100%;font-size:11px;"><thead><tr><th>ДЕЙСТВИЕ</th><th>ЭФФЕКТ</th><th>РЕАЛИСТ.</th></tr></thead><tbody>';
 
+                    // Конкретные шаги в зависимости от типа узла
+                    function getRealisticStep(nodeId, currentVal) {
+                        if (nodeId.indexOf('HEADCOUNT') >= 0) return { delta: 1, label: 'на 1 чел.' };
+                        if (nodeId.indexOf('AVG_SALARY') >= 0) return { delta: Math.round(currentVal * 0.05), label: 'на ' + formatValue(Math.round(currentVal * 0.05)) };
+                        if (nodeId.indexOf('PRICE') >= 0 || nodeId.indexOf('RATE') >= 0) return { delta: Math.round(currentVal * 0.05), label: 'на ' + formatValue(Math.round(currentVal * 0.05)) };
+                        if (nodeId.indexOf('VOLUME') >= 0) return { delta: Math.round(currentVal * 0.05), label: 'на ' + formatValue(Math.round(currentVal * 0.05)) };
+                        if (nodeId.indexOf('COST') >= 0 || nodeId.indexOf('EXP') >= 0 || nodeId === 'RENT' || nodeId === 'MARKETING') return { delta: Math.round(currentVal * 0.1), label: 'на ' + formatValue(Math.round(currentVal * 0.1)) };
+                        return { delta: Math.round(Math.abs(currentVal) * 0.1), label: 'на ' + formatValue(Math.round(Math.abs(currentVal) * 0.1)) };
+                    }
 
+                    function realismStars(nodeId, profitDelta) {
+                        if (nodeId.indexOf('PRICE') >= 0) return profitDelta > 0 ? '★★☆' : '★★★';
+                        if (nodeId.indexOf('HEADCOUNT') >= 0) return '★★★';
+                        if (nodeId.indexOf('AVG_SALARY') >= 0) return '★★☆';
+                        return '★★☆';
+                    }
+
+                    var shown = 0;
+                    effects.forEach(function (e) {
+                        if (shown >= 7) return;
+                        if (Math.abs(e.profitDelta) < 50) return;
+                        var step = getRealisticStep(e.node, e.currentValue);
+                        var action = e.profitDelta > 0 ? '▲ Увеличить' : '▼ Сократить';
+                        var color = e.profitDelta >= 0 ? 'var(--ok)' : 'var(--critical)';
+                        html += '<tr><td>' + action + ' <b>' + e.label + '</b> ' + step.label + '</td><td class="value-cell" style="color:' + color + ';">' + (e.profitDelta >= 0 ? '+' : '') + formatValue(e.profitDelta) + '</td><td style="font-size:10px;">' + realismStars(e.node, e.profitDelta) + '</td></tr>';
+                        shown++;
+                    });
                     html += '</tbody></table>';
 
-                    html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 8px;">РЕКОМЕНДАЦИИ</div>';
+                    // Комбинация
+                    var topPos = effects.filter(function (e) { return e.profitDelta > 0; }).slice(0, 2);
+                    var topNeg = effects.filter(function (e) { return e.profitDelta < 0; }).slice(0, 1);
+                    var comboTotal = 0;
+                    html += '<div style="font-size:11px;font-weight:500;margin-top:6px;">Рекомендация:</div>';
+                    topPos.forEach(function (e) {
+                        var step = getRealisticStep(e.node, e.currentValue);
+                        comboTotal += e.profitDelta;
+                        html += '<div style="font-size:10px;">● Увеличить <b>' + e.label + '</b> ' + step.label + ' → +' + formatValue(e.profitDelta) + '</div>';
+                    });
+                    topNeg.forEach(function (e) {
+                        var step = getRealisticStep(e.node, e.currentValue);
+                        comboTotal += Math.abs(e.profitDelta);
+                        html += '<div style="font-size:10px;">● Сократить <b>' + e.label + '</b> ' + step.label + ' → +' + formatValue(Math.abs(e.profitDelta)) + '</div>';
+                    });
+                    html += '<div style="font-size:10px;font-weight:600;margin-top:2px;">Суммарно: +' + formatValue(comboTotal) + '</div>';
 
-                    var topPositive = effects.filter(function (e) { return e.profitDelta > 0; }).slice(0, 3);
-                    var topNegative = effects.filter(function (e) { return e.profitDelta < 0; }).slice(0, 3);
+                    // ===================== БЛОК 3: ТЕПЛОВАЯ КАРТА =====================
+                    html += '<div style="font-size:13px;font-weight:600;margin:16px 0 10px;">🔥 ТЕПЛОВАЯ КАРТА ВЛИЯНИЯ</div>';
+                    var maxImpact = 0;
+                    effects.forEach(function (e) { if (Math.abs(e.profitDelta) > maxImpact) maxImpact = Math.abs(e.profitDelta); });
 
-                    if (topPositive.length > 0) {
-                        html += '<div style="margin-bottom:8px;">Для увеличения прибыли:</div>';
-                        topPositive.forEach(function (e) {
-                            html += '<div style="font-size:12px;padding:2px 0;">● Увеличить <b>' + e.label + '</b> — эффект ~' + formatValue(e.profitDelta * 10) + ' при +10%</div>';
-                        });
-                    }
+                    effects.slice(0, 8).forEach(function (e) {
+                        var barW = maxImpact > 0 ? Math.abs(e.profitDelta) / maxImpact * 100 : 0;
+                        var color = e.profitDelta >= 0 ? 'var(--ok)' : 'var(--critical)';
+                        var isManaged = (e.type === 'INPUT');
+                        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">';
+                        html += '<span style="font-size:10px;width:120px;text-align:right;">' + e.label + '</span>';
+                        html += '<div style="flex:1;background:var(--bg-primary);height:8px;"><div style="background:' + color + ';height:8px;width:' + barW + '%;' + (isManaged ? '' : 'opacity:0.5;') + '"></div></div>';
+                        html += '<span style="font-size:9px;color:var(--text-hint);width:50px;">' + (isManaged ? 'рычаг' : '') + '</span>';
+                        html += '</div>';
+                    });
 
-                    if (topNegative.length > 0) {
-                        html += '<div style="margin:8px 0;">Для сокращения убытков:</div>';
-                        topNegative.forEach(function (e) {
-                            html += '<div style="font-size:12px;padding:2px 0;">● Сократить <b>' + e.label + '</b> — эффект ~' + formatValue(Math.abs(e.profitDelta) * 10) + ' при -10%</div>';
-                        });
-                    }
+                    html += '<div style="font-size:9px;color:var(--text-hint);margin-top:4px;">Яркие = управляемые рычаги | Бледные = внешние/бухгалтерские</div>';
 
+                    html += '<button id="btn-goto-live-from-analysis" style="margin-top:12px;font-size:11px;">▶ ОТКРЫТЬ В ЖИВОЙ МОДЕЛИ</button>';
                     panel.innerHTML = html;
+
+                    document.getElementById('btn-goto-live-from-analysis').addEventListener('click', function () {
+                        document.querySelectorAll('.nav-btn').forEach(function (b) { b.classList.remove('active'); });
+                        document.querySelector('[data-panel="live"]').classList.add('active');
+                        document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+                        document.getElementById('panel-live').classList.add('active');
+                        buildLiveModel();
+                    });
                 } else {
                     panel.style.display = 'none';
-                    this.textContent = '▶ АНАЛИЗ И РЕКОМЕНДАЦИИ';
+                    this.textContent = '▶ АНАЛИЗ';
                 }
             });
 
