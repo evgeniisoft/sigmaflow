@@ -608,10 +608,7 @@
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="sigmaflow.js"></script>
     <script src="demo_full.js"></script>
-    <script src="template_production.js"></script>
-    <script src="template_retail.js"></script>
-    <script src="template_services.js"></script>
-    <script src="template_it.js"></script>
+    <script src="template_universal.js"></script>
     <script src="allowed_connections.js"></script>
     <script>
         // ============================================================
@@ -692,11 +689,11 @@
 
             var yamlText;
             switch (modelData.industry) {
-                case 'production': yamlText = TEMPLATE_PRODUCTION; break;
-                case 'retail': yamlText = TEMPLATE_RETAIL; break;
-                case 'services': yamlText = TEMPLATE_SERVICES; break;
-                case 'it': yamlText = TEMPLATE_IT; break;
-                default: return false;
+                case 'production': yamlText = TEMPLATE_UNIVERSAL; break;
+                case 'retail': yamlText = TEMPLATE_UNIVERSAL; break;
+                case 'services': yamlText = TEMPLATE_UNIVERSAL; break;
+                case 'it': yamlText = TEMPLATE_UNIVERSAL; break;
+                
             }
 
             var data = parseYAML(yamlText);
@@ -929,11 +926,11 @@
         function createModel(industry, taxSystem, companyName) {
             var yamlText;
             switch (industry) {
-                case 'production': yamlText = TEMPLATE_PRODUCTION; break;
-                case 'retail': yamlText = TEMPLATE_RETAIL; break;
-                case 'services': yamlText = TEMPLATE_SERVICES; break;
-                case 'it': yamlText = TEMPLATE_IT; break;
-                default: yamlText = DEMO_FULL;
+                case 'production': yamlText = TEMPLATE_UNIVERSAL; break;
+                case 'retail': yamlText = TEMPLATE_UNIVERSAL; break;
+                case 'services': yamlText = TEMPLATE_UNIVERSAL; break;
+                case 'it': yamlText = TEMPLATE_UNIVERSAL; break;
+                
             }
 
             if (!yamlText) {
