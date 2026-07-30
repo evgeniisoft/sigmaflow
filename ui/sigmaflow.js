@@ -1183,6 +1183,7 @@ Graph.prototype.getMarginalEffects = function () {
 
     Object.keys(allowedNodes).forEach(function (key) {
         if (excludeFromSliders.indexOf(key) >= 0) return;
+        if (typeof isNodeVisible === 'function' && !isNodeVisible(key)) return;
         var n = self.nodes[key];
 
         var delta = n.value * 0.05; // 5% изменение для реалистичности
