@@ -21,6 +21,8 @@
         <button id="btn-delete-company"
             style="font-size:12px;padding:6px 12px;color:var(--critical);border-color:var(--critical);">УДАЛИТЬ</button>
         <button id="btn-new-company" style="font-size:12px;padding:6px 12px;">+ НОВАЯ</button>
+        <input type="file" id="file-import" accept=".yaml,.yml" style="display:none;">
+        <button id="btn-load">ЗАГРУЗИТЬ</button>
         <button id="btn-save">СОХРАНИТЬ</button>
         <button id="btn-theme" style="font-size:12px;padding:6px 12px;" title="Сменить тему">☀️</button>
     </header>
@@ -1516,6 +1518,15 @@
 
             yamlText += '\n# Модель\n';
             yamlText += toYAML(graph);
+
+            var yt = 'project: "' + graph.name + '"\n\n';
+            yt += '# Настройки компании\n';
+            yt += 'company:\n';
+            yt += '  tax_system: ' + (graph.company ? graph.company.tax_system || 'OSNO' : 'OSNO') + '\n';
+            yt += '  nds_rate: ' + (graph.company ? graph.company.nds_rate || 0.22 : 0.22) + '\n';
+            yt += '  profit_tax_rate: ' + (graph.company ? graph.company.profit_tax_rate || 0.25 : 0.25) + '\n';
+            yt += '  insurance_rate: ' + (graph.company ? graph.company.insurance_rate || 0.30 : 0.30) + '\n\n';
+            yt += toYAML(graph);
 
             var blob = new Blob([yamlText], { type: 'text/yaml;charset=utf-8' });
             var url = URL.createObjectURL(blob);
@@ -3324,6 +3335,65 @@
                 });
             }
 
+
+            document.getElementById('btn-load').addEventListener('click', function () {
+                document.getElementById('file-import').click();
+            });
+
+            document.getElementById('file-import').addEventListener('change', function (e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                if (!confirm('Загруженная модель заменит текущую. Продолжить?')) return;
+
+                var reader = new FileReader();
+                reader.onload = function (ev) {
+                    try {
+                        var yamlText = ev.target.result;
+                        var data = parseYAML(yamlText);
+
+                        // Создаём новую модель из YAML
+                        graph = Graph.fromDict(data);
+                        graph.compute();
+
+                        // Сохраняем как новую компанию
+                        var companies = getAllCompanies();
+                        var companyId = 'company_' + Date.now();
+                        var modelData = {
+                            name: graph.name || 'Импортированная',
+                            industry: 'production',
+                            nodes: {},
+                            investments: [],
+                            credits: [],
+                            company: {},
+                            history: [],
+                            planForecast: null,
+                            calibrationLog: [],
+                            edges: graph.edges.map(function (e) { return { from: e.from, to: e.to, coefficient: e.coefficient }; })
+                        };
+                        Object.keys(graph.nodes).forEach(function (key) {
+                            var n = graph.nodes[key];
+                            modelData.nodes[key] = { value: n.value, enabled: n.enabled, min: n.min, max: n.max };
+                        });
+
+                        companies[companyId] = modelData;
+                        saveAllCompanies(companies);
+                        setCurrentCompanyId(companyId);
+
+                        elProjectName.textContent = graph.name;
+                        updateStatusBar('Модель импортирована');
+                        notify('Модель успешно загружена из YAML');
+                        renderAll();
+                        window.renderInvestments();
+                        window.renderCredits();
+                        window.renderScenarios();
+                        refreshCompanyList();
+                    } catch (err) {
+                        notify('Ошибка импорта: ' + err.message, true);
+                        console.error(err);
+                    }
+                };
+                reader.readAsText(file, 'UTF-8');
+            });
 
             // Загружаем демо при старте
             loadDemo();
