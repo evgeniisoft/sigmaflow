@@ -589,7 +589,9 @@
                     style="flex:1;background:var(--bg-primary);position:relative;overflow:auto;"></div>
                 <div id="driver-tree-info"
                     style="width:350px;padding:16px;overflow-y:auto;background:var(--bg-panel);border-left:1px solid var(--border);flex-shrink:0;">
-                    <h3 style="margin:0 0 16px;">ДРАЙВЕР</h3>
+                    <h3 style="margin:0 0 16px;">ДРАЙВЕР</h3><button id="btn-reset-driver-tree"
+                        style="width:100%;margin-bottom:12px;font-size:11px;" onclick="resetDriverTree()">↺
+                        СБРОСИТЬ К ИСХОДНЫМ</button>
                     <div id="driver-tree-detail">
                         <div style="color:var(--text-hint);text-align:center;padding-top:40px;">Нажмите на узел дерева
                         </div>
@@ -2082,6 +2084,11 @@
             if (!treeConfig) { notify('Для отрасли "' + graph.industry + '" нет дерева KPI', true); return; }
 
             driverTreeData = graph.computeDriverTree(treeConfig);
+            // Сохраняем снапшот для сброса
+            driverTreeSnapshot = {};
+            Object.keys(graph.nodes).forEach(function (key) {
+                driverTreeSnapshot[key] = graph.nodes[key].value;
+            });
             renderDriverTreeGraph();
         }
 
@@ -2348,6 +2355,35 @@
 
             saveCurrentModel();
             renderDashboard();
+        }
+
+        // Сохраняем снапшот при открытии вкладки
+        var driverTreeSnapshot = null;
+
+        function resetDriverTree() {
+            if (!driverTreeSnapshot || !graph) return;
+
+            // Восстанавливаем все значения из снапшота
+            Object.keys(driverTreeSnapshot).forEach(function (key) {
+                if (graph.nodes[key]) {
+                    graph.nodes[key].value = driverTreeSnapshot[key];
+                }
+            });
+
+            graph.compute();
+            saveCurrentModel();
+            renderDashboard();
+
+            // Перестраиваем дерево
+            var treeConfig = DRIVER_TREES[graph.industry];
+            if (treeConfig) {
+                driverTreeData = graph.computeDriverTree(treeConfig);
+                renderDriverTreeGraph();
+                document.getElementById('driver-tree-detail').innerHTML =
+                    '<div style="color:var(--text-hint);text-align:center;padding-top:40px;">Сброшено к начальным значениям<br>Нажмите на узел дерева</div>';
+            }
+
+            notify('Модель сброшена к исходным значениям');
         }
 
         function findNodeInTree(node, targetId) {
