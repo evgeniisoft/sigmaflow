@@ -914,7 +914,7 @@ var TEMPLATE_UNIVERSAL = [
     '  - from: LOGISTICS_COST',
     '    to: COGS',
     '    type: LIN',
-    '    coefficient: 1.0',
+    '    coefficient: 0.7',
     '',
     '  - from: DEFECT_COST',
     '    to: COGS',
