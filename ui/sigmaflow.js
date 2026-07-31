@@ -1236,6 +1236,292 @@ Graph.prototype.getMarginalEffects = function () {
     return effects;
 };
 
+// ============================================================
+// DRIVER TREE — ВЫЧИСЛЕНИЕ KPI-МОСТОВ
+// ============================================================
+
+Graph.prototype.computeDriverTree = function (treeConfig) {
+    var self = this;
+    var tree = treeConfig;
+    var snapshots = {}; // базовые значения до изменений
+
+    // Сохраняем снапшот всех узлов модели
+    Object.keys(self.nodes).forEach(function (key) {
+        snapshots[key] = self.nodes[key].value;
+    });
+
+    // Рекурсивно вычисляем значения узлов дерева
+    function computeNode(nodeId, path) {
+        var nodeConfig = tree.nodes[nodeId];
+        if (!nodeConfig) return { value: 0, label: nodeId, type: 'unknown' };
+
+        var result = {
+            id: nodeId,
+            label: nodeConfig.label,
+            type: nodeConfig.type,
+            value: 0,
+            children: [],
+            drivers: nodeConfig.drivers || [],
+            unit: nodeConfig.unit || '',
+            affects: nodeConfig.affects || [],
+            nonlinear: nodeConfig.nonlinear || null,
+            computed: nodeConfig.computed || false
+        };
+
+        // Если это драйвер — берём значение из модели
+        if (nodeConfig.type === 'driver' && nodeConfig.nodeId) {
+            var modelNode = self.nodes[nodeConfig.nodeId];
+            if (modelNode) {
+                result.value = modelNode.value || 0;
+                result.min = nodeConfig.min;
+                result.max = nodeConfig.max;
+                result.step = nodeConfig.step;
+            }
+        }
+
+        // Если hidden-параметр — берём defaultValue или из модели
+        if (nodeConfig.type === 'hidden') {
+            if (nodeConfig.nodeId && self.nodes[nodeConfig.nodeId]) {
+                result.value = self.nodes[nodeConfig.nodeId].value || nodeConfig.defaultValue;
+            } else {
+                result.value = nodeConfig.defaultValue || 0;
+            }
+        }
+
+        // Если computed или result — суммируем детей
+        if (nodeConfig.type === 'computed' || nodeConfig.type === 'result') {
+            if (nodeConfig.formula) {
+                // Вычисляем по формуле
+                result.value = evaluateFormula(nodeConfig.formula, nodeConfig.children || []);
+            } else if (nodeConfig.children) {
+                result.value = 0;
+                nodeConfig.children.forEach(function (childId) {
+                    var childResult = computeNode(childId, path.concat(nodeId));
+                    result.children.push(childResult);
+                    var sign = (nodeConfig.signs && nodeConfig.signs[childId]) ? nodeConfig.signs[childId] : 1;
+                    result.value += sign * Math.abs(childResult.value);
+                });
+            }
+        }
+
+        return result;
+    }
+
+    // Вычисление формулы с подстановкой значений детей
+    function evaluateFormula(formula, childIds) {
+        var expr = String(formula);
+        childIds.forEach(function (childId) {
+            var childConfig = tree.nodes[childId];
+            var val = 0;
+            if (childConfig && childConfig.nodeId && self.nodes[childConfig.nodeId]) {
+                val = self.nodes[childConfig.nodeId].value || 0;
+            }
+            var regex = new RegExp('\\b' + childId + '\\b', 'g');
+            expr = expr.replace(regex, val);
+        });
+        try {
+            var result = new Function('return (' + expr + ');')();
+            return typeof result === 'number' && !isNaN(result) ? result : 0;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    // Вычисляем дерево от корня
+    var rootResult = computeNode(tree.root, []);
+
+    // Функция: применить нелинейность при изменении драйвера
+    function applyNonlinear(driverId, newValue) {
+        var driverConfig = tree.nodes[driverId];
+        if (!driverConfig || !driverConfig.nonlinear) return {};
+
+        var changes = {};
+        var baseValues = {};
+
+        // Сохраняем базу
+        Object.keys(driverConfig.nonlinear).forEach(function (targetId) {
+            var targetConfig = tree.nodes[targetId];
+            if (targetConfig && targetConfig.nodeId && self.nodes[targetConfig.nodeId]) {
+                baseValues[targetId] = self.nodes[targetConfig.nodeId].value;
+            }
+        });
+
+        // Применяем каждую нелинейность
+        Object.keys(driverConfig.nonlinear).forEach(function (targetId) {
+            var nl = driverConfig.nonlinear[targetId];
+            var targetConfig = tree.nodes[targetId];
+            if (!targetConfig || !targetConfig.nodeId) return;
+
+            var newTargetValue = baseValues[targetId];
+
+            if (nl.type === 'step') {
+                // Ступенчатая: ceil(driver / param)
+                var paramValue = nl.defaultValue;
+                if (nl.paramNode && self.nodes[nl.paramNode]) {
+                    paramValue = self.nodes[nl.paramNode].value;
+                }
+                newTargetValue = Math.ceil(newValue / paramValue);
+                if (nl.formula) {
+                    var expr = nl.formula
+                        .replace(/\bPROD_CAPACITY_PER_WORKER\b/g, paramValue)
+                        .replace(/\bVOLUME\b/g, newValue)
+                        .replace(/\bHOURS_SOLD\b/g, newValue)
+                        .replace(/\bHOURS_PER_SPECIALIST\b/g, paramValue)
+                        .replace(/\bUNITS_PER_WAREHOUSE_WORKER\b/g, paramValue)
+                        .replace(/\bWAREHOUSE_STAFF_base\b/g, baseValues[targetId]);
+                    try {
+                        newTargetValue = eval(expr);
+                    } catch (e) { }
+                }
+            } else if (nl.type === 'capacity') {
+                // Производительность: driver × param
+                var paramValue = nl.defaultValue;
+                if (nl.paramNode && self.nodes[nl.paramNode]) {
+                    paramValue = self.nodes[nl.paramNode].value;
+                }
+                if (nl.formula) {
+                    var expr = nl.formula
+                        .replace(/\bPROD_HEADCOUNT\b/g, newValue)
+                        .replace(/\bPROD_CAPACITY_PER_WORKER\b/g, paramValue)
+                        .replace(/\bSPECIALIST_HEADCOUNT\b/g, newValue)
+                        .replace(/\bHOURS_PER_SPECIALIST\b/g, paramValue)
+                        .replace(/\bSALES_HEADCOUNT\b/g, newValue)
+                        .replace(/\bUNITS_PER_SALESPERSON\b/g, paramValue);
+                    try { newTargetValue = eval(expr); } catch (e) { }
+                } else {
+                    newTargetValue = newValue * paramValue;
+                }
+            } else if (nl.type === 'elasticity') {
+                // Эластичность: base × (new/base)^elasticity
+                var elasticity = nl.defaultValue || -0.8;
+                if (nl.elasticityNode && self.nodes[nl.elasticityNode]) {
+                    elasticity = self.nodes[nl.elasticityNode].value;
+                }
+                var driverBase = snapshots[driverConfig.nodeId] || newValue;
+                if (driverBase !== 0) {
+                    newTargetValue = baseValues[targetId] * Math.pow(newValue / driverBase, elasticity);
+                }
+            } else if (nl.type === 'diminishing_returns') {
+                // Убывающая отдача: base + a × driver^b
+                var a = nl.params ? nl.params.a : 0.5;
+                var b = nl.params ? nl.params.b : 0.5;
+                var driverBase = snapshots[driverConfig.nodeId] || 0;
+                var baseEffect = Math.pow(Math.max(0, driverBase), b) * a;
+                var newEffect = Math.pow(Math.max(0, newValue), b) * a;
+                newTargetValue = baseValues[targetId] - baseEffect + newEffect;
+                if (newTargetValue < 0) newTargetValue = 0;
+            } else if (nl.type === 'overtime') {
+                // Сверхурочные: base × (1 + max(0, driver - threshold) × rate / 100)
+                var threshold = nl.defaultThreshold || 85;
+                var rate = nl.defaultRate || 0.5;
+                if (nl.paramNodes) {
+                    if (nl.paramNodes.threshold && self.nodes[nl.paramNodes.threshold]) {
+                        threshold = self.nodes[nl.paramNodes.threshold].value;
+                    }
+                    if (nl.paramNodes.rate && self.nodes[nl.paramNodes.rate]) {
+                        rate = self.nodes[nl.paramNodes.rate].value;
+                    }
+                }
+                newTargetValue = baseValues[targetId] * (1 + Math.max(0, newValue - threshold) * rate / 100);
+            } else if (nl.type === 'ramp_up') {
+                // Вход в должность: утилизация временно падает
+                var driverBase = snapshots[driverConfig.nodeId] || 0;
+                var newDevs = newValue - driverBase;
+                if (newDevs > 0) {
+                    var rampUpLoss = nl.params ? nl.params.rampUpLoss : 0.15;
+                    var lossPct = (newDevs / Math.max(1, newValue)) * rampUpLoss;
+                    newTargetValue = baseValues[targetId] * (1 - lossPct);
+                }
+            } else if (nl.type === 'scale_discount') {
+                // Скидка за объём
+                var threshold = nl.defaultThreshold || 500;
+                var rate = nl.defaultRate || 0.5;
+                if (nl.paramNodes) {
+                    if (nl.paramNodes.threshold && self.nodes[nl.paramNodes.threshold]) {
+                        threshold = self.nodes[nl.paramNodes.threshold].value;
+                    }
+                    if (nl.paramNodes.rate && self.nodes[nl.paramNodes.rate]) {
+                        rate = self.nodes[nl.paramNodes.rate].value;
+                    }
+                }
+                var discount = Math.max(0, newValue - threshold) * rate / 1000;
+                newTargetValue = baseValues[targetId] * (1 - discount);
+                if (newTargetValue < 0) newTargetValue = 0;
+            }
+
+            changes[targetId] = {
+                oldValue: baseValues[targetId],
+                newValue: newTargetValue,
+                nodeId: targetConfig.nodeId
+            };
+        });
+
+        return changes;
+    }
+
+    // Функция: рассчитать эффект изменения драйвера
+    function getDriverEffect(driverId, deltaPct) {
+        var driverConfig = tree.nodes[driverId];
+        if (!driverConfig || !driverConfig.nodeId) return null;
+
+        var modelNode = self.nodes[driverConfig.nodeId];
+        if (!modelNode) return null;
+
+        var baseValue = snapshots[driverConfig.nodeId] || modelNode.value;
+        var newValue = baseValue * (1 + deltaPct / 100);
+        if (driverConfig.min !== undefined && newValue < driverConfig.min) newValue = driverConfig.min;
+        if (driverConfig.max !== undefined && newValue > driverConfig.max) newValue = driverConfig.max;
+
+        // Применяем изменение к модели
+        var savedValues = {};
+        savedValues[driverConfig.nodeId] = modelNode.value;
+        modelNode.value = newValue;
+
+        // Применяем нелинейности
+        var nlChanges = applyNonlinear(driverId, newValue);
+        Object.keys(nlChanges).forEach(function (targetId) {
+            var change = nlChanges[targetId];
+            if (self.nodes[change.nodeId]) {
+                if (!savedValues[change.nodeId]) {
+                    savedValues[change.nodeId] = self.nodes[change.nodeId].value;
+                }
+                self.nodes[change.nodeId].value = change.newValue;
+            }
+        });
+
+        // Пересчитываем модель
+        self.compute();
+
+        // Собираем изменения
+        var newRootValue = self.nodes['NET_PROFIT'] ? self.nodes['NET_PROFIT'].value : 0;
+        var oldRootValue = snapshots['NET_PROFIT'] !== undefined ? snapshots['NET_PROFIT'] : 0;
+        var effect = newRootValue - oldRootValue;
+
+        // Восстанавливаем модель
+        Object.keys(savedValues).forEach(function (key) {
+            if (self.nodes[key]) self.nodes[key].value = savedValues[key];
+        });
+        self.compute();
+
+        return {
+            driverId: driverId,
+            driverLabel: driverConfig.label,
+            baseValue: baseValue,
+            newValue: newValue,
+            rootEffect: effect,
+            rootEffectPct: oldRootValue !== 0 ? (effect / Math.abs(oldRootValue) * 100) : 0,
+            nlChanges: nlChanges
+        };
+    }
+
+    // Публичный API
+    return {
+        tree: rootResult,
+        getDriverEffect: getDriverEffect,
+        snapshots: snapshots
+    };
+};
+
 // Вспомогательные функции для регрессии
 function mean(arr) {
     var sum = 0, n = arr.length;
