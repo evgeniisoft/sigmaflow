@@ -38,6 +38,7 @@
         <button class="nav-btn" data-panel="live">ЖИВАЯ МОДЕЛЬ</button>
         <button class="nav-btn" data-panel="scenarios">СЦЕНАРИИ</button>
         <button class="nav-btn" data-panel="editor">РЕДАКТОР</button>
+        <button class="nav-btn" data-panel="driver-tree">KPI-МОСТЫ</button>
         <button class="nav-btn" data-panel="company">НАСТРОЙКИ</button>
         <button class="nav-btn nav-btn-alert" data-panel="diagnostics" id="nav-diagnostics">ДИАГНОСТИКА</button>
     </nav>
@@ -581,6 +582,22 @@
             </div>
         </div>
 
+        <!-- ПАНЕЛЬ KPI-МОСТЫ -->
+        <div id="panel-driver-tree" class="panel">
+            <div style="display:flex;height:100%;">
+                <div id="driver-tree-graph"
+                    style="flex:1;background:var(--bg-primary);position:relative;overflow:auto;"></div>
+                <div id="driver-tree-info"
+                    style="width:350px;padding:16px;overflow-y:auto;background:var(--bg-panel);border-left:1px solid var(--border);flex-shrink:0;">
+                    <h3 style="margin:0 0 16px;">ДРАЙВЕР</h3>
+                    <div id="driver-tree-detail">
+                        <div style="color:var(--text-hint);text-align:center;padding-top:40px;">Нажмите на узел дерева
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ПАНЕЛЬ ДИАГНОСТИКА -->
         <div id="panel-diagnostics" class="panel">
             <div style="padding:16px;overflow-y:auto;flex:1;">
@@ -610,6 +627,7 @@
     <script src="demo_full.js"></script>
     <script src="template_universal.js"></script>
     <script src="allowed_connections.js"></script>
+    <script src="driver_trees.js"></script>
     <script>
         // ============================================================
         // ГЛАВНЫЙ МОДУЛЬ ПРИЛОЖЕНИЯ
@@ -2052,6 +2070,174 @@
         }
 
         // ============================================================
+        // KPI-МОСТЫ — ОТРИСОВКА ДЕРЕВА
+        // ============================================================
+
+        var driverTreeData = null;
+
+        function buildDriverTree() {
+            if (!graph) { notify('Сначала загрузите модель', true); return; }
+            if (!graph.industry) graph.industry = 'production';
+
+            var treeConfig = DRIVER_TREES[graph.industry];
+            if (!treeConfig) { notify('Для отрасли "' + graph.industry + '" нет дерева KPI', true); return; }
+
+            driverTreeData = graph.computeDriverTree(treeConfig);
+            renderDriverTreeGraph();
+        }
+
+        function renderDriverTreeGraph() {
+            var container = document.getElementById('driver-tree-graph');
+            container.innerHTML = '';
+            if (!driverTreeData) return;
+
+            var width = container.clientWidth;
+            var height = container.clientHeight;
+
+            var svg = d3.select('#driver-tree-graph').append('svg')
+                .attr('width', width).attr('height', height);
+
+            var g = svg.append('g').attr('transform', 'translate(80,40)');
+
+            // Строим иерархию для D3 tree layout
+            function buildHierarchy(node) {
+                var children = (node.children || []).map(function (child) {
+                    return buildHierarchy(child);
+                });
+                return {
+                    id: node.id,
+                    label: node.label,
+                    value: node.value,
+                    type: node.type,
+                    drivers: node.drivers || [],
+                    unit: node.unit || '',
+                    children: children.length > 0 ? children : null
+                };
+            }
+
+            var root = d3.hierarchy(buildHierarchy(driverTreeData.tree));
+            var treeLayout = d3.tree().size([height - 80, width - 200]);
+            treeLayout(root);
+
+            // Рёбра
+            g.selectAll('path').data(root.links()).join('path')
+                .attr('d', d3.linkHorizontal()
+                    .x(function (d) { return d.y; })
+                    .y(function (d) { return d.x; }))
+                .attr('fill', 'none')
+                .attr('stroke', '#2a3040')
+                .attr('stroke-width', 1.5);
+
+            // Узлы
+            var nodeG = g.selectAll('g').data(root.descendants()).join('g')
+                .attr('transform', function (d) { return 'translate(' + d.y + ',' + d.x + ')'; })
+                .attr('cursor', 'pointer')
+                .on('click', function (event, d) { showDriverDetail(d.data); });
+
+            // Прямоугольник узла
+            nodeG.append('rect')
+                .attr('x', -90).attr('y', -22)
+                .attr('width', 180).attr('height', 44)
+                .attr('rx', 4)
+                .attr('fill', function (d) {
+                    switch (d.data.type) {
+                        case 'result': return '#1a3050';
+                        case 'driver': return '#1a3a20';
+                        case 'computed': return '#1a2a3a';
+                        case 'hidden': return '#1a1a2a';
+                        default: return '#131820';
+                    }
+                })
+                .attr('stroke', function (d) {
+                    if (d.data.type === 'driver') return '#4b8c5a';
+                    if (d.data.type === 'result') return '#5a9fd4';
+                    return '#2a3040';
+                })
+                .attr('stroke-width', function (d) { return d.data.type === 'driver' ? 2 : 1; })
+                .attr('stroke-dasharray', function (d) { return d.data.type === 'hidden' ? '4 2' : null; });
+
+            // Название узла
+            nodeG.append('text')
+                .attr('text-anchor', 'middle').attr('dy', -5)
+                .attr('fill', '#e0e3e8').attr('font-size', '10px')
+                .attr('font-family', "'JetBrains Mono', monospace")
+                .text(function (d) { return d.data.label; });
+
+            // Значение
+            nodeG.append('text')
+                .attr('text-anchor', 'middle').attr('dy', 13)
+                .attr('fill', function (d) { return d.data.value >= 0 ? '#4b8c5a' : '#d44b3c'; })
+                .attr('font-size', '11px').attr('font-weight', '600')
+                .attr('font-family', "'JetBrains Mono', monospace")
+                .text(function (d) { return formatValue(d.data.value); });
+        }
+
+        function showDriverDetail(nodeData) {
+            var panel = document.getElementById('driver-tree-detail');
+            if (!panel) return;
+
+            var html = '<h4>' + nodeData.label + '</h4>';
+            html += '<div style="font-size:11px;color:var(--text-hint);margin-bottom:4px;">' + nodeData.id + '</div>';
+
+            if (nodeData.value !== undefined) {
+                var color = nodeData.value >= 0 ? 'var(--ok)' : 'var(--critical)';
+                html += '<div style="font-size:22px;font-weight:700;color:' + color + ';margin-bottom:12px;">' +
+                    formatValue(nodeData.value) + ' <span style="font-size:12px;">' + (nodeData.unit || '') + '</span></div>';
+            }
+
+            if (nodeData.type === 'driver') {
+                html += '<div style="font-size:11px;color:var(--accent);margin-bottom:8px;">ДРАЙВЕР — можно изменять</div>';
+                html += '<input type="range" id="driver-slider-detail" min="' + (nodeData.min || 0) +
+                    '" max="' + (nodeData.max || 100) + '" step="' + (nodeData.step || 1) +
+                    '" value="' + nodeData.value + '" style="width:100%;margin-bottom:8px;" ' +
+                    'oninput="updateDriverFromSlider(\'' + nodeData.id + '\', this.value)">';
+                html += '<div style="font-size:11px;color:var(--text-hint);text-align:center;" id="driver-slider-value">' +
+                    formatValue(nodeData.value) + '</div>';
+            }
+
+            if (nodeData.nonlinear) {
+                html += '<div style="margin-top:12px;padding:8px;background:var(--bg-input);border:1px solid var(--border);font-size:10px;color:var(--text-hint);">';
+                html += 'НЕЛИНЕЙНОСТЬ:<br>';
+                Object.keys(nodeData.nonlinear).forEach(function (targetId) {
+                    var nl = nodeData.nonlinear[targetId];
+                    html += '▸ ' + targetId + ': ' + (nl.description || nl.type) + '<br>';
+                });
+                html += '</div>';
+            }
+
+            if (nodeData.affects && nodeData.affects.length > 0) {
+                html += '<div style="margin-top:8px;font-size:10px;color:var(--text-hint);">';
+                html += 'ВЛИЯЕТ НА: ' + nodeData.affects.join(', ') + '</div>';
+            }
+
+            panel.innerHTML = html;
+        }
+
+        function updateDriverFromSlider(driverId, newValue) {
+            newValue = parseFloat(newValue);
+            if (isNaN(newValue)) return;
+
+            var treeConfig = DRIVER_TREES[graph.industry];
+            if (!treeConfig) return;
+
+            // Применяем через driverTreeData
+            if (driverTreeData && driverTreeData.getDriverEffect) {
+                var modelNode = graph.nodes[treeConfig.nodes[driverId].nodeId];
+                var baseValue = modelNode ? modelNode.value : 0;
+                var deltaPct = baseValue !== 0 ? ((newValue - baseValue) / Math.abs(baseValue)) * 100 : 0;
+
+                driverTreeData.getDriverEffect(driverId, deltaPct);
+
+                // Обновляем дерево
+                driverTreeData = graph.computeDriverTree(treeConfig);
+                renderDriverTreeGraph();
+                document.getElementById('driver-slider-value').textContent = formatValue(newValue);
+                saveCurrentModel();
+                renderDashboard();
+            }
+        }
+
+        // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
         // ============================================================
 
@@ -2390,7 +2576,7 @@
                         - (graph.nodes['OTHER_EXP'] ? Math.abs(graph.nodes['OTHER_EXP'].value) : 0)
                         - (graph.nodes['PENALTIES'] ? Math.abs(graph.nodes['PENALTIES'].value) : 0)
                         - (graph.nodes['TAX'] ? Math.abs(graph.nodes['TAX'].value) : 0);
-                    
+
 
                     // ===================== WATERFALL =====================
                     var items = [
@@ -3241,6 +3427,9 @@
                 renderEditorNodeList(this.value.toLowerCase());
             });
 
+            document.querySelector('[data-panel="driver-tree"]').addEventListener('click', function () {
+                setTimeout(buildDriverTree, 150);
+            });
             // Открытие редактора при переходе на вкладку
             document.querySelector('[data-panel="editor"]').addEventListener('click', function () {
                 renderEditorNodeList('');
