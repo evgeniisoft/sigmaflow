@@ -2100,9 +2100,13 @@
 
             // Строим иерархию для D3 tree layout
             function buildHierarchy(node) {
-                var children = (node.children || []).map(function (child) {
-                    return buildHierarchy(child);
-                });
+                var children = [];
+                if (node.children && node.children.length > 0) {
+                    children = node.children.map(function (child) {
+                        return buildHierarchy(child);
+                    });
+                }
+                // Даже без детей — показываем узел (лист)
                 return {
                     id: node.id,
                     label: node.label,
@@ -2185,13 +2189,22 @@
             }
 
             if (nodeData.type === 'driver') {
+                var currentVal = nodeData.value || 0;
+                var minVal = nodeData.min !== undefined ? nodeData.min : currentVal * 0.5;
+                var maxVal = nodeData.max !== undefined ? nodeData.max : currentVal * 1.5;
+                var stepVal = nodeData.step || (Math.abs(currentVal) > 100 ? Math.round(Math.abs(currentVal) / 100) : 1);
+
                 html += '<div style="font-size:11px;color:var(--accent);margin-bottom:8px;">ДРАЙВЕР — можно изменять</div>';
-                html += '<input type="range" id="driver-slider-detail" min="' + (nodeData.min || 0) +
-                    '" max="' + (nodeData.max || 100) + '" step="' + (nodeData.step || 1) +
-                    '" value="' + nodeData.value + '" style="width:100%;margin-bottom:8px;" ' +
-                    'oninput="updateDriverFromSlider(\'' + nodeData.id + '\', this.value)">';
-                html += '<div style="font-size:11px;color:var(--text-hint);text-align:center;" id="driver-slider-value">' +
-                    formatValue(nodeData.value) + '</div>';
+                html += '<div style="display:flex;gap:8px;align-items:center;">';
+                html += '<span style="font-size:10px;color:var(--text-hint);">' + formatValue(minVal) + '</span>';
+                html += '<input type="range" id="driver-slider-detail" min="' + minVal +
+                    '" max="' + maxVal + '" step="' + stepVal +
+                    '" value="' + currentVal + '" style="flex:1;" ' +
+                    'oninput="updateDriverFromSlider(\'' + nodeData.id + '\', parseFloat(this.value))">';
+                html += '<span style="font-size:10px;color:var(--text-hint);">' + formatValue(maxVal) + '</span>';
+                html += '</div>';
+                html += '<div style="font-size:14px;font-weight:700;text-align:center;margin-top:4px;" id="driver-slider-value">' +
+                    formatValue(currentVal) + ' ' + (nodeData.unit || '') + '</div>';
             }
 
             if (nodeData.nonlinear) {
@@ -2213,28 +2226,63 @@
         }
 
         function updateDriverFromSlider(driverId, newValue) {
-            newValue = parseFloat(newValue);
-            if (isNaN(newValue)) return;
+                newValue = parseFloat(newValue);
+                if (isNaN(newValue)) return;
 
-            var treeConfig = DRIVER_TREES[graph.industry];
-            if (!treeConfig) return;
+                var treeConfig = DRIVER_TREES[graph.industry];
+                if (!treeConfig) return;
 
-            // Применяем через driverTreeData
-            if (driverTreeData && driverTreeData.getDriverEffect) {
-                var modelNode = graph.nodes[treeConfig.nodes[driverId].nodeId];
-                var baseValue = modelNode ? modelNode.value : 0;
-                var deltaPct = baseValue !== 0 ? ((newValue - baseValue) / Math.abs(baseValue)) * 100 : 0;
+                var driverConfig = treeConfig.nodes[driverId];
+                if (!driverConfig || !driverConfig.nodeId) return;
 
-                driverTreeData.getDriverEffect(driverId, deltaPct);
+                var modelNode = graph.nodes[driverConfig.nodeId];
+                if (!modelNode) return;
 
-                // Обновляем дерево
+                // Сохраняем старое значение
+                var oldValue = modelNode.value;
+
+                // Применяем новое значение в модель
+                modelNode.value = newValue;
+
+                // Применяем нелинейности
+                if (driverTreeData && driverTreeData._applyNonlinear) {
+                    var nlChanges = driverTreeData._applyNonlinear(driverId, newValue);
+                    Object.keys(nlChanges).forEach(function (targetId) {
+                        var change = nlChanges[targetId];
+                        if (graph.nodes[change.nodeId]) {
+                            graph.nodes[change.nodeId].value = change.newValue;
+                        }
+                    });
+                }
+
+                // Пересчитываем модель
+                graph.compute();
+
+                // Перестраиваем дерево с новыми значениями
                 driverTreeData = graph.computeDriverTree(treeConfig);
                 renderDriverTreeGraph();
-                document.getElementById('driver-slider-value').textContent = formatValue(newValue);
+
+                // Обновляем значение под ползунком
+                var valEl = document.getElementById('driver-slider-value');
+                if (valEl) valEl.textContent = formatValue(newValue);
+
+                // Обновляем инфо-панель
+                var driverNodeData = findNodeInTree(driverTreeData.tree, driverId);
+                if (driverNodeData) showDriverDetail(driverNodeData);
+
                 saveCurrentModel();
                 renderDashboard();
             }
-        }
+
+            function findNodeInTree(node, targetId) {
+                if (node.id === targetId) return node;
+                if (!node.children) return null;
+                for (var i = 0; i < node.children.length; i++) {
+                    var found = findNodeInTree(node.children[i], targetId);
+                    if (found) return found;
+                }
+                return null;
+            }
 
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
