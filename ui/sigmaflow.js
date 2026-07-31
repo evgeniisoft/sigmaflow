@@ -1291,8 +1291,14 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
         // Если computed или result — суммируем детей
         if (nodeConfig.type === 'computed' || nodeConfig.type === 'result') {
             if (nodeConfig.formula) {
-                // Вычисляем по формуле
                 result.value = evaluateFormula(nodeConfig.formula, nodeConfig.children || []);
+                // Всё равно рекурсивно обходим детей для отрисовки
+                if (nodeConfig.children) {
+                    nodeConfig.children.forEach(function (childId) {
+                        var childResult = computeNode(childId, path.concat(nodeId));
+                        result.children.push(childResult);
+                    });
+                }
             } else if (nodeConfig.children) {
                 result.value = 0;
                 nodeConfig.children.forEach(function (childId) {
