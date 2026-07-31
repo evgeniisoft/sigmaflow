@@ -1048,9 +1048,30 @@
                 { id: 'EBITDA_MARGIN', label: 'Операц. рентаб.', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], e = graph.nodes['EBITDA']; return (r && e && r.value) ? (e.value / r.value * 100) : null; } },
                 { id: 'EBITDA', label: 'EBITDA' },
                 { id: 'EBIT', label: 'Операционная прибыль' },
-                { id: 'DEBT_EBITDA', label: 'Долг/EBITDA', format: 'num', compute: function () { var l = graph.nodes['LOANS'], e = graph.nodes['EBITDA']; return (l && e && e.value) ? (l.value / e.value) : null; } },
+                {
+                    id: 'DEBT_EBITDA', label: 'Долг/EBITDA', format: 'num', compute: function () {
+                        var totalDebt = 0;
+                        if (graph.credits && graph.credits.length > 0) {
+                            graph.credits.forEach(function (cr) { totalDebt += cr.amount || 0; });
+                        } else {
+                            totalDebt = graph.nodes['LOANS'] ? graph.nodes['LOANS'].value : 0;
+                        }
+                        var e = graph.nodes['EBITDA'];
+                        return (e && e.value) ? (totalDebt / e.value) : null;
+                    }
+                },
                 { id: 'FCF', label: 'Денежный поток' },
-                { id: 'PAYROLL_SHARE', label: 'Доля ФОТ', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], pl = graph.nodes['DIRECT_LABOR'] || graph.nodes['DEV_PAYROLL'] || graph.nodes['STAFF_PAYROLL'] || graph.nodes['SPECIALIST_PAYROLL'], adm = graph.nodes['ADMIN_PAYROLL']; var total = (pl ? Math.abs(pl.value) : 0) + (adm ? Math.abs(adm.value) : 0); return (r && r.value) ? (total / r.value * 100) : null; } },
+                {
+                    id: 'PAYROLL_SHARE', label: 'Доля ФОТ', format: 'pct', compute: function () {
+                        var r = graph.nodes['REVENUE'];
+                        var total = 0;
+                        ['DIRECT_LABOR', 'DEV_PAYROLL', 'SPECIALIST_PAYROLL', 'SALES_PAYROLL', 'WAREHOUSE_PAYROLL', 'ADMIN_PAYROLL'].forEach(function (pid) {
+                            var pn = graph.nodes[pid];
+                            if (pn && pn.value) total += Math.abs(pn.value);
+                        });
+                        return (r && r.value) ? (total / r.value * 100) : null;
+                    }
+                },
                 { id: 'CASH', label: 'Остаток денег' },
                 { id: 'INTEREST_COVERAGE', label: 'Покрытие проц.', format: 'num', compute: function () { var e = graph.nodes['EBIT'], i = graph.nodes['INTEREST']; return (e && i && i.value) ? (e.value / i.value) : null; } },
                 { id: 'GROSS_PROFIT', label: 'Валовая прибыль' },
@@ -1387,7 +1408,9 @@
             if (n.min !== null && newVal < n.min) newVal = n.min;
             if (n.max !== null && newVal > n.max) newVal = n.max;
             n.value = Math.round(newVal * 100) / 100;
-            renderDataTable();
+            graph.compute();
+            saveCurrentModel();
+            renderAll();
         }
 
         function renderFullTable() {
@@ -2268,7 +2291,9 @@
                 }
 
                 // Сводная таблица по всем периодам с планом
-                var forecastHistory = graph.history.filter(function (h) { return h.plan !== null; });
+                var allHistory = graph.history || [];
+                var historicalData = allHistory.filter(function (h) { return h.plan === null && h.fact && Object.keys(h.fact).length > 0; });
+                var forecastHistory = allHistory.filter(function (h) { return h.plan !== null; });
                 var historicalCount = graph.history.length - forecastHistory.length;
 
                 var html = '';
@@ -2276,6 +2301,24 @@
                 // Исторические данные
                 if (historicalCount > 0) {
                     html += '<div style="margin-bottom:8px;font-size:12px;color:var(--text-hint);">Исторические данные: ' + historicalCount + ' периодов (используйте для калибровки на вкладке КАЛИБРОВКА)</div>';
+                }
+                if (historicalData.length > 0) {
+                    html += '<table style="min-width:800px;"><thead><tr><th>ПЕРИОД</th><th>ПОКАЗАТЕЛЬ</th><th>ФАКТ</th></tr></thead><tbody>';
+                    var histMetrics = ['REVENUE', 'COGS', 'NET_PROFIT', 'EBITDA', 'FCF', 'CASH'];
+                    historicalData.forEach(function (h) {
+                        histMetrics.forEach(function (nodeId) {
+                            var factVal = h.fact[nodeId] !== undefined ? h.fact[nodeId] : null;
+                            if (factVal === null) return;
+                            var n = graph.nodes[nodeId];
+                            var label = n ? (n.label || n.id) : nodeId;
+                            html += '<tr>';
+                            html += '<td style="font-weight:500;">' + h.period + '</td>';
+                            html += '<td>' + label + '</td>';
+                            html += '<td class="value-cell">' + formatValue(factVal) + '</td>';
+                            html += '</tr>';
+                        });
+                    });
+                    html += '</tbody></table>';
                 }
 
                 // Сводная таблица forecast-периодов
@@ -2352,7 +2395,7 @@
                         { label: 'EBITDA', value: graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0, color: 'var(--ok)', isTotal: true },
                         { label: 'Амортизация', value: -(graph.nodes['DA'] ? Math.abs(graph.nodes['DA'].value) : 0), color: 'var(--critical)' },
                         { label: 'Проценты', value: -(graph.nodes['INTEREST'] ? Math.abs(graph.nodes['INTEREST'].value) : 0), color: 'var(--critical)' },
-                        { label: 'Прочие', value: (graph.nodes['OTHER_INCOME'] ? graph.nodes['OTHER_INCOME'].value : 0) - (graph.nodes['OTHER_EXP'] ? Math.abs(graph.nodes['OTHER_EXP'].value) : 0) - (graph.nodes['PENALTIES'] ? Math.abs(graph.nodes['PENALTIES'].value) : 0), color: 'var(--text-hint)' },
+                        { label: 'Прочие', value: (graph.nodes['OTHER_INCOME'] ? graph.nodes['OTHER_INCOME'].value : 0) + (graph.nodes['OTHER_EXP'] ? graph.nodes['OTHER_EXP'].value : 0) + (graph.nodes['PENALTIES'] ? graph.nodes['PENALTIES'].value : 0), color: 'var(--text-hint)' },
                         { label: 'Налог на прибыль', value: -(graph.nodes['TAX'] ? Math.abs(graph.nodes['TAX'].value) : 0), color: 'var(--critical)' },
                         { label: 'ЧИСТАЯ ПРИБЫЛЬ', value: np, color: np >= 0 ? 'var(--ok)' : 'var(--critical)', isTotal: true }
                     ];
@@ -2576,14 +2619,11 @@
             function initInvestments() {
                 if (!graph) return;
                 if (!graph.investments) graph.investments = [];
-                if (savedInvestments && graph.investments.length === 0) {
-                    try { graph.investments = JSON.parse(savedInvestments); } catch (e) { }
-                }
                 renderInvestments();
             }
 
             function saveInvestments() {
-                localStorage.setItem('sigmaflow_investments', JSON.stringify(graph.investments || []));
+
                 // Обновить узел CAPEX в модели
                 if (graph && graph.nodes['CAPEX']) {
                     var total = 0;
@@ -2711,14 +2751,11 @@
             function initCredits() {
                 if (!graph) return;
                 if (!graph.credits) graph.credits = [];
-                if (savedCredits && graph.credits.length === 0) {
-                    try { graph.credits = JSON.parse(savedCredits); } catch (e) { }
-                }
                 renderCredits();
             }
 
             function saveCredits() {
-                localStorage.setItem('sigmaflow_credits', JSON.stringify(graph.credits || []));
+
                 // Обновить узлы модели
                 if (graph) {
                     var total = 0, monthly = 0;
@@ -2980,6 +3017,25 @@
                         loadCompany(getCurrentCompanyId());
                         graph.compute();
                         renderAll();
+                        // Обновить интерфейс настроек
+                        if (graph.company) {
+                            if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
+                            if (graph.company.nds_rate !== undefined) setSelectByValue('company-nds-rate', graph.company.nds_rate);
+                            if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
+                            if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
+                            if (graph.company.receivables_days !== undefined) document.getElementById('company-receivables-days').value = graph.company.receivables_days;
+                            if (graph.company.prepay_pct !== undefined) document.getElementById('company-prepay-pct').value = graph.company.prepay_pct;
+                            if (graph.company.prepay_days !== undefined) document.getElementById('company-prepay-days').value = graph.company.prepay_days;
+                            if (graph.company.prepay_share !== undefined) document.getElementById('company-prepay-share').value = graph.company.prepay_share;
+                            if (graph.company.fa_start_value !== undefined) document.getElementById('fa-start-value').value = graph.company.fa_start_value;
+                            if (graph.company.fa_start_da !== undefined) document.getElementById('fa-start-da').value = graph.company.fa_start_da;
+                            if (graph.company.fa_da_rate !== undefined) document.getElementById('fa-da-rate').value = (graph.company.fa_da_rate * 100).toFixed(1);
+                            if (graph.company.fa_remaining_months !== undefined) document.getElementById('fa-remaining-months').value = graph.company.fa_remaining_months;
+                            renderSeasonGrid();
+                        }
+                        window.renderInvestments();
+                        window.renderCredits();
+                        renderScenarios();
                         if (document.getElementById('pnl-body').innerHTML) buildPnL();
                         if (document.getElementById('calendar-table-body').innerHTML) buildCalendar();
                         window.renderInvestments();
@@ -3254,7 +3310,15 @@
                 var type = 'INPUT';
                 var node = new Node(nodeId, type, 0, null, null, 'manual', info.label || nodeId, true);
                 graph.addNode(node);
-                pushUndo({ type: 'addNode', nodeId: nodeId });
+                pushUndo({
+                    type: 'addNode',
+                    nodeId: nodeId,
+                    snapshot: {
+                        node: graph.nodes[nodeId],
+                        edges: graph.edges.filter(function (e) { return e.from === nodeId || e.to === nodeId; })
+                            .map(function (e) { return { from: e.from, to: e.to, coefficient: e.coefficient }; })
+                    }
+                });
                 renderEditorGraph();
                 // Анимируем новый узел
                 setTimeout(function () {
