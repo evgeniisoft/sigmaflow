@@ -2383,7 +2383,14 @@
                     this.textContent = '▼ АНАЛИЗ';
 
                     var rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 1;
-                    var np = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
+                    var np = (graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0)
+                        - (graph.nodes['DA'] ? Math.abs(graph.nodes['DA'].value) : 0)
+                        - (graph.nodes['INTEREST'] ? Math.abs(graph.nodes['INTEREST'].value) : 0)
+                        + (graph.nodes['OTHER_INCOME'] ? graph.nodes['OTHER_INCOME'].value : 0)
+                        - (graph.nodes['OTHER_EXP'] ? Math.abs(graph.nodes['OTHER_EXP'].value) : 0)
+                        - (graph.nodes['PENALTIES'] ? Math.abs(graph.nodes['PENALTIES'].value) : 0)
+                        - (graph.nodes['TAX'] ? Math.abs(graph.nodes['TAX'].value) : 0);
+                    
 
                     // ===================== WATERFALL =====================
                     var items = [
