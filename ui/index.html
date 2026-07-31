@@ -2389,15 +2389,15 @@
                     var items = [
                         { label: 'Выручка', value: graph.nodes['REVENUE'] ? graph.nodes['REVENUE'].value : 0, color: 'var(--ok)' },
                         { label: 'Себестоимость', value: -(graph.nodes['COGS'] ? Math.abs(graph.nodes['COGS'].value) : 0), color: 'var(--critical)' },
-                        { label: 'Валовая прибыль', value: graph.nodes['GROSS_PROFIT'] ? graph.nodes['GROSS_PROFIT'].value : 0, color: 'var(--ok)', isTotal: true },
+                        { label: 'Валовая прибыль', value: (graph.nodes['REVENUE'] ? graph.nodes['REVENUE'].value : 0) - (graph.nodes['COGS'] ? Math.abs(graph.nodes['COGS'].value) : 0), isTotal: true },
                         { label: 'Коммерческие', value: -(graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : 0), color: 'var(--critical)' },
                         { label: 'Управленческие', value: -(graph.nodes['ADMIN_EXP'] ? Math.abs(graph.nodes['ADMIN_EXP'].value) : 0), color: 'var(--critical)' },
-                        { label: 'EBITDA', value: graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0, color: 'var(--ok)', isTotal: true },
+                        { label: 'EBITDA', value: (graph.nodes['GROSS_PROFIT'] ? graph.nodes['GROSS_PROFIT'].value : 0) - (graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : 0) - (graph.nodes['ADMIN_EXP'] ? Math.abs(graph.nodes['ADMIN_EXP'].value) : 0), isTotal: true },
                         { label: 'Амортизация', value: -(graph.nodes['DA'] ? Math.abs(graph.nodes['DA'].value) : 0), color: 'var(--critical)' },
                         { label: 'Проценты', value: -(graph.nodes['INTEREST'] ? Math.abs(graph.nodes['INTEREST'].value) : 0), color: 'var(--critical)' },
                         { label: 'Прочие', value: (graph.nodes['OTHER_INCOME'] ? graph.nodes['OTHER_INCOME'].value : 0) + (graph.nodes['OTHER_EXP'] ? graph.nodes['OTHER_EXP'].value : 0) + (graph.nodes['PENALTIES'] ? graph.nodes['PENALTIES'].value : 0), color: 'var(--text-hint)' },
                         { label: 'Налог на прибыль', value: -(graph.nodes['TAX'] ? Math.abs(graph.nodes['TAX'].value) : 0), color: 'var(--critical)' },
-                        { label: 'ЧИСТАЯ ПРИБЫЛЬ', value: np, color: np >= 0 ? 'var(--ok)' : 'var(--critical)', isTotal: true }
+                        { label: 'ЧИСТАЯ ПРИБЫЛЬ', value: (graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0) - (graph.nodes['DA'] ? Math.abs(graph.nodes['DA'].value) : 0) - (graph.nodes['INTEREST'] ? Math.abs(graph.nodes['INTEREST'].value) : 0) + (graph.nodes['OTHER_INCOME'] ? graph.nodes['OTHER_INCOME'].value : 0) - (graph.nodes['OTHER_EXP'] ? Math.abs(graph.nodes['OTHER_EXP'].value) : 0) - (graph.nodes['PENALTIES'] ? Math.abs(graph.nodes['PENALTIES'].value) : 0) - (graph.nodes['TAX'] ? Math.abs(graph.nodes['TAX'].value) : 0), color: np >= 0 ? 'var(--ok)' : 'var(--critical)', isTotal: true },
                     ];
 
                     var maxVal = 0;
@@ -3906,13 +3906,13 @@
         };
 
         var BACKOFFICE = [
-                'ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'RENT', 'IT_EXP', 'LEGAL_COST',
-                'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAINING_COST',
-                'TRAVEL_COST', 'MARKETING', 'RD_EXP', 'CASH_START',
-                'INVENTORY', 'RECEIVABLES', 'PAYABLES',
-                'DIVIDENDS', 'OTHER_INCOME', 'OTHER_EXP', 'INTEREST_INCOME',
-                'EQUITY', 'RETAINED_START', 'FIXED_ASSETS_START'
-            ];
+            'ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'RENT', 'IT_EXP', 'LEGAL_COST',
+            'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAINING_COST',
+            'TRAVEL_COST', 'MARKETING', 'RD_EXP', 'CASH_START',
+            'INVENTORY', 'RECEIVABLES', 'PAYABLES',
+            'DIVIDENDS', 'OTHER_INCOME', 'OTHER_EXP', 'INTEREST_INCOME',
+            'EQUITY', 'RETAINED_START', 'FIXED_ASSETS_START'
+        ];
 
         function isNodeVisible(nodeId) {
             if (nodeId === 'SEASON') return false;
