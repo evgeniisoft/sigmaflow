@@ -3905,7 +3905,14 @@
             'it': ['MONTHLY_RATE_PER_DEV', 'DEV_HEADCOUNT', 'DEV_AVG_SALARY', 'UTILIZATION']
         };
 
-        var BACKOFFICE = ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'RENT', 'IT_EXP', 'LEGAL_COST', 'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAINING_COST', 'TRAVEL_COST', 'MARKETING', 'RD_EXP'];
+        var BACKOFFICE = [
+                'ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'RENT', 'IT_EXP', 'LEGAL_COST',
+                'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAINING_COST',
+                'TRAVEL_COST', 'MARKETING', 'RD_EXP', 'CASH_START',
+                'INVENTORY', 'RECEIVABLES', 'PAYABLES',
+                'DIVIDENDS', 'OTHER_INCOME', 'OTHER_EXP', 'INTEREST_INCOME',
+                'EQUITY', 'RETAINED_START', 'FIXED_ASSETS_START'
+            ];
 
         function isNodeVisible(nodeId) {
             if (nodeId === 'SEASON') return false;
