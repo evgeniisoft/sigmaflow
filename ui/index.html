@@ -2453,11 +2453,14 @@
                         var warehouse = graph.nodes['WAREHOUSE_COST'] ? Math.abs(graph.nodes['WAREHOUSE_COST'].value) : 0;
                         var outsource = graph.nodes['OUTSOURCE_COST'] ? Math.abs(graph.nodes['OUTSOURCE_COST'].value) : 0;
 
+                        // Коэффициенты вклада в COGS из шаблона
+                        var logistToCogsCoeff = 0.7; // LOGISTICS_COST → COGS
+
                         var cogsItems = [
                             { label: '  Сырьё', value: mat },
                             { label: '  ФОТ произв.', value: dirLab },
                             { label: '  Энергия', value: energy },
-                            { label: '  Логистика', value: logist },
+                            { label: '  Логистика', value: logist * logistToCogsCoeff },
                             { label: '  Брак', value: defect },
                             { label: '  Склад', value: warehouse },
                             { label: '  Аутсорсинг', value: outsource }
