@@ -1518,6 +1518,7 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
     return {
         tree: rootResult,
         getDriverEffect: getDriverEffect,
+        _applyNonlinear: applyNonlinear,
         snapshots: snapshots
     };
 };
