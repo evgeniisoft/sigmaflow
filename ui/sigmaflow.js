@@ -827,22 +827,22 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
 
     var season = self.company ? (self.company.season || [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 
-    // Месячные значения (годовые / 12)
-    var revMonthly = self._val('REVENUE') / 12;
-    var matMonthly = self._val('MATERIAL_COST') / 12;
-    var enerMonthly = self._val('ENERGY_COST') / 12;
-    var logMonthly = self._val('LOGISTICS_COST') / 12;
-    var prodMonthly = self._val('DIRECT_LABOR') / 12;
-    var admMonthly = self._val('ADMIN_PAYROLL') / 12;
-    var markMonthly = self._val('MARKETING') / 12;
-    var rentMonthly = self._val('RENT') / 12;
-    var itMonthly = (self._val('IT_EXP') + self._val('RD_EXP') + self._val('TRAINING_EXP')) / 12;
-    var daMonthly = self._val('DA') / 12;
-    var intIncMonthly = self._val('INTEREST_INCOME') / 12;
-    var othIncMonthly = self._val('OTHER_INCOME') / 12;
-    var othExpMonthly = self._val('OTHER_EXP') / 12;
-    var penMonthly = self._val('PENALTIES') / 12;
-    var divMonthly = self._val('DIVIDENDS') / 12;
+    // Месячные значения — напрямую из модели, без деления
+    var revBase = self._val('REVENUE');
+    var matBase = self._val('MATERIAL_COST');
+    var enerBase = self._val('ENERGY_COST');
+    var logBase = self._val('LOGISTICS_COST');
+    var prodBase = self._val('DIRECT_LABOR');
+    var admBase = self._val('ADMIN_PAYROLL');
+    var markBase = self._val('MARKETING');
+    var rentBase = self._val('RENT');
+    var itBase = self._val('IT_EXP') + self._val('RD_EXP') + self._val('TRAINING_EXP');
+    var daBase = self._val('DA');
+    var intIncBase = self._val('INTEREST_INCOME');
+    var othIncBase = self._val('OTHER_INCOME');
+    var othExpBase = self._val('OTHER_EXP');
+    var penBase = self._val('PENALTIES');
+    var divBase = self._val('DIVIDENDS');
 
     // Кредиты
     var loanSch = [];
@@ -903,17 +903,10 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var annualProfitTax = Math.max(0, ebtY) * taxRate;
     var quarterlyTax = annualProfitTax / 4;
 
-    var monthlyPayroll = prodMonthly + admMonthly;
     var insRate = self._company('insurance_rate', 0.30);
-    var monthlyInsurance = monthlyPayroll * insRate;
-    var monthlyNDFL = monthlyPayroll * 0.13;
-
     var ndsRate = self._company('nds_rate', 0.20);
     var ndsExempt = self._company('nds_exempt', false);
     var hasNDS = !ndsExempt && ndsRate > 0;
-    var monthlyNDSaccrued = (revMonthly) * ndsRate / (1 + ndsRate);
-    var quarterlyNDS = monthlyNDSaccrued * 3;
-    var ndsMonthlyPayment = quarterlyNDS / 3;
 
     var propertyTaxRate = self._company('property_tax_rate', 0);
     var hasPropertyTax = self._company('has_property_tax', false);
@@ -929,17 +922,17 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var prepayShare = self._company('prepay_share', 0) / 100;
     var prepayMonths = Math.round(prepayDays / 30);
 
-    // === РАСЧЁТ ПОСТУПЛЕНИЙ С УЧЁТОМ СЕЗОННОСТИ И ОТСРОЧЕК ===
+    // === ПОСТУПЛЕНИЯ С УЧЁТОМ СЕЗОННОСТИ И ОТСРОЧЕК ===
     var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
 
-    // Для каждого месяца отгрузки
+    // Выручка по месяцам отгрузки с сезонностью
     var shipments = [];
     for (var i = 0; i < horizon; i++) {
         var mo = (startMonth + i) % 12;
-        shipments.push(revMonthly * (season[mo] || 1));
+        shipments.push(revBase * (season[mo] || 1));
     }
 
-    // Поступления с учётом постоплаты и предоплаты
+    // Поступления денег с учётом отсрочек и предоплат
     var revenueReceived = [];
     for (var i = 0; i < horizon; i++) revenueReceived.push(0);
 
@@ -952,7 +945,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             revenueReceived[postIdx] += shipment * (1 - prepayShare);
         }
 
-        // Предоплата: деньги в i - prepayMonths, отгрузка в i
+        // Предоплата: деньги в i - prepayMonths
         var preIdx = i - prepayMonths;
         if (preIdx >= 0 && preIdx < horizon) {
             revenueReceived[preIdx] += shipment * prepayShare * prepayPct;
@@ -967,7 +960,7 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
         }
     }
 
-    // Входящий остаток дебиторки (поступления за отгрузки до горизонта)
+    // Входящий остаток дебиторки
     var receivablesStart = self._company('receivables_start', 0);
     if (receivablesStart > 0) {
         revenueReceived[0] += receivablesStart;
@@ -982,34 +975,39 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
         var mo = (startMonth + p) % 12;
         var yr = 2026 + Math.floor((startMonth + p) / 12);
         var label = months[mo] + ' ' + yr;
-
         var seasonCoef = season[mo] || 1;
 
-        // Налог на прибыль поквартально (месяцы 3,6,9,12 от старта)
+        // Налог на прибыль поквартально
         var quarterMonth = (p - startMonth + 12) % 12;
         var profitTax = 0;
         if (quarterMonth === 2 || quarterMonth === 5 || quarterMonth === 8 || quarterMonth === 11) {
             profitTax = quarterlyTax;
         }
 
-        // НДС помесячно (1/3 квартального)
-        var ndsThis = hasNDS ? ndsMonthlyPayment : 0;
+        // НДС помесячно
+        var monthlyNDSaccrued = (revBase * seasonCoef) * ndsRate / (1 + ndsRate);
+        var ndsThis = hasNDS ? monthlyNDSaccrued : 0;
+
+        // Страховые и НДФЛ
+        var monthlyPayroll = prodBase * seasonCoef + admBase;
+        var monthlyInsurance = monthlyPayroll * insRate;
+        var monthlyNDFL = monthlyPayroll * 0.13;
 
         var taxThisMonth = profitTax + monthlyInsurance + monthlyNDFL + ndsThis + monthlyPropertyTax;
 
         // Расходы с сезонностью для переменных
-        var matThis = matMonthly * seasonCoef;
-        var enerThis = enerMonthly * seasonCoef;
-        var logThis = logMonthly * seasonCoef;
-        var prodThis = prodMonthly * seasonCoef;
-        var admThis = admMonthly;
-        var markThis = markMonthly * seasonCoef;
+        var matThis = matBase * seasonCoef;
+        var enerThis = enerBase * seasonCoef;
+        var logThis = logBase * seasonCoef;
+        var prodThis = prodBase * seasonCoef;
+        var admThis = admBase;
+        var markThis = markBase * seasonCoef;
 
-        var inflow = revenueReceived[p] + intIncMonthly + othIncMonthly + newLoanSch[p];
+        var inflow = revenueReceived[p] + intIncBase + othIncBase + newLoanSch[p];
         var outflow = matThis + enerThis + logThis + prodThis + admThis
-            + markThis + rentMonthly + itMonthly
-            + taxThisMonth + intSch[p] + othExpMonthly + penMonthly
-            + loanSch[p] + capexSch[p] + divMonthly;
+            + markThis + rentBase + itBase
+            + taxThisMonth + intSch[p] + othExpBase + penBase
+            + loanSch[p] + capexSch[p] + divBase;
 
         var netFlow = inflow - outflow;
         var startCashPeriod = runningCash;
@@ -1025,9 +1023,9 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             payrollProd: prodThis,
             payrollAdm: admThis,
             marketing: markThis,
-            rent: rentMonthly,
-            itRdTraining: itMonthly,
-            da: daMonthly,
+            rent: rentBase,
+            itRdTraining: itBase,
+            da: daBase,
             profitTax: profitTax,
             nds: ndsThis,
             insurance: monthlyInsurance,
@@ -1035,14 +1033,14 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             propertyTax: monthlyPropertyTax,
             totalTax: taxThisMonth,
             interest: intSch[p],
-            interestIncome: intIncMonthly,
-            otherIncome: othIncMonthly,
-            otherExp: othExpMonthly,
-            penalties: penMonthly,
+            interestIncome: intIncBase,
+            otherIncome: othIncBase,
+            otherExp: othExpBase,
+            penalties: penBase,
             loanRepayment: loanSch[p],
             newLoans: newLoanSch[p],
             capex: capexSch[p],
-            dividends: divMonthly,
+            dividends: divBase,
             netFlow: netFlow,
             endCash: runningCash,
             isGap: runningCash < 0,
@@ -1051,10 +1049,10 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
 
         totals.rev += revenueReceived[p]; totals.mat += matThis; totals.ener += enerThis;
         totals.log += logThis; totals.prod += prodThis; totals.adm += admThis;
-        totals.mark += markThis; totals.rent += rentMonthly; totals.it += itMonthly;
-        totals.tax += taxThisMonth; totals.int += intSch[p]; totals.pen += penMonthly;
+        totals.mark += markThis; totals.rent += rentBase; totals.it += itBase;
+        totals.tax += taxThisMonth; totals.int += intSch[p]; totals.pen += penBase;
         totals.repay += loanSch[p]; totals.newLoan += newLoanSch[p];
-        totals.capex += capexSch[p]; totals.div += divMonthly;
+        totals.capex += capexSch[p]; totals.div += divBase;
     }
 
     return {
@@ -1072,15 +1070,12 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
 
     var season = self.company ? (self.company.season || [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 
-    // Месячные базы (годовые / 12)
-    var baseRevenue = self._val('REVENUE') / 12;
-    var baseCOGS = self._val('COGS') / 12;
-    var baseSelling = self._val('SELLING_EXP') / 12;
-    var baseAdmin = self._val('ADMIN_EXP') / 12;
+    // Месячные значения — берутся напрямую из модели, без деления
+    var baseRevenue = self._val('REVENUE');
+    var baseCOGS = self._val('COGS');
+    var baseSelling = self._val('SELLING_EXP');
+    var baseAdmin = self._val('ADMIN_EXP');
     var daSch = self.getMonthlyDA(startMonth, horizon);
-    var otherIncMonthly = self._val('OTHER_INCOME') / 12;
-    var otherExpMonthly = self._val('OTHER_EXP') / 12;
-    var penMonthly = self._val('PENALTIES') / 12;
 
     // Проценты по кредитам помесячно
     var intSch = [];
@@ -1101,7 +1096,11 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
         });
     }
 
-    // Налог на прибыль
+    var otherIncBase = self._val('OTHER_INCOME');
+    var otherExpBase = self._val('OTHER_EXP');
+    var penBase = self._val('PENALTIES');
+
+    // Налог на прибыль — квартальные авансы от годовой базы
     var ebtY = self._val('EBT');
     var taxRate = self._company('profit_tax_rate', 0.25);
     var annualTax = Math.max(0, ebtY) * taxRate;
@@ -1117,6 +1116,7 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
         var label = months[mo] + ' ' + (2026 + Math.floor((startMonth + p) / 12));
         var seasonCoef = season[mo] || 1;
 
+        // Переменные затраты зависят от сезонности
         var revenue = baseRevenue * seasonCoef;
         var cogs = -(baseCOGS * seasonCoef);
         var gross = revenue + cogs;
@@ -1126,10 +1126,10 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
         var da = -Math.abs(daSch[p]);
         var ebit = ebitda + da;
         var interest = -Math.abs(intSch[p]);
-        var other = otherIncMonthly - Math.abs(otherExpMonthly) - Math.abs(penMonthly);
+        var other = otherIncBase - Math.abs(otherExpBase) - Math.abs(penBase);
         var ebt = ebit + interest + other;
 
-        // Налог на прибыль поквартально
+        // Налог на прибыль — поквартально от стартового месяца
         var quarterMonth = (p - startMonth + 12) % 12;
         var profitTax = 0;
         if (quarterMonth === 2 || quarterMonth === 5 || quarterMonth === 8 || quarterMonth === 11) {
@@ -1156,7 +1156,6 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
 
     return { rows: rows, totals: totals, endCumulative: cumulative };
 };
-
 Graph.prototype.getMarginalEffects = function () {
     var self = this;
     var saved = {};
