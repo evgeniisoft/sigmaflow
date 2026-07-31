@@ -2046,6 +2046,53 @@
                 this.textContent = isLight ? '🌙' : '☀️';
             });
 
+            // Изменение значений в Данных:
+            document.getElementById('btn-apply-table').addEventListener('click', function () {
+                if (!graph) return;
+
+                // Собрать значения из всех полей ввода
+                var inputs = document.querySelectorAll('.table-input');
+                inputs.forEach(function (input) {
+                    var nodeId = input.dataset.nodeId;
+                    var node = graph.nodes[nodeId];
+                    if (!node) return;
+
+                    var rawValue = input.value;
+                    var numValue = parseFloat(rawValue.replace(/\s/g, '').replace(',', '.'));
+
+                    if (!isNaN(numValue)) {
+                        // Проверка min/max
+                        if (node.min !== null && numValue < node.min) numValue = node.min;
+                        if (node.max !== null && numValue > node.max) numValue = node.max;
+                        node.value = numValue;
+                    }
+                });
+
+                // Также собрать min/max
+                var minInputs = document.querySelectorAll('.table-input-min');
+                minInputs.forEach(function (input) {
+                    var nodeId = input.dataset.nodeId;
+                    var node = graph.nodes[nodeId];
+                    if (!node) return;
+                    var numValue = parseFloat(input.value.replace(/\s/g, '').replace(',', '.'));
+                    if (!isNaN(numValue)) node.min = numValue;
+                });
+
+                var maxInputs = document.querySelectorAll('.table-input-max');
+                maxInputs.forEach(function (input) {
+                    var nodeId = input.dataset.nodeId;
+                    var node = graph.nodes[nodeId];
+                    if (!node) return;
+                    var numValue = parseFloat(input.value.replace(/\s/g, '').replace(',', '.'));
+                    if (!isNaN(numValue)) node.max = numValue;
+                });
+
+                graph.compute();
+                saveCurrentModel();
+                renderAll();
+                notify('Изменения применены');
+            });
+
             document.getElementById('btn-save').addEventListener('click', saveProject);
             document.getElementById('btn-run-diagnostics').addEventListener('click', runDiagnostics);
             document.getElementById('btn-add-covenant').addEventListener('click', function () {
