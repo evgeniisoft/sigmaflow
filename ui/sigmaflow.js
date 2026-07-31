@@ -400,7 +400,7 @@ Graph.prototype.auditInvariants = function () {
     var ebt = self._valSigned('EBT');
     var tax = self._valSigned('TAX');
     if (np && ebt && tax) {
-        check('I05', 'NET_PROFIT = EBT − TAX', ebt - tax, np);
+        check('I05', 'NET_PROFIT = EBT + TAX', ebt + tax, np);
     }
 
     // I06: CASH = CASH_START + FCF
@@ -825,28 +825,26 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     horizon = horizon || 12;
     startMonth = startMonth !== undefined ? startMonth : new Date().getMonth();
 
-    // Годовые значения из модели
-    var revY = self._val('REVENUE');
-    var matY = self._val('MATERIAL_COST');
-    var enerY = self._val('ENERGY_COST');
-    var logY = self._val('LOGISTICS_COST');
-    var prodY = self._val('DIRECT_LABOR');
-    var admY = self._val('ADMIN_PAYROLL');
-    var markY = self._val('MARKETING');
-    var rentY = self._val('RENT');
-    var itY = self._val('IT_EXP');
-    var rdY = self._val('RD_EXP');
-    var trainY = self._val('TRAINING_EXP');
-    var daY = self._val('DA');
-    var intIncY = self._val('INTEREST_INCOME');
-    var othIncY = self._val('OTHER_INCOME');
-    var othExpY = self._val('OTHER_EXP');
-    var penY = self._val('PENALTIES');
-    var divY = self._val('DIVIDENDS');
+    var season = self.company ? (self.company.season || [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 
-    // Кредиты из кредитного портфеля
-    var repayY = 0;
-    var newLoansY = 0;
+    // Месячные значения (годовые / 12)
+    var revMonthly = self._val('REVENUE') / 12;
+    var matMonthly = self._val('MATERIAL_COST') / 12;
+    var enerMonthly = self._val('ENERGY_COST') / 12;
+    var logMonthly = self._val('LOGISTICS_COST') / 12;
+    var prodMonthly = self._val('DIRECT_LABOR') / 12;
+    var admMonthly = self._val('ADMIN_PAYROLL') / 12;
+    var markMonthly = self._val('MARKETING') / 12;
+    var rentMonthly = self._val('RENT') / 12;
+    var itMonthly = (self._val('IT_EXP') + self._val('RD_EXP') + self._val('TRAINING_EXP')) / 12;
+    var daMonthly = self._val('DA') / 12;
+    var intIncMonthly = self._val('INTEREST_INCOME') / 12;
+    var othIncMonthly = self._val('OTHER_INCOME') / 12;
+    var othExpMonthly = self._val('OTHER_EXP') / 12;
+    var penMonthly = self._val('PENALTIES') / 12;
+    var divMonthly = self._val('DIVIDENDS') / 12;
+
+    // Кредиты
     var loanSch = [];
     var newLoanSch = [];
     var intSch = [];
@@ -857,38 +855,28 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             var term = cr.term || 12;
             var bodyPayment = amount / term;
             var monthlyInterest = amount * (cr.rate || 0) / 12;
-
             var crStartMonth = (cr.startMonth || 0) - startMonth;
             if (crStartMonth < 0) crStartMonth += 12;
 
-            // Новый кредит — приход в месяц получения
             if (crStartMonth >= 0 && crStartMonth < newLoanSch.length) {
                 newLoanSch[crStartMonth] = (newLoanSch[crStartMonth] || 0) + amount;
             }
-
-            // Тело кредита — погашение со следующего месяца
             for (var j = 1; j < horizon && j <= term; j++) {
                 var idx = crStartMonth + j;
                 if (idx >= 0 && idx < loanSch.length) {
                     loanSch[idx] = (loanSch[idx] || 0) + bodyPayment;
                 }
             }
-
-            // Проценты — со следующего месяца
             for (var j = 1; j < horizon && j <= term; j++) {
                 var idx = crStartMonth + j;
                 if (idx >= 0 && idx < intSch.length) {
                     intSch[idx] = (intSch[idx] || 0) + monthlyInterest;
                 }
             }
-
-            repayY += amount;
-            newLoansY += amount;
         });
     }
 
-    // CAPEX из инвестиционного портфеля
-    var capexY = 0;
+    // CAPEX
     var capexSch = [];
     for (var i = 0; i < horizon; i++) capexSch.push(0);
     if (self.investments) {
@@ -902,7 +890,6 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
                     capexSch[monthIdx] = (capexSch[monthIdx] || 0) + (schedule[j] || 0);
                 }
             }
-            capexY += inv.cost || 0;
         });
     }
 
@@ -912,69 +899,81 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
 
     // Налоги
     var ebtY = self._val('EBT');
-    var taxRate = self._val('TAX_RATE') || 0.20;
+    var taxRate = self._company('profit_tax_rate', 0.25);
     var annualProfitTax = Math.max(0, ebtY) * taxRate;
     var quarterlyTax = annualProfitTax / 4;
 
-    // ФОТ для страховых и НДФЛ
-    var monthlyPayroll = prodY + admY;
+    var monthlyPayroll = prodMonthly + admMonthly;
     var insRate = self._company('insurance_rate', 0.30);
     var monthlyInsurance = monthlyPayroll * insRate;
     var monthlyNDFL = monthlyPayroll * 0.13;
 
-    // НДС
     var ndsRate = self._company('nds_rate', 0.20);
     var ndsExempt = self._company('nds_exempt', false);
     var hasNDS = !ndsExempt && ndsRate > 0;
-    var monthlyRevenueForNDS = revY;
-    // Отсрочка платежей клиентов
-    var receivablesDays = self._company('receivables_days', 30);
-    var receivablesDelay = Math.round(receivablesDays / 30); // в месяцах
-    var season = self.company ? (self.company.season || [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
-    var prepayPct = self._company('prepay_pct', 0) / 100;
-    var prepayDays = self._company('prepay_days', 0);
-    var prepayShare = self._company('prepay_share', 0) / 100;
-    var receivablesDelay = Math.round(self._company('receivables_days', 30) / 30);
-
-    var revenueReceived = [];
-    for (var i = 0; i < horizon; i++) revenueReceived.push(0);
-
-    for (var i = 0; i < horizon; i++) {
-        var mo = (startMonth + i) % 12;
-        var monthlyRev = revY * (season[mo] || 1);
-
-        // Постоплата: деньги приходят с задержкой
-        var postIdx = i + receivablesDelay;
-        if (postIdx < horizon) {
-            revenueReceived[postIdx] += monthlyRev * (1 - prepayShare);
-        }
-
-        // Предоплата: деньги приходят до отгрузки
-        var prepayMonths = Math.round(prepayDays / 30);
-        var preIdx = i - prepayMonths;
-        if (preIdx >= 0 && preIdx < horizon) {
-            revenueReceived[preIdx] += monthlyRev * prepayShare * prepayPct;
-        }
-        // Доплата после отгрузки (оставшаяся часть предоплаты)
-        if (prepayPct < 1) {
-            var postPreIdx = i + receivablesDelay;
-            if (postPreIdx < horizon) {
-                revenueReceived[postPreIdx] += monthlyRev * prepayShare * (1 - prepayPct);
-            }
-        }
-    }
-    var monthlyNDSaccrued = monthlyRevenueForNDS * ndsRate / (1 + ndsRate);
+    var monthlyNDSaccrued = (revMonthly) * ndsRate / (1 + ndsRate);
     var quarterlyNDS = monthlyNDSaccrued * 3;
     var ndsMonthlyPayment = quarterlyNDS / 3;
 
-    // Налог на имущество
     var propertyTaxRate = self._company('property_tax_rate', 0);
     var hasPropertyTax = self._company('has_property_tax', false);
     var fixedAssets = self._val('FIXED_ASSETS');
     var annualPropertyTax = hasPropertyTax ? fixedAssets * propertyTaxRate : 0;
     var monthlyPropertyTax = annualPropertyTax / 12;
 
+    // Условия оплаты
+    var receivablesDays = self._company('receivables_days', 30);
+    var receivablesDelay = Math.round(receivablesDays / 30);
+    var prepayPct = self._company('prepay_pct', 0) / 100;
+    var prepayDays = self._company('prepay_days', 0);
+    var prepayShare = self._company('prepay_share', 0) / 100;
+    var prepayMonths = Math.round(prepayDays / 30);
+
+    // === РАСЧЁТ ПОСТУПЛЕНИЙ С УЧЁТОМ СЕЗОННОСТИ И ОТСРОЧЕК ===
     var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+
+    // Для каждого месяца отгрузки
+    var shipments = [];
+    for (var i = 0; i < horizon; i++) {
+        var mo = (startMonth + i) % 12;
+        shipments.push(revMonthly * (season[mo] || 1));
+    }
+
+    // Поступления с учётом постоплаты и предоплаты
+    var revenueReceived = [];
+    for (var i = 0; i < horizon; i++) revenueReceived.push(0);
+
+    for (var i = 0; i < horizon; i++) {
+        var shipment = shipments[i];
+
+        // Постоплата: отгрузка в i, деньги в i + delay
+        var postIdx = i + receivablesDelay;
+        if (postIdx < horizon) {
+            revenueReceived[postIdx] += shipment * (1 - prepayShare);
+        }
+
+        // Предоплата: деньги в i - prepayMonths, отгрузка в i
+        var preIdx = i - prepayMonths;
+        if (preIdx >= 0 && preIdx < horizon) {
+            revenueReceived[preIdx] += shipment * prepayShare * prepayPct;
+        }
+
+        // Доплата после отгрузки для предоплатных клиентов
+        if (prepayPct < 1 && prepayShare > 0) {
+            var postPreIdx = i + receivablesDelay;
+            if (postPreIdx < horizon) {
+                revenueReceived[postPreIdx] += shipment * prepayShare * (1 - prepayPct);
+            }
+        }
+    }
+
+    // Входящий остаток дебиторки (поступления за отгрузки до горизонта)
+    var receivablesStart = self._company('receivables_start', 0);
+    if (receivablesStart > 0) {
+        revenueReceived[0] += receivablesStart;
+    }
+
+    // === ПОМЕСЯЧНЫЙ РАСЧЁТ ===
     var cal = [];
     var runningCash = cashStart;
     var totals = { rev: 0, mat: 0, ener: 0, log: 0, prod: 0, adm: 0, mark: 0, rent: 0, it: 0, tax: 0, int: 0, pen: 0, repay: 0, newLoan: 0, capex: 0, div: 0 };
@@ -984,32 +983,33 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
         var yr = 2026 + Math.floor((startMonth + p) / 12);
         var label = months[mo] + ' ' + yr;
 
-        // Налог на прибыль — квартальные авансы
-        var profitTax = 0;
-        if (mo === 2) profitTax = quarterlyTax;
-        if (mo === 3) profitTax = quarterlyTax;
-        if (mo === 6) profitTax = quarterlyTax;
-        if (mo === 9) profitTax = quarterlyTax;
+        var seasonCoef = season[mo] || 1;
 
-        // НДС — уплата в следующем квартале
-        var ndsThis = 0;
-        if (hasNDS) {
-            if (mo === 3 || mo === 4 || mo === 5) ndsThis = ndsMonthlyPayment;
-            if (mo === 6 || mo === 7 || mo === 8) ndsThis = ndsMonthlyPayment;
-            if (mo === 9 || mo === 10 || mo === 11) ndsThis = ndsMonthlyPayment;
-            if (mo === 0 || mo === 1 || mo === 2) ndsThis = ndsMonthlyPayment;
+        // Налог на прибыль поквартально (месяцы 3,6,9,12 от старта)
+        var quarterMonth = (p - startMonth + 12) % 12;
+        var profitTax = 0;
+        if (quarterMonth === 2 || quarterMonth === 5 || quarterMonth === 8 || quarterMonth === 11) {
+            profitTax = quarterlyTax;
         }
+
+        // НДС помесячно (1/3 квартального)
+        var ndsThis = hasNDS ? ndsMonthlyPayment : 0;
 
         var taxThisMonth = profitTax + monthlyInsurance + monthlyNDFL + ndsThis + monthlyPropertyTax;
 
-        // Приходы
-        var inflow = (revY ) + (intIncY ) + (othIncY) + newLoanSch[p];
+        // Расходы с сезонностью для переменных
+        var matThis = matMonthly * seasonCoef;
+        var enerThis = enerMonthly * seasonCoef;
+        var logThis = logMonthly * seasonCoef;
+        var prodThis = prodMonthly * seasonCoef;
+        var admThis = admMonthly;
+        var markThis = markMonthly * seasonCoef;
 
-        // Расходы
-        var outflow = (matY) + (enerY) + (logY) + (prodY) + (admY)
-            + (markY) + (rentY) + ((itY + rdY + trainY) / 12)
-            + taxThisMonth + (intSch[p]) + (othExpY) + (penY)
-            + loanSch[p] + capexSch[p] + (divY);
+        var inflow = revenueReceived[p] + intIncMonthly + othIncMonthly + newLoanSch[p];
+        var outflow = matThis + enerThis + logThis + prodThis + admThis
+            + markThis + rentMonthly + itMonthly
+            + taxThisMonth + intSch[p] + othExpMonthly + penMonthly
+            + loanSch[p] + capexSch[p] + divMonthly;
 
         var netFlow = inflow - outflow;
         var startCashPeriod = runningCash;
@@ -1019,15 +1019,15 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             period: p, label: label, month: mo,
             startCash: startCashPeriod,
             revenue: revenueReceived[p],
-            material: matY,
-            energy: enerY,
-            logistics: logY,
-            payrollProd: prodY,
-            payrollAdm: admY,
-            marketing: markY,
-            rent: rentY,
-            itRdTraining: (itY + rdY + trainY) / 12,
-            da: daY / 12,
+            material: matThis,
+            energy: enerThis,
+            logistics: logThis,
+            payrollProd: prodThis,
+            payrollAdm: admThis,
+            marketing: markThis,
+            rent: rentMonthly,
+            itRdTraining: itMonthly,
+            da: daMonthly,
             profitTax: profitTax,
             nds: ndsThis,
             insurance: monthlyInsurance,
@@ -1035,26 +1035,26 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             propertyTax: monthlyPropertyTax,
             totalTax: taxThisMonth,
             interest: intSch[p],
-            interestIncome: intIncY ,
-            otherIncome: othIncY,
-            otherExp: othExpY,
-            penalties: penY,
+            interestIncome: intIncMonthly,
+            otherIncome: othIncMonthly,
+            otherExp: othExpMonthly,
+            penalties: penMonthly,
             loanRepayment: loanSch[p],
             newLoans: newLoanSch[p],
             capex: capexSch[p],
-            dividends: divY,
+            dividends: divMonthly,
             netFlow: netFlow,
             endCash: runningCash,
             isGap: runningCash < 0,
             isWarning: netFlow < 0 && runningCash >= 0
         });
 
-        totals.rev += revenueReceived[p]; totals.mat += matY; totals.ener += enerY;
-        totals.log += logY; totals.prod += prodY; totals.adm += admY;
-        totals.mark += markY; totals.rent += rentY; totals.it += (itY + rdY + trainY) / 12;
-        totals.tax += taxThisMonth; totals.int += intSch[p]; totals.pen += penY;
+        totals.rev += revenueReceived[p]; totals.mat += matThis; totals.ener += enerThis;
+        totals.log += logThis; totals.prod += prodThis; totals.adm += admThis;
+        totals.mark += markThis; totals.rent += rentMonthly; totals.it += itMonthly;
+        totals.tax += taxThisMonth; totals.int += intSch[p]; totals.pen += penMonthly;
         totals.repay += loanSch[p]; totals.newLoan += newLoanSch[p];
-        totals.capex += capexSch[p]; totals.div += divY;
+        totals.capex += capexSch[p]; totals.div += divMonthly;
     }
 
     return {
@@ -1070,11 +1070,19 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
     horizon = horizon || 12;
     startMonth = startMonth !== undefined ? startMonth : new Date().getMonth();
 
-    var revY = self._val('REVENUE');
-    var cogsY = self._val('COGS');
-    var sellY = self._val('SELLING_EXP');
-    var admY = self._val('ADMIN_EXP');
+    var season = self.company ? (self.company.season || [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+
+    // Месячные базы (годовые / 12)
+    var baseRevenue = self._val('REVENUE') / 12;
+    var baseCOGS = self._val('COGS') / 12;
+    var baseSelling = self._val('SELLING_EXP') / 12;
+    var baseAdmin = self._val('ADMIN_EXP') / 12;
     var daSch = self.getMonthlyDA(startMonth, horizon);
+    var otherIncMonthly = self._val('OTHER_INCOME') / 12;
+    var otherExpMonthly = self._val('OTHER_EXP') / 12;
+    var penMonthly = self._val('PENALTIES') / 12;
+
+    // Проценты по кредитам помесячно
     var intSch = [];
     for (var i = 0; i < horizon; i++) intSch.push(0);
     if (self.credits) {
@@ -1092,9 +1100,8 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
             }
         });
     }
-    var otherIncY = self._val('OTHER_INCOME');
-    var otherExpY = self._val('OTHER_EXP');
-    var penY = self._val('PENALTIES');
+
+    // Налог на прибыль
     var ebtY = self._val('EBT');
     var taxRate = self._company('profit_tax_rate', 0.25);
     var annualTax = Math.max(0, ebtY) * taxRate;
@@ -1108,21 +1115,24 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
     for (var p = 0; p < horizon; p++) {
         var mo = (startMonth + p) % 12;
         var label = months[mo] + ' ' + (2026 + Math.floor((startMonth + p) / 12));
+        var seasonCoef = season[mo] || 1;
 
-        var revenue = revY;
-        var cogs = -Math.abs(cogsY);
+        var revenue = baseRevenue * seasonCoef;
+        var cogs = -(baseCOGS * seasonCoef);
         var gross = revenue + cogs;
-        var selling = -Math.abs(sellY);
-        var admin = -Math.abs(admY);
+        var selling = -(baseSelling * seasonCoef);
+        var admin = -(baseAdmin * 0.7 + baseAdmin * 0.3 * seasonCoef); // 70% постоянные, 30% переменные
         var ebitda = gross + selling + admin;
         var da = -Math.abs(daSch[p]);
         var ebit = ebitda + da;
         var interest = -Math.abs(intSch[p]);
-        var other = (otherIncY || 0) - Math.abs(otherExpY || 0) - Math.abs(penY || 0);
+        var other = otherIncMonthly - Math.abs(otherExpMonthly) - Math.abs(penMonthly);
         var ebt = ebit + interest + other;
 
+        // Налог на прибыль поквартально
+        var quarterMonth = (p - startMonth + 12) % 12;
         var profitTax = 0;
-        if (mo === 2 || mo === 3 || mo === 6 || mo === 9) {
+        if (quarterMonth === 2 || quarterMonth === 5 || quarterMonth === 8 || quarterMonth === 11) {
             profitTax = -quarterlyTax;
         }
 
@@ -1419,11 +1429,11 @@ Graph.prototype.calibrate = function () {
         { from: 'COGS', to: 'NET_PROFIT', expectedSign: 'negative' },
         { from: 'REVENUE', to: 'EBITDA', expectedSign: 'positive' },
         { from: 'COGS', to: 'EBITDA', expectedSign: 'negative' },
-        { from: 'OPEX', to: 'NET_PROFIT', expectedSign: 'negative' },
         { from: 'INTEREST', to: 'EBT', expectedSign: 'negative' },
         { from: 'MARKETING', to: 'REVENUE', expectedSign: 'positive' },
-        { from: 'HEADCOUNT', to: 'COGS', expectedSign: 'positive' },
-        { from: 'AVG_SALARY', to: 'COGS', expectedSign: 'positive' }
+        { from: 'PROD_HEADCOUNT', to: 'COGS', expectedSign: 'positive' },
+        { from: 'PROD_AVG_SALARY', to: 'COGS', expectedSign: 'positive' },
+        { from: 'ADMIN_HEADCOUNT', to: 'ADMIN_EXP', expectedSign: 'positive' }
     ];
 
     // Для каждой осмысленной пары, где оба узла есть в данных
