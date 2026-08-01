@@ -23,7 +23,7 @@ var TEMPLATE_UNIVERSAL = [
     '    type: INTERMEDIATE',
     '    label: "Налог на прибыль"',
     '    source: computed',
-    '    formula: "MAX(0, EBT * TAX_RATE)"',
+    '    formula: "MAX(0, EBT * TAX_RATE) / 12"',
     '',
     '  - id: EBIT',
     '    type: INTERMEDIATE',
