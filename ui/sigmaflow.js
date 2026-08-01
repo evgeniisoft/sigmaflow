@@ -639,6 +639,22 @@ Graph.prototype._computeOnce = function () {
     // Узлы, которые нужно вычислять последними (финансовая цепочка)
     var lateNodes = ['EBITDA', 'EBIT', 'EBT', 'TAX', 'INTEREST', 'CFO', 'CFI', 'CFF', 'FCF', 'CASH'];
 
+    // Корректировка зарплат: net → gross
+    var salaryMode = self._company('salary_mode', 'gross'); // 'gross' или 'net'
+    var insuranceRate = self._company('insurance_rate', 0.30);
+    var ndflRate = 0.13;
+
+    if (salaryMode === 'net') {
+        ['PROD_AVG_SALARY', 'ADMIN_AVG_SALARY', 'DEV_AVG_SALARY', 'SALES_AVG_SALARY',
+            'SPECIALIST_AVG_SALARY', 'WAREHOUSE_AVG_SALARY'].forEach(function (salaryId) {
+                var node = self.nodes[salaryId];
+                if (node && node.value > 0) {
+                    // net → gross: ЗП_на_руки / 0.87
+                    node._netValue = node.value;
+                    node.value = Math.round(node.value / (1 - ndflRate));
+                }
+            });
+    }
     // Шаг 1: вычисляем узлы с формулами, кроме lateNodes
     Object.keys(self.nodes).forEach(function (key) {
         if (lateNodes.indexOf(key) >= 0) return; // пропускаем, посчитаем позже
@@ -687,6 +703,27 @@ Graph.prototype._computeOnce = function () {
             }
         }
     });
+    // Пересчитываем INTEREST из кредитного портфеля
+    if (self.credits && self.credits.length > 0) {
+        var totalMonthlyInterest = 0;
+        self.credits.forEach(function (cr) {
+            totalMonthlyInterest += (cr.amount || 0) * (cr.rate || 0) / 12;
+        });
+        if (self.nodes['INTEREST']) {
+            self.nodes['INTEREST'].value = totalMonthlyInterest;
+        }
+    }
+    // Восстанавливаем net-значения для отображения
+    if (salaryMode === 'net') {
+        ['PROD_AVG_SALARY', 'ADMIN_AVG_SALARY', 'DEV_AVG_SALARY', 'SALES_AVG_SALARY',
+            'SPECIALIST_AVG_SALARY', 'WAREHOUSE_AVG_SALARY'].forEach(function (salaryId) {
+                var node = self.nodes[salaryId];
+                if (node && node._netValue !== undefined) {
+                    node.value = node._netValue;
+                    delete node._netValue;
+                }
+            });
+    }
 };
 
 Graph.prototype._evalFormula = function (formula) {
@@ -986,7 +1023,27 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
 
         // НДС помесячно
         var monthlyNDSaccrued = (revBase * seasonCoef) * ndsRate / (1 + ndsRate);
-        var ndsThis = hasNDS ? monthlyNDSaccrued : 0;
+        var ndsThis = 0;
+        if (hasNDS) {
+            var ndsRateForCal = self._company('nds_rate', 0.20);
+            // Исходящий НДС с выручки за месяц
+            var outputNDS = (revBase * seasonCoef) * ndsRateForCal / (1 + ndsRateForCal);
+            // Входящий НДС: материалы + аренда + IT + логистика (упрощённо)
+            var inputNDS = 0;
+            if (self._company('materials_with_nds', true)) {
+                inputNDS += matThis * ndsRateForCal / (1 + ndsRateForCal);
+            }
+            if (self._company('rent_with_nds', true)) {
+                inputNDS += rentBase * ndsRateForCal / (1 + ndsRateForCal);
+            }
+            if (self._company('logistics_with_nds', true)) {
+                inputNDS += logThis * ndsRateForCal / (1 + ndsRateForCal);
+            }
+            if (self._company('it_with_nds', true)) {
+                inputNDS += itBase * ndsRateForCal / (1 + ndsRateForCal);
+            }
+            ndsThis = Math.max(0, outputNDS - inputNDS);
+        }
 
         // Страховые и НДФЛ
         var monthlyPayroll = prodBase * seasonCoef + admBase;
@@ -1118,6 +1175,12 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
 
         // Переменные затраты зависят от сезонности
         var revenue = baseRevenue * seasonCoef;
+        // Если компания плательщик НДС — выручка очищается
+        var isNDSPayer = !self._company('nds_exempt', false) && self._company('nds_rate', 0) > 0;
+        if (isNDSPayer) {
+            var ndsRateForPnL = self._company('nds_rate', 0.20);
+            revenue = revenue / (1 + ndsRateForPnL);
+        }
         var cogs = -(baseCOGS * seasonCoef);
         var gross = revenue + cogs;
         var selling = -(baseSelling * seasonCoef);
