@@ -2350,12 +2350,22 @@
             // Применяем нелинейности
             if (driverTreeData && driverTreeData._applyNonlinear) {
                 var nlChanges = driverTreeData._applyNonlinear(driverId, newValue);
+                // Сначала собираем все изменения, потом применяем
+                var nodesToUpdate = {};
                 Object.keys(nlChanges).forEach(function (targetId) {
                     var change = nlChanges[targetId];
                     if (graph.nodes[change.nodeId]) {
-                        graph.nodes[change.nodeId].value = change.newValue;
+                        nodesToUpdate[change.nodeId] = change.newValue;
                     }
                 });
+                // Применяем все изменения разом
+                Object.keys(nodesToUpdate).forEach(function (nodeId) {
+                    graph.nodes[nodeId].value = nodesToUpdate[nodeId];
+                });
+                // Защищаем UNIT_MATERIAL от перезаписи формулами
+                if (nodesToUpdate['UNIT_MATERIAL'] !== undefined) {
+                    graph.nodes['UNIT_MATERIAL']._protected = true;
+                }
             }
 
             // После применения нелинейностей — пересчитать формулы
@@ -2367,8 +2377,10 @@
             }
             // Пересчитываем модель
             // Пересчитываем ВСЕ формулы после изменения значений узлов
+            // Пересчитываем ВСЕ формулы после изменения значений узлов
             Object.keys(graph.nodes).forEach(function (key) {
                 var n = graph.nodes[key];
+                if (n._protected) return; // не пересчитываем защищённые узлы
                 if (n.formula && n.enabled !== false) {
                     try {
                         n.value = graph._evalFormula(n.formula);
@@ -2376,6 +2388,10 @@
                         n.value = 0;
                     }
                 }
+            });
+            // Снимаем защиту
+            Object.keys(nodesToUpdate).forEach(function (nodeId) {
+                if (graph.nodes[nodeId]) graph.nodes[nodeId]._protected = false;
             });
             graph.compute();
 
