@@ -1443,14 +1443,37 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
                 if (unitPrice === 0 || unitPrice === undefined) {
                     unitPrice = self.nodes[targetConfig.nodeId] ? self.nodes[targetConfig.nodeId].value : 800;
                 }
+
+                // База — снапшот ДО изменений
+                var driverBase = snapshots[driverConfig.nodeId] || 1;
+                if (driverBase === 0) driverBase = 1;
+
+                // Рост относительно базы
+                var growthRatio = newValue / driverBase;
+
+                // Скидка — только при значительном росте
                 var discount = 0;
+                var maxDiscount = nl.params ? nl.params.maxDiscount : 0.15; // потолок 15%
 
-                if (newValue >= 1000) discount = 0.25;
-                else if (newValue >= 500) discount = 0.18;
-                else if (newValue >= 250) discount = 0.12;
-                else if (newValue >= 100) discount = 0.07;
-                else if (newValue >= 50) discount = 0.03;
+                if (nl.params && nl.params.tiers) {
+                    // Кастомные ступени из конфигурации
+                    var tiers = nl.params.tiers;
+                    for (var t = 0; t < tiers.length; t++) {
+                        if (growthRatio >= tiers[t].ratio) {
+                            discount = tiers[t].discount;
+                        }
+                    }
+                } else {
+                    // Стандартные ступени
+                    if (growthRatio >= 10) discount = 0.15;      // ×10 и больше — 15%
+                    else if (growthRatio >= 5) discount = 0.12;   // ×5 — 12%
+                    else if (growthRatio >= 3) discount = 0.08;   // ×3 — 8%
+                    else if (growthRatio >= 2) discount = 0.05;   // ×2 — 5%
+                    else if (growthRatio >= 1.5) discount = 0.03; // +50% — 3%
+                    // Меньше +50% — без скидки
+                }
 
+                discount = Math.min(discount, maxDiscount);
                 newTargetValue = unitPrice * (1 - discount);
             }
 
@@ -1489,6 +1512,56 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
                 // Применяем к материальным затратам
                 var materialCost = self.nodes['MATERIAL_COST'] ? Math.abs(self.nodes['MATERIAL_COST'].value) : 0;
                 newTargetValue = materialCost * defectRate / 100;
+            }
+            // === PER_HEAD_WITH_DISCOUNT (IT-расходы со скидкой за масштаб) ===
+            else if (nl.type === 'per_head_with_discount') {
+                var costPerHead = nl.params ? nl.params.costPerHead : 15000;
+                var maxDiscount = nl.params ? nl.params.maxDiscount : 0.20;
+                var discount = 0;
+
+                if (nl.params && nl.params.tiers) {
+                    var tiers = nl.params.tiers;
+                    for (var t = 0; t < tiers.length; t++) {
+                        if (newValue >= tiers[t].headcount) {
+                            discount = tiers[t].discount;
+                            break;
+                        }
+                    }
+                }
+
+                discount = Math.min(discount, maxDiscount);
+                newTargetValue = newValue * costPerHead * (1 - discount);
+            }
+
+            // === SCALE_EFFICIENCY (эффективность маркетинга при росте клиентов) ===
+            else if (nl.type === 'scale_efficiency') {
+                var baseCPC = nl.params ? nl.params.baseCPC : 500;
+                var efficiencyGain = nl.params ? nl.params.efficiencyGain : 0.10;
+                var threshold = nl.params ? nl.params.threshold : 500;
+
+                var effectiveCPC = baseCPC;
+                if (newValue > threshold) {
+                    effectiveCPC = baseCPC * (1 - efficiencyGain);
+                }
+
+                // Пересчитываем маркетинговый бюджет
+                var currentMarketing = self.nodes['MARKETING'] ? self.nodes['MARKETING'].value : 0;
+                newTargetValue = Math.max(currentMarketing, newValue * effectiveCPC);
+            }
+
+            // === SPACE_EFFICIENCY (эффективность использования пространства) ===
+            else if (nl.type === 'space_efficiency') {
+                var sqmPerHead = nl.params ? nl.params.sqmPerHead : 6;
+                var costPerSqm = nl.params ? nl.params.costPerSqm : 2000;
+                var efficiencyThreshold = nl.params ? nl.params.efficiencyThreshold : 10;
+                var efficiencyGain = nl.params ? nl.params.efficiencyGain : 0.15;
+
+                var effectiveSqmPerHead = sqmPerHead;
+                if (newValue > efficiencyThreshold) {
+                    effectiveSqmPerHead = sqmPerHead * (1 - efficiencyGain);
+                }
+
+                newTargetValue = newValue * effectiveSqmPerHead * costPerSqm;
             }
 
             // === SPAN_OF_CONTROL_IT (АУП для IT) ===
