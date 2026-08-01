@@ -2358,25 +2358,7 @@
                         nodesToUpdate[change.nodeId] = change.newValue;
                     }
                 });
-                // Принудительно применяем скидку к UNIT_MATERIAL / UNIT_PURCHASE
-                if (driverId === 'VOLUME') {
-                    var materialNodeId = graph.industry === 'retail' ? 'UNIT_PURCHASE' : 'UNIT_MATERIAL';
-                    var materialNode = graph.nodes[materialNodeId];
-                    if (materialNode && driverTreeData.snapshots) {
-                        var basePrice = driverTreeData.snapshots[materialNodeId] || materialNode.value;
-                        var driverBase = driverTreeData.snapshots['VOLUME'] || 100;
-                        if (driverBase > 0) {
-                            var growthRatio = newValue / driverBase;
-                            var discount = 0;
-                            if (growthRatio >= 10) discount = 0.15;
-                            else if (growthRatio >= 5) discount = 0.12;
-                            else if (growthRatio >= 3) discount = 0.08;
-                            else if (growthRatio >= 2) discount = 0.05;
-                            else if (growthRatio >= 1.5) discount = 0.03;
-                            materialNode.value = basePrice * (1 - discount);
-                        }
-                    }
-                }
+                
                 // Применяем все изменения разом
                 Object.keys(nodesToUpdate).forEach(function (nodeId) {
                     graph.nodes[nodeId].value = nodesToUpdate[nodeId];
@@ -2414,7 +2396,33 @@
             });
             graph.compute();
 
-            // Перестраиваем только дерево (без пересоздания панели)
+            graph.compute();
+
+            // Принудительно применяем скидку ПОСЛЕ compute — чтобы не перезаписалось
+            if (driverId === 'VOLUME') {
+                var materialNodeId = graph.industry === 'retail' ? 'UNIT_PURCHASE' : 'UNIT_MATERIAL';
+                var materialNode = graph.nodes[materialNodeId];
+                if (materialNode && driverTreeData.snapshots) {
+                    var basePrice = driverTreeData.snapshots[materialNodeId] || materialNode.value;
+                    var driverBase = driverTreeData.snapshots['VOLUME'] || 100;
+                    if (driverBase > 0) {
+                        var growthRatio = newValue / driverBase;
+                        var discount = 0;
+                        if (growthRatio >= 10) discount = 0.15;
+                        else if (growthRatio >= 5) discount = 0.12;
+                        else if (growthRatio >= 3) discount = 0.08;
+                        else if (growthRatio >= 2) discount = 0.05;
+                        else if (growthRatio >= 1.5) discount = 0.03;
+                        materialNode.value = Math.round(basePrice * (1 - discount));
+                    }
+                }
+                // Пересчитываем MATERIAL_COST с новой ценой
+                if (graph.nodes['MATERIAL_COST'] && graph.nodes['MATERIAL_COST'].formula) {
+                    graph.nodes['MATERIAL_COST'].value = graph._evalFormula(graph.nodes['MATERIAL_COST'].formula);
+                }
+            }
+
+            // Перестраиваем только дерево
             driverTreeData = graph.computeDriverTree(treeConfig);
             renderDriverTreeGraphOnly();
 
