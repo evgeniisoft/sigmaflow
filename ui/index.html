@@ -2358,7 +2358,25 @@
                 });
             }
 
+            // После применения нелинейностей — пересчитать формулы
+            if (graph.nodes['MATERIAL_COST'] && graph.nodes['MATERIAL_COST'].formula) {
+                graph.nodes['MATERIAL_COST'].value = graph._evalFormula(graph.nodes['MATERIAL_COST'].formula);
+            }
+            if (graph.nodes['ADMIN_PAYROLL'] && graph.nodes['ADMIN_PAYROLL'].formula) {
+                graph.nodes['ADMIN_PAYROLL'].value = graph._evalFormula(graph.nodes['ADMIN_PAYROLL'].formula);
+            }
             // Пересчитываем модель
+            // Пересчитываем ВСЕ формулы после изменения значений узлов
+            Object.keys(graph.nodes).forEach(function (key) {
+                var n = graph.nodes[key];
+                if (n.formula && n.enabled !== false) {
+                    try {
+                        n.value = graph._evalFormula(n.formula);
+                    } catch (e) {
+                        n.value = 0;
+                    }
+                }
+            });
             graph.compute();
 
             // Перестраиваем только дерево (без пересоздания панели)
