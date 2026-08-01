@@ -1440,6 +1440,9 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
             // === SCALE_DISCOUNT (скидка за объём — СТУПЕНЧАТАЯ) ===
             else if (nl.type === 'scale_discount') {
                 var unitPrice = baseValues[targetId];
+                if (unitPrice === 0 || unitPrice === undefined) {
+                    unitPrice = self.nodes[targetConfig.nodeId] ? self.nodes[targetConfig.nodeId].value : 800;
+                }
                 var discount = 0;
 
                 if (newValue >= 1000) discount = 0.25;
@@ -1490,7 +1493,7 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
 
             // === SPAN_OF_CONTROL_IT (АУП для IT) ===
             else if (nl.type === 'span_of_control_it') {
-                var devs = newValue;
+                var devs = self.nodes['DEV_HEADCOUNT'] ? self.nodes['DEV_HEADCOUNT'].value : newValue;
                 if (devs <= 10) newTargetValue = 1;
                 else if (devs <= 25) newTargetValue = 2;
                 else if (devs <= 50) newTargetValue = 3;
@@ -1526,7 +1529,7 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
 
             // === SPAN_OF_CONTROL (ступенчатый АУП) ===
             else if (nl.type === 'span_of_control') {
-                var prodHeadcount = newValue; // newValue — это PROD_HEADCOUNT
+                var prodHeadcount = self.nodes['PROD_HEADCOUNT'] ? self.nodes['PROD_HEADCOUNT'].value : newValue;
                 if (prodHeadcount <= 10) newTargetValue = 2;
                 else if (prodHeadcount <= 25) newTargetValue = 3;
                 else if (prodHeadcount <= 50) newTargetValue = 4;
