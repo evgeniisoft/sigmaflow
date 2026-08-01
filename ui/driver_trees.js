@@ -26,13 +26,36 @@ var DRIVER_TREES = {
                 nodeId: 'VOLUME',
                 min: 0, max: 1000, step: 10,
                 unit: 'ед',
-                affects: ['REVENUE', 'MATERIAL_COST', 'PROD_HEADCOUNT'],
+                affects: ['REVENUE', 'MATERIAL_COST', 'ENERGY_COST', 'LOGISTICS_COST', 'PROD_HEADCOUNT', 'ADMIN_HEADCOUNT', 'DEFECT_COST'],
                 nonlinear: {
                     'PROD_HEADCOUNT': {
                         type: 'step',
-                        formula: 'ceil(VOLUME / PROD_CAPACITY_PER_WORKER)',
-                        description: '1 рабочий производит {PROD_CAPACITY_PER_WORKER} ед/мес. При росте объёма автоматически нанимаем персонал.',
-                        paramNode: 'PROD_CAPACITY_PER_WORKER'
+                        paramNode: 'PROD_CAPACITY_PER_WORKER',
+                        defaultValue: 15,
+                        description: '1 рабочий = 15 ед/мес. При нехватке — переработка до 30%, затем наём.'
+                    },
+                    'ADMIN_HEADCOUNT': {
+                        type: 'span_of_control',
+                        description: 'АУП растёт ступенчато: до 10 раб = 2 чел, до 25 = 3, до 50 = 4, до 100 = 6.'
+                    },
+                    'ENERGY_COST': {
+                        type: 'two_part',
+                        params: { base: 15000, perUnit: 350 },
+                        description: '15 000 постоянные + 350 ₽/ед переменные'
+                    },
+                    'LOGISTICS_COST': {
+                        type: 'batch_step',
+                        params: { base: 10000, batchSize: 50, batchCost: 8000 },
+                        description: '10 000 содержание + 8 000 за каждые 50 ед (полная фура)'
+                    },
+                    'UNIT_MATERIAL': {
+                        type: 'scale_discount',
+                        description: 'Скидка: >50 ед = 3%, >100 = 7%, >250 = 12%, >500 = 18%, >1000 = 25%'
+                    },
+                    'DEFECT_COST': {
+                        type: 'defect',
+                        params: { baseRate: 2, ratePerOvertime: 0.05, normalPerWorker: 15 },
+                        description: 'Брак: 2% база + 0.05% за каждый % переработки сверх нормы'
                     }
                 }
             },
@@ -188,16 +211,15 @@ var DRIVER_TREES = {
                 label: 'Маркетинг',
                 type: 'driver',
                 nodeId: 'MARKETING',
-                min: 0, max: 10000000, step: 10000,
+                min: 0, max: 1000000, step: 10000,
                 unit: '₽/мес',
                 affects: ['VOLUME'],
                 nonlinear: {
                     'VOLUME': {
                         type: 'diminishing_returns',
-                        formula: 'VOLUME_base + a * MARKETING^b',
-                        params: { a: 0.8, b: 0.5 },
+                        params: { a: 0.15, saturation: 500000 },
                         lag: 2,
-                        description: 'Удвоение бюджета → рост продаж в 1.4 раза. Эффект через 2 месяца.'
+                        description: 'Удвоение бюджета → +10-15% объёма. Эффект затухает к 500К.'
                     }
                 }
             },
@@ -258,14 +280,13 @@ var DRIVER_TREES = {
                 nodeId: 'MONTHLY_RATE_PER_DEV',
                 min: 50000, max: 1000000, step: 10000,
                 unit: '₽/мес',
-                affects: ['REVENUE'],
+                affects: ['REVENUE', 'UTILIZATION'],
                 nonlinear: {
-                    'REVENUE': {
+                    'UTILIZATION': {
                         type: 'elasticity',
-                        formula: 'UTILIZATION = UTILIZATION_base * (RATE / RATE_base)^elasticity',
                         elasticityNode: 'RATE_ELASTICITY',
                         defaultValue: -0.5,
-                        description: 'При росте ставки на 10% утилизация падает на 5% (часть клиентов уходит)'
+                        description: 'При росте ставки на 10% утилизация падает на 5% (часть клиентов уходит к конкурентам)'
                     }
                 }
             },
@@ -281,13 +302,21 @@ var DRIVER_TREES = {
                 nodeId: 'DEV_HEADCOUNT',
                 min: 1, max: 500, step: 1,
                 unit: 'чел',
-                affects: ['REVENUE', 'DEV_PAYROLL', 'UTILIZATION'],
+                affects: ['REVENUE', 'DEV_PAYROLL', 'UTILIZATION', 'ADMIN_HEADCOUNT', 'IT_EXP'],
                 nonlinear: {
                     'UTILIZATION': {
                         type: 'ramp_up',
-                        formula: 'UTILIZATION_base * (1 - RAMP_UP_LOSS * NEW_DEV_PCT)',
-                        params: { rampUpLoss: 0.15, rampUpMonths: 2 },
-                        description: 'Новые разработчики выходят на полную утилизацию через 2 месяца. В первый месяц утилизация падает на 15%.'
+                        params: { rampUpLoss: 0.15 },
+                        description: 'Новые разработчики: -15% утилизации команды пока входят в проекты (2-3 мес)'
+                    },
+                    'ADMIN_HEADCOUNT': {
+                        type: 'span_of_control_it',
+                        description: 'АУП растёт: до 10 разрабов = 1 админ, до 25 = 2, до 50 = 3, далее 1 админ на 25 разработчиков'
+                    },
+                    'IT_EXP': {
+                        type: 'per_head',
+                        params: { costPerHead: 15000 },
+                        description: 'Рабочее место разработчика: 15 000 ₽/мес на человека (железо, софт, облака)'
                     }
                 }
             },
@@ -301,11 +330,10 @@ var DRIVER_TREES = {
                 nonlinear: {
                     'DEV_PAYROLL': {
                         type: 'overtime',
-                        formula: 'DEV_PAYROLL_base * (1 + max(0, UTILIZATION - OVERTIME_THRESHOLD) * OVERTIME_RATE / 100)',
                         paramNodes: { threshold: 'OVERTIME_THRESHOLD', rate: 'OVERTIME_RATE' },
                         defaultThreshold: 85,
                         defaultRate: 0.5,
-                        description: 'При утилизации >85% включаются сверхурочные. Каждый % выше 85% = +0.5% к ФОТ.'
+                        description: 'При утилизации >85% — сверхурочные. Каждый % выше = +0.5% к ФОТ. При >95% — выгорание и увольнения.'
                     }
                 }
             },
@@ -334,7 +362,15 @@ var DRIVER_TREES = {
                 type: 'driver',
                 nodeId: 'DEV_AVG_SALARY',
                 min: 50000, max: 500000, step: 10000,
-                unit: '₽/мес'
+                unit: '₽/мес',
+                affects: ['DEV_PAYROLL', 'DEV_HEADCOUNT'],
+                nonlinear: {
+                    'DEV_HEADCOUNT': {
+                        type: 'elasticity',
+                        defaultValue: -0.3,
+                        description: 'При росте ЗП на 10% — приток кадров, можно нанять на 3% больше людей'
+                    }
+                }
             },
             'TOTAL_COSTS': {
                 label: 'Общие расходы',
@@ -346,14 +382,15 @@ var DRIVER_TREES = {
                 type: 'computed',
                 children: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY'],
                 formula: 'ADMIN_HEADCOUNT * ADMIN_AVG_SALARY',
-                drivers: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY']
+                drivers: ['ADMIN_AVG_SALARY']
             },
             'ADMIN_HEADCOUNT': {
                 label: 'Административный персонал',
                 type: 'driver',
                 nodeId: 'ADMIN_HEADCOUNT',
                 min: 0, max: 30, step: 1,
-                unit: 'чел'
+                unit: 'чел',
+                affects: ['ADMIN_PAYROLL']
             },
             'ADMIN_AVG_SALARY': {
                 label: 'Средняя ЗП АУП',
@@ -367,7 +404,15 @@ var DRIVER_TREES = {
                 type: 'driver',
                 nodeId: 'RENT',
                 min: 0, max: 1000000, step: 10000,
-                unit: '₽/мес'
+                unit: '₽/мес',
+                affects: [],
+                nonlinear: {
+                    'RENT': {
+                        type: 'per_head_space',
+                        params: { sqmPerHead: 6, costPerSqm: 2000 },
+                        description: '6 м² на разработчика × 2000 ₽/м². При найме аренда растёт.'
+                    }
+                }
             },
             'MARKETING': {
                 label: 'Маркетинг',
@@ -379,10 +424,9 @@ var DRIVER_TREES = {
                 nonlinear: {
                     'DEV_HEADCOUNT': {
                         type: 'diminishing_returns',
-                        formula: 'DEV_HEADCOUNT_base + a * MARKETING^b',
-                        params: { a: 0.02, b: 0.4 },
-                        lag: 2,
-                        description: 'Маркетинг приводит лидов. Рост числа разработчиков = новые проекты.'
+                        params: { a: 0.08, saturation: 2000000 },
+                        lag: 3,
+                        description: 'Маркетинг → лиды → новые проекты → наём. Удвоение бюджета → +5-8% команды через 3 мес. Эффект затухает к 2 млн.'
                     }
                 }
             },
@@ -396,7 +440,63 @@ var DRIVER_TREES = {
             'OTHER_OPEX': {
                 label: 'Прочие операционные',
                 type: 'computed',
-                children: ['TRAINING_COST', 'LEGAL_COST', 'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAVEL_COST', 'RD_EXP', 'OUTSOURCE_COST']
+                children: ['TRAINING_COST', 'LEGAL_COST', 'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAVEL_COST', 'RD_EXP']
+            },
+            'TRAINING_COST': {
+                label: 'Обучение',
+                type: 'driver',
+                nodeId: 'TRAINING_COST',
+                min: 0, max: 500000, step: 5000,
+                unit: '₽/мес'
+            },
+            'LEGAL_COST': {
+                label: 'Юридические',
+                type: 'driver',
+                nodeId: 'LEGAL_COST',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'BANK_FEES': {
+                label: 'Комиссии банка',
+                type: 'driver',
+                nodeId: 'BANK_FEES',
+                min: 0, max: 100000, step: 1000,
+                unit: '₽/мес'
+            },
+            'INSURANCE_COST': {
+                label: 'Страхование',
+                type: 'driver',
+                nodeId: 'INSURANCE_COST',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'UTILITIES': {
+                label: 'Коммунальные',
+                type: 'driver',
+                nodeId: 'UTILITIES',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'OFFICE_EXP': {
+                label: 'Офисные',
+                type: 'driver',
+                nodeId: 'OFFICE_EXP',
+                min: 0, max: 100000, step: 2000,
+                unit: '₽/мес'
+            },
+            'TRAVEL_COST': {
+                label: 'Командировочные',
+                type: 'driver',
+                nodeId: 'TRAVEL_COST',
+                min: 0, max: 300000, step: 5000,
+                unit: '₽/мес'
+            },
+            'RD_EXP': {
+                label: 'R&D',
+                type: 'driver',
+                nodeId: 'RD_EXP',
+                min: 0, max: 1000000, step: 10000,
+                unit: '₽/мес'
             },
             'INTEREST': {
                 label: 'Проценты',
@@ -445,7 +545,15 @@ var DRIVER_TREES = {
                 type: 'driver',
                 nodeId: 'HOURLY_RATE',
                 min: 500, max: 20000, step: 500,
-                unit: '₽/час'
+                unit: '₽/час',
+                affects: ['HOURLY_REVENUE', 'HOURS_SOLD'],
+                nonlinear: {
+                    'HOURS_SOLD': {
+                        type: 'elasticity',
+                        defaultValue: -0.4,
+                        description: 'При росте ставки на 10% оплаченных часов становится на 4% меньше'
+                    }
+                }
             },
             'HOURS_SOLD': {
                 label: 'Оплаченные часы',
@@ -453,19 +561,18 @@ var DRIVER_TREES = {
                 nodeId: 'HOURS_SOLD',
                 min: 0, max: 5000, step: 50,
                 unit: 'часов/мес',
-                affects: ['SPECIALIST_HEADCOUNT'],
+                affects: ['HOURLY_REVENUE', 'SPECIALIST_HEADCOUNT'],
                 nonlinear: {
                     'SPECIALIST_HEADCOUNT': {
-                        type: 'capacity',
-                        formula: 'ceil(HOURS_SOLD / HOURS_PER_SPECIALIST)',
+                        type: 'step',
                         paramNode: 'HOURS_PER_SPECIALIST',
                         defaultValue: 160,
-                        description: '1 специалист = 160 часов/мес. При росте часов автоматически нанимаем.'
+                        description: '1 специалист = 160 ч/мес. При росте часов автоматически нанимаем. До 20% переработки без найма.'
                     }
                 }
             },
             'HOURS_PER_SPECIALIST': {
-                label: 'Часов на специалиста',
+                label: 'Часов на специалиста в месяц',
                 type: 'hidden',
                 nodeId: 'HOURS_PER_SPECIALIST',
                 defaultValue: 160
@@ -482,21 +589,44 @@ var DRIVER_TREES = {
                 type: 'driver',
                 nodeId: 'AVG_CHECK',
                 min: 500, max: 100000, step: 1000,
-                unit: '₽'
+                unit: '₽',
+                affects: ['CHECK_REVENUE', 'CLIENTS'],
+                nonlinear: {
+                    'CLIENTS': {
+                        type: 'elasticity',
+                        defaultValue: -0.6,
+                        description: 'При росте чека на 10% поток клиентов падает на 6%'
+                    }
+                }
             },
             'CLIENTS': {
                 label: 'Количество клиентов',
                 type: 'driver',
                 nodeId: 'CLIENTS',
                 min: 0, max: 5000, step: 10,
-                unit: 'чел/мес'
+                unit: 'чел/мес',
+                affects: ['CHECK_REVENUE', 'SPECIALIST_HEADCOUNT'],
+                nonlinear: {
+                    'SPECIALIST_HEADCOUNT': {
+                        type: 'step',
+                        paramNode: 'CLIENTS_PER_SPECIALIST',
+                        defaultValue: 50,
+                        description: '1 специалист обслуживает 50 клиентов/мес. При росте потока — наём.'
+                    }
+                }
+            },
+            'CLIENTS_PER_SPECIALIST': {
+                label: 'Клиентов на специалиста',
+                type: 'hidden',
+                nodeId: 'CLIENTS_PER_SPECIALIST',
+                defaultValue: 50
             },
             'SPECIALIST_PAYROLL': {
                 label: 'ФОТ специалистов',
                 type: 'computed',
                 children: ['SPECIALIST_HEADCOUNT', 'SPECIALIST_AVG_SALARY'],
                 formula: 'SPECIALIST_HEADCOUNT * SPECIALIST_AVG_SALARY',
-                drivers: ['SPECIALIST_HEADCOUNT', 'SPECIALIST_AVG_SALARY']
+                drivers: ['SPECIALIST_AVG_SALARY']
             },
             'SPECIALIST_HEADCOUNT': {
                 label: 'Специалисты',
@@ -504,12 +634,19 @@ var DRIVER_TREES = {
                 nodeId: 'SPECIALIST_HEADCOUNT',
                 min: 1, max: 200, step: 1,
                 unit: 'чел',
-                affects: ['HOURS_SOLD'],
+                affects: ['SPECIALIST_PAYROLL', 'HOURS_SOLD', 'CLIENTS'],
                 nonlinear: {
                     'HOURS_SOLD': {
                         type: 'capacity',
-                        formula: 'SPECIALIST_HEADCOUNT * HOURS_PER_SPECIALIST',
-                        description: 'Максимальные часы = специалисты × 160 ч/мес'
+                        paramNode: 'HOURS_PER_SPECIALIST',
+                        defaultValue: 160,
+                        description: 'Максимум часов = специалисты × 160 ч/мес'
+                    },
+                    'CLIENTS': {
+                        type: 'capacity',
+                        paramNode: 'CLIENTS_PER_SPECIALIST',
+                        defaultValue: 50,
+                        description: 'Максимум клиентов = специалисты × 50 чел/мес'
                     }
                 }
             },
@@ -563,281 +700,9 @@ var DRIVER_TREES = {
                 nonlinear: {
                     'CLIENTS': {
                         type: 'diminishing_returns',
-                        formula: 'CLIENTS_base + a * MARKETING^b',
-                        params: { a: 0.1, b: 0.5 },
+                        params: { a: 0.1, saturation: 2000000 },
                         lag: 2,
-                        description: 'Удвоение бюджета → рост клиентов в 1.4 раза. Эффект через 2 месяца.'
-                    }
-                }
-            },
-            'IT_EXP': {
-                label: 'IT-расходы',
-                type: 'driver',
-                nodeId: 'IT_EXP',
-                min: 0, max: 1000000, step: 5000,
-                unit: '₽/мес'
-            },
-            'OTHER_OPEX': {
-                label: 'Прочие операционные',
-                type: 'computed',
-                children: ['TRAINING_COST', 'LEGAL_COST', 'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAVEL_COST', 'RD_EXP', 'OUTSOURCE_COST']
-            },
-            'INTEREST': {
-                label: 'Проценты',
-                type: 'driver',
-                nodeId: 'INTEREST',
-                computed: true
-            },
-            'TAX': {
-                label: 'Налог на прибыль',
-                type: 'driver',
-                nodeId: 'TAX',
-                computed: true
-            }
-        }
-    },
-
-    // ============================================================
-    // ТОРГОВЛЯ / РОЗНИЦА
-    // ============================================================
-    retail: {
-        root: 'NET_PROFIT',
-        label: 'Торговля / Розница',
-        nodes: {
-            'NET_PROFIT': {
-                label: 'Чистая прибыль',
-                type: 'result',
-                children: ['GROSS_MARGIN', 'OPEX', 'INTEREST', 'TAX'],
-                signs: { 'GROSS_MARGIN': 1, 'OPEX': -1, 'INTEREST': -1, 'TAX': -1 }
-            },
-            'GROSS_MARGIN': {
-                label: 'Маржинальная прибыль',
-                type: 'computed',
-                children: ['REVENUE', 'COGS'],
-                formula: 'REVENUE - COGS',
-                drivers: []
-            },
-            'REVENUE': {
-                label: 'Выручка',
-                type: 'computed',
-                children: ['VOLUME', 'PRICE'],
-                formula: 'VOLUME * PRICE',
-                drivers: ['VOLUME', 'PRICE']
-            },
-            'VOLUME': {
-                label: 'Объём продаж (ед/мес)',
-                type: 'driver',
-                nodeId: 'VOLUME',
-                min: 0, max: 10000, step: 50,
-                unit: 'ед',
-                affects: ['REVENUE', 'UNIT_PURCHASE', 'WAREHOUSE_STAFF'],
-                nonlinear: {
-                    'UNIT_PURCHASE': {
-                        type: 'scale_discount',
-                        formula: 'UNIT_PURCHASE_base * (1 - max(0, VOLUME - DISCOUNT_THRESHOLD) * DISCOUNT_RATE / 1000)',
-                        paramNodes: { threshold: 'DISCOUNT_THRESHOLD', rate: 'DISCOUNT_RATE' },
-                        defaultThreshold: 500,
-                        defaultRate: 0.5,
-                        description: 'При объёме >500 ед/мес — скидка 0.5% от закупочной цены за каждые 1000 ед.'
-                    },
-                    'WAREHOUSE_STAFF': {
-                        type: 'step',
-                        formula: 'max(WAREHOUSE_STAFF_base, ceil(VOLUME / UNITS_PER_WAREHOUSE_WORKER))',
-                        paramNodes: { unitsPerWorker: 'UNITS_PER_WAREHOUSE_WORKER' },
-                        defaultUnitsPerWorker: 500,
-                        description: '1 сотрудник склада обрабатывает 500 ед/мес. При росте объёма нужны дополнительные люди.'
-                    }
-                }
-            },
-            'UNITS_PER_WAREHOUSE_WORKER': {
-                label: 'Единиц на 1 сотрудника склада',
-                type: 'hidden',
-                nodeId: 'UNITS_PER_WAREHOUSE_WORKER',
-                defaultValue: 500
-            },
-            'DISCOUNT_THRESHOLD': {
-                label: 'Порог объёма для скидки',
-                type: 'hidden',
-                nodeId: 'DISCOUNT_THRESHOLD',
-                defaultValue: 500
-            },
-            'DISCOUNT_RATE': {
-                label: 'Процент скидки за объём',
-                type: 'hidden',
-                nodeId: 'DISCOUNT_RATE',
-                defaultValue: 0.5
-            },
-            'PRICE': {
-                label: 'Цена за единицу',
-                type: 'driver',
-                nodeId: 'PRICE',
-                min: 100, max: 100000, step: 500,
-                unit: '₽',
-                affects: ['REVENUE', 'VOLUME'],
-                nonlinear: {
-                    'VOLUME': {
-                        type: 'elasticity',
-                        formula: 'VOLUME_base * (PRICE / PRICE_base)^elasticity',
-                        elasticityNode: 'PRICE_ELASTICITY',
-                        defaultValue: -1.2,
-                        description: 'В рознице эластичность выше. При росте цены на 10% объём падает на 12%.'
-                    }
-                }
-            },
-            'PRICE_ELASTICITY': {
-                label: 'Эластичность спроса',
-                type: 'hidden',
-                nodeId: 'PRICE_ELASTICITY',
-                defaultValue: -1.2
-            },
-            'COGS': {
-                label: 'Себестоимость продаж',
-                type: 'computed',
-                children: ['PURCHASE_COST', 'WAREHOUSE_PAYROLL', 'LOGISTICS_COST', 'RETURN_COST'],
-                drivers: []
-            },
-            'PURCHASE_COST': {
-                label: 'Закупка товара',
-                type: 'computed',
-                children: ['VOLUME', 'UNIT_PURCHASE'],
-                formula: 'VOLUME * UNIT_PURCHASE',
-                drivers: ['UNIT_PURCHASE']
-            },
-            'UNIT_PURCHASE': {
-                label: 'Закупочная цена',
-                type: 'driver',
-                nodeId: 'UNIT_PURCHASE',
-                min: 50, max: 50000, step: 100,
-                unit: '₽/ед'
-            },
-            'WAREHOUSE_PAYROLL': {
-                label: 'ФОТ склада',
-                type: 'computed',
-                children: ['WAREHOUSE_STAFF', 'WAREHOUSE_AVG_SALARY'],
-                formula: 'WAREHOUSE_STAFF * WAREHOUSE_AVG_SALARY',
-                drivers: ['WAREHOUSE_STAFF', 'WAREHOUSE_AVG_SALARY']
-            },
-            'WAREHOUSE_STAFF': {
-                label: 'Персонал склада',
-                type: 'driver',
-                nodeId: 'WAREHOUSE_STAFF',
-                min: 0, max: 100, step: 1,
-                unit: 'чел'
-            },
-            'WAREHOUSE_AVG_SALARY': {
-                label: 'Средняя ЗП склада',
-                type: 'driver',
-                nodeId: 'WAREHOUSE_AVG_SALARY',
-                min: 20000, max: 150000, step: 5000,
-                unit: '₽/мес'
-            },
-            'LOGISTICS_COST': {
-                label: 'Логистика',
-                type: 'driver',
-                nodeId: 'LOGISTICS_COST',
-                min: 0, max: 2000000, step: 10000,
-                unit: '₽/мес'
-            },
-            'RETURN_COST': {
-                label: 'Потери от возвратов',
-                type: 'computed',
-                children: ['REVENUE', 'RETURN_RATE'],
-                formula: 'REVENUE * RETURN_RATE / 100',
-                drivers: ['RETURN_RATE']
-            },
-            'RETURN_RATE': {
-                label: 'Процент возвратов',
-                type: 'driver',
-                nodeId: 'RETURN_RATE',
-                min: 0, max: 20, step: 0.5,
-                unit: '%'
-            },
-            'OPEX': {
-                label: 'Операционные расходы',
-                type: 'computed',
-                children: ['SALES_PAYROLL', 'ADMIN_PAYROLL', 'RENT', 'MARKETING', 'IT_EXP', 'OTHER_OPEX'],
-                drivers: []
-            },
-            'SALES_PAYROLL': {
-                label: 'ФОТ продавцов',
-                type: 'computed',
-                children: ['SALES_HEADCOUNT', 'SALES_AVG_SALARY'],
-                formula: 'SALES_HEADCOUNT * SALES_AVG_SALARY',
-                drivers: ['SALES_HEADCOUNT', 'SALES_AVG_SALARY']
-            },
-            'SALES_HEADCOUNT': {
-                label: 'Продавцы',
-                type: 'driver',
-                nodeId: 'SALES_HEADCOUNT',
-                min: 1, max: 200, step: 1,
-                unit: 'чел',
-                affects: ['VOLUME'],
-                nonlinear: {
-                    'VOLUME': {
-                        type: 'capacity',
-                        formula: 'SALES_HEADCOUNT * UNITS_PER_SALESPERSON',
-                        paramNodes: { unitsPerPerson: 'UNITS_PER_SALESPERSON' },
-                        defaultUnitsPerPerson: 100,
-                        description: '1 продавец обслуживает 100 ед/мес. Больше продавцов = больше потенциал продаж.'
-                    }
-                }
-            },
-            'UNITS_PER_SALESPERSON': {
-                label: 'Единиц на 1 продавца',
-                type: 'hidden',
-                nodeId: 'UNITS_PER_SALESPERSON',
-                defaultValue: 100
-            },
-            'SALES_AVG_SALARY': {
-                label: 'Средняя ЗП продавца',
-                type: 'driver',
-                nodeId: 'SALES_AVG_SALARY',
-                min: 25000, max: 200000, step: 5000,
-                unit: '₽/мес'
-            },
-            'ADMIN_PAYROLL': {
-                label: 'ФОТ АУП',
-                type: 'computed',
-                children: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY'],
-                formula: 'ADMIN_HEADCOUNT * ADMIN_AVG_SALARY',
-                drivers: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY']
-            },
-            'ADMIN_HEADCOUNT': {
-                label: 'Административный персонал',
-                type: 'driver',
-                nodeId: 'ADMIN_HEADCOUNT',
-                min: 0, max: 30, step: 1,
-                unit: 'чел'
-            },
-            'ADMIN_AVG_SALARY': {
-                label: 'Средняя ЗП АУП',
-                type: 'driver',
-                nodeId: 'ADMIN_AVG_SALARY',
-                min: 30000, max: 300000, step: 10000,
-                unit: '₽/мес'
-            },
-            'RENT': {
-                label: 'Аренда',
-                type: 'driver',
-                nodeId: 'RENT',
-                min: 0, max: 3000000, step: 20000,
-                unit: '₽/мес',
-                note: 'Торговая площадь дороже офисной'
-            },
-            'MARKETING': {
-                label: 'Маркетинг',
-                type: 'driver',
-                nodeId: 'MARKETING',
-                min: 0, max: 5000000, step: 10000,
-                unit: '₽/мес',
-                affects: ['VOLUME'],
-                nonlinear: {
-                    'VOLUME': {
-                        type: 'diminishing_returns',
-                        formula: 'VOLUME_base + a * MARKETING^b',
-                        params: { a: 0.15, b: 0.45 },
-                        lag: 1,
-                        description: 'В рознице эффект маркетинга быстрее. Удвоение бюджета → +35% продаж через 1 месяц.'
+                        description: 'Удвоение бюджета → +7-10% клиентов через 2 мес. Эффект затухает к 2 млн.'
                     }
                 }
             },
@@ -929,5 +794,340 @@ var DRIVER_TREES = {
                 computed: true
             }
         }
-    }
+    },
+
+    // ============================================================
+    // ТОРГОВЛЯ / РОЗНИЦА
+    // ============================================================
+    retail: {
+        root: 'NET_PROFIT',
+        label: 'Торговля / Розница',
+        nodes: {
+            'NET_PROFIT': {
+                label: 'Чистая прибыль',
+                type: 'result',
+                children: ['GROSS_MARGIN', 'OPEX', 'INTEREST', 'TAX'],
+                signs: { 'GROSS_MARGIN': 1, 'OPEX': -1, 'INTEREST': -1, 'TAX': -1 }
+            },
+            'GROSS_MARGIN': {
+                label: 'Маржинальная прибыль',
+                type: 'computed',
+                children: ['REVENUE', 'COGS'],
+                formula: 'REVENUE - COGS'
+            },
+            'REVENUE': {
+                label: 'Выручка',
+                type: 'computed',
+                children: ['VOLUME', 'PRICE'],
+                formula: 'VOLUME * PRICE',
+                drivers: ['VOLUME', 'PRICE']
+            },
+            'VOLUME': {
+                label: 'Объём продаж (ед/мес)',
+                type: 'driver',
+                nodeId: 'VOLUME',
+                min: 0, max: 10000, step: 50,
+                unit: 'ед',
+                affects: ['REVENUE', 'UNIT_PURCHASE', 'WAREHOUSE_STAFF', 'SALES_HEADCOUNT', 'LOGISTICS_COST', 'RETURN_COST'],
+                nonlinear: {
+                    'UNIT_PURCHASE': {
+                        type: 'scale_discount',
+                        description: 'Скидка поставщика: >100 ед = 3%, >250 = 7%, >500 = 12%, >1000 = 18%, >2500 = 25%'
+                    },
+                    'WAREHOUSE_STAFF': {
+                        type: 'step',
+                        paramNode: 'UNITS_PER_WAREHOUSE_WORKER',
+                        defaultValue: 500,
+                        description: '1 сотрудник склада = 500 ед/мес обработки'
+                    },
+                    'SALES_HEADCOUNT': {
+                        type: 'step',
+                        paramNode: 'UNITS_PER_SALESPERSON',
+                        defaultValue: 150,
+                        description: '1 продавец = 150 ед/мес. При нехватке — падение объёма.'
+                    },
+                    'LOGISTICS_COST': {
+                        type: 'batch_step',
+                        params: { base: 15000, batchSize: 100, batchCost: 12000 },
+                        description: '15 000 содержание + 12 000 за каждые 100 ед доставки'
+                    },
+                    'RETURN_COST': {
+                        type: 'percent_of_revenue',
+                        params: { baseRate: 2, fatigueRate: 0.01 },
+                        description: 'Возвраты: 2% база + 0.01% за каждый % превышения нормы продавца'
+                    }
+                }
+            },
+            'UNITS_PER_WAREHOUSE_WORKER': {
+                label: 'Единиц на сотрудника склада',
+                type: 'hidden',
+                nodeId: 'UNITS_PER_WAREHOUSE_WORKER',
+                defaultValue: 500
+            },
+            'UNITS_PER_SALESPERSON': {
+                label: 'Единиц на продавца',
+                type: 'hidden',
+                nodeId: 'UNITS_PER_SALESPERSON',
+                defaultValue: 150
+            },
+            'PRICE': {
+                label: 'Цена за единицу',
+                type: 'driver',
+                nodeId: 'PRICE',
+                min: 100, max: 100000, step: 500,
+                unit: '₽',
+                affects: ['REVENUE', 'VOLUME'],
+                nonlinear: {
+                    'VOLUME': {
+                        type: 'elasticity',
+                        elasticityNode: 'PRICE_ELASTICITY',
+                        defaultValue: -1.2,
+                        description: 'Розница: при росте цены на 10% объём падает на 12% (высокая конкуренция)'
+                    }
+                }
+            },
+            'PRICE_ELASTICITY': {
+                label: 'Эластичность спроса',
+                type: 'hidden',
+                nodeId: 'PRICE_ELASTICITY',
+                defaultValue: -1.2
+            },
+            'COGS': {
+                label: 'Себестоимость продаж',
+                type: 'computed',
+                children: ['PURCHASE_COST', 'WAREHOUSE_PAYROLL', 'LOGISTICS_COST', 'RETURN_COST']
+            },
+            'PURCHASE_COST': {
+                label: 'Закупка товара',
+                type: 'computed',
+                children: ['VOLUME', 'UNIT_PURCHASE'],
+                formula: 'VOLUME * UNIT_PURCHASE',
+                drivers: ['UNIT_PURCHASE']
+            },
+            'UNIT_PURCHASE': {
+                label: 'Закупочная цена',
+                type: 'driver',
+                nodeId: 'UNIT_PURCHASE',
+                min: 50, max: 50000, step: 100,
+                unit: '₽/ед'
+            },
+            'WAREHOUSE_PAYROLL': {
+                label: 'ФОТ склада',
+                type: 'computed',
+                children: ['WAREHOUSE_STAFF', 'WAREHOUSE_AVG_SALARY'],
+                formula: 'WAREHOUSE_STAFF * WAREHOUSE_AVG_SALARY',
+                drivers: ['WAREHOUSE_AVG_SALARY']
+            },
+            'WAREHOUSE_STAFF': {
+                label: 'Персонал склада',
+                type: 'driver',
+                nodeId: 'WAREHOUSE_STAFF',
+                min: 1, max: 100, step: 1,
+                unit: 'чел',
+                affects: ['WAREHOUSE_PAYROLL', 'VOLUME'],
+                nonlinear: {
+                    'VOLUME': {
+                        type: 'capacity',
+                        paramNode: 'UNITS_PER_WAREHOUSE_WORKER',
+                        defaultValue: 500,
+                        description: 'Максимальный объём = склад × 500 ед/мес'
+                    }
+                }
+            },
+            'WAREHOUSE_AVG_SALARY': {
+                label: 'Средняя ЗП склада',
+                type: 'driver',
+                nodeId: 'WAREHOUSE_AVG_SALARY',
+                min: 20000, max: 150000, step: 5000,
+                unit: '₽/мес'
+            },
+            'LOGISTICS_COST': {
+                label: 'Логистика',
+                type: 'driver',
+                nodeId: 'LOGISTICS_COST',
+                min: 0, max: 2000000, step: 10000,
+                unit: '₽/мес'
+            },
+            'RETURN_COST': {
+                label: 'Потери от возвратов',
+                type: 'computed',
+                children: ['REVENUE', 'RETURN_RATE'],
+                formula: 'REVENUE * RETURN_RATE / 100',
+                drivers: ['RETURN_RATE']
+            },
+            'RETURN_RATE': {
+                label: 'Процент возвратов',
+                type: 'driver',
+                nodeId: 'RETURN_RATE',
+                min: 0, max: 20, step: 0.5,
+                unit: '%'
+            },
+            'OPEX': {
+                label: 'Операционные расходы',
+                type: 'computed',
+                children: ['SALES_PAYROLL', 'ADMIN_PAYROLL', 'RENT', 'MARKETING', 'IT_EXP', 'OTHER_OPEX']
+            },
+            'SALES_PAYROLL': {
+                label: 'ФОТ продавцов',
+                type: 'computed',
+                children: ['SALES_HEADCOUNT', 'SALES_AVG_SALARY'],
+                formula: 'SALES_HEADCOUNT * SALES_AVG_SALARY',
+                drivers: ['SALES_HEADCOUNT', 'SALES_AVG_SALARY']
+            },
+            'SALES_HEADCOUNT': {
+                label: 'Продавцы',
+                type: 'driver',
+                nodeId: 'SALES_HEADCOUNT',
+                min: 1, max: 200, step: 1,
+                unit: 'чел',
+                affects: ['SALES_PAYROLL', 'VOLUME'],
+                nonlinear: {
+                    'VOLUME': {
+                        type: 'capacity',
+                        paramNode: 'UNITS_PER_SALESPERSON',
+                        defaultValue: 150,
+                        description: 'Максимальный объём = продавцы × 150 ед/мес'
+                    }
+                }
+            },
+            'SALES_AVG_SALARY': {
+                label: 'Средняя ЗП продавца',
+                type: 'driver',
+                nodeId: 'SALES_AVG_SALARY',
+                min: 25000, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'ADMIN_PAYROLL': {
+                label: 'ФОТ АУП',
+                type: 'computed',
+                children: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY'],
+                formula: 'ADMIN_HEADCOUNT * ADMIN_AVG_SALARY',
+                drivers: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY']
+            },
+            'ADMIN_HEADCOUNT': {
+                label: 'Административный персонал',
+                type: 'driver',
+                nodeId: 'ADMIN_HEADCOUNT',
+                min: 0, max: 30, step: 1,
+                unit: 'чел'
+            },
+            'ADMIN_AVG_SALARY': {
+                label: 'Средняя ЗП АУП',
+                type: 'driver',
+                nodeId: 'ADMIN_AVG_SALARY',
+                min: 30000, max: 300000, step: 10000,
+                unit: '₽/мес'
+            },
+            'RENT': {
+                label: 'Аренда',
+                type: 'driver',
+                nodeId: 'RENT',
+                min: 0, max: 3000000, step: 20000,
+                unit: '₽/мес'
+            },
+            'MARKETING': {
+                label: 'Маркетинг',
+                type: 'driver',
+                nodeId: 'MARKETING',
+                min: 0, max: 5000000, step: 10000,
+                unit: '₽/мес',
+                affects: ['VOLUME'],
+                nonlinear: {
+                    'VOLUME': {
+                        type: 'diminishing_returns',
+                        params: { a: 0.12, saturation: 3000000 },
+                        lag: 1,
+                        description: 'Розница: эффект быстрее. Удвоение бюджета → +8-12% объёма через 1 мес.'
+                    }
+                }
+            },
+            'IT_EXP': {
+                label: 'IT-расходы',
+                type: 'driver',
+                nodeId: 'IT_EXP',
+                min: 0, max: 1000000, step: 5000,
+                unit: '₽/мес'
+            },
+            'OTHER_OPEX': {
+                label: 'Прочие операционные',
+                type: 'computed',
+                children: ['TRAINING_COST', 'LEGAL_COST', 'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAVEL_COST', 'RD_EXP', 'OUTSOURCE_COST']
+            },
+            'TRAINING_COST': {
+                label: 'Обучение',
+                type: 'driver',
+                nodeId: 'TRAINING_COST',
+                min: 0, max: 500000, step: 5000,
+                unit: '₽/мес'
+            },
+            'LEGAL_COST': {
+                label: 'Юридические',
+                type: 'driver',
+                nodeId: 'LEGAL_COST',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'BANK_FEES': {
+                label: 'Комиссии банка',
+                type: 'driver',
+                nodeId: 'BANK_FEES',
+                min: 0, max: 100000, step: 1000,
+                unit: '₽/мес'
+            },
+            'INSURANCE_COST': {
+                label: 'Страхование',
+                type: 'driver',
+                nodeId: 'INSURANCE_COST',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'UTILITIES': {
+                label: 'Коммунальные',
+                type: 'driver',
+                nodeId: 'UTILITIES',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'OFFICE_EXP': {
+                label: 'Офисные',
+                type: 'driver',
+                nodeId: 'OFFICE_EXP',
+                min: 0, max: 100000, step: 2000,
+                unit: '₽/мес'
+            },
+            'TRAVEL_COST': {
+                label: 'Командировочные',
+                type: 'driver',
+                nodeId: 'TRAVEL_COST',
+                min: 0, max: 300000, step: 5000,
+                unit: '₽/мес'
+            },
+            'RD_EXP': {
+                label: 'R&D',
+                type: 'driver',
+                nodeId: 'RD_EXP',
+                min: 0, max: 1000000, step: 10000,
+                unit: '₽/мес'
+            },
+            'OUTSOURCE_COST': {
+                label: 'Аутсорсинг',
+                type: 'driver',
+                nodeId: 'OUTSOURCE_COST',
+                min: 0, max: 1000000, step: 10000,
+                unit: '₽/мес'
+            },
+            'INTEREST': {
+                label: 'Проценты',
+                type: 'driver',
+                nodeId: 'INTEREST',
+                computed: true
+            },
+            'TAX': {
+                label: 'Налог на прибыль',
+                type: 'driver',
+                nodeId: 'TAX',
+                computed: true
+            }
+        }
+    },
 };
