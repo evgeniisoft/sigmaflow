@@ -2106,14 +2106,18 @@
             var g = svg.append('g').attr('transform', 'translate(80,40)');
 
             // Строим иерархию для D3 tree layout
+            var renderedNodes = {};
             function buildHierarchy(node) {
+                if (renderedNodes[node.id]) return null; // узел уже отрисован выше
+                renderedNodes[node.id] = true;
+
                 var children = [];
                 if (node.children && node.children.length > 0) {
-                    children = node.children.map(function (child) {
-                        return buildHierarchy(child);
+                    node.children.forEach(function (child) {
+                        var childHierarchy = buildHierarchy(child);
+                        if (childHierarchy) children.push(childHierarchy);
                     });
                 }
-                // Даже без детей — показываем узел (лист)
                 return {
                     id: node.id,
                     label: node.label,
@@ -2139,7 +2143,8 @@
                 .attr('stroke-width', 1.5);
 
             // Узлы
-            var nodeG = g.selectAll('g').data(root.descendants()).join('g')
+            var nodeG = g.selectAll('g.node').data(root.descendants()).join('g')
+                .attr('class', 'node')
                 .attr('transform', function (d) { return 'translate(' + d.y + ',' + d.x + ')'; })
                 .attr('cursor', 'pointer')
                 .on('click', function (event, d) { showDriverDetail(d.data); });
@@ -2195,10 +2200,19 @@
 
             var g = svg.append('g').attr('transform', 'translate(80,40)');
 
+            // Строим иерархию для D3 tree layout
+            var renderedNodes = {};
             function buildHierarchy(node) {
-                var children = (node.children || []).map(function (child) {
-                    return buildHierarchy(child);
-                });
+                if (renderedNodes[node.id]) return null;
+                renderedNodes[node.id] = true;
+
+                var children = [];
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach(function (child) {
+                        var childHierarchy = buildHierarchy(child);
+                        if (childHierarchy) children.push(childHierarchy);
+                    });
+                }
                 return {
                     id: node.id,
                     label: node.label,
@@ -2224,7 +2238,9 @@
 
             var nodeG = g.selectAll('g.node').data(root.descendants()).join('g')
                 .attr('class', 'node')
-                .attr('transform', function (d) { return 'translate(' + d.y + ',' + d.x + ')'; });
+                .attr('transform', function (d) { return 'translate(' + d.y + ',' + d.x + ')'; })
+                .attr('cursor', 'pointer')
+                .on('click', function (event, d) { showDriverDetail(d.data); });
 
             nodeG.append('rect')
                 .attr('x', -90).attr('y', -22)
