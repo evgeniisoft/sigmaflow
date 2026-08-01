@@ -410,6 +410,44 @@
                         <div style="font-size:11px;color:var(--text-hint);margin-top:12px;">СЕЗОННОСТЬ (коэффициенты по
                             месяцам)</div>
                         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;" id="season-grid"></div>
+                        <div style="font-size:11px;color:var(--text-hint);margin-top:12px;">ЗАРПЛАТЫ</div>
+                        <div class="form-group">
+                            <label>РЕЖИМ ВВОДА ЗАРПЛАТ</label>
+                            <select id="company-salary-mode" style="width:100%;">
+                                <option value="gross">Начислено (gross, до вычета НДФЛ)</option>
+                                <option value="net">На руки (net, после вычета НДФЛ)</option>
+                            </select>
+                        </div>
+
+                        <div style="font-size:11px;color:var(--text-hint);margin-top:12px;">НДС ПО РАСХОДАМ</div>
+                        <div class="form-group">
+                            <label>МАТЕРИАЛЫ С НДС</label>
+                            <select id="company-materials-nds" style="width:100%;">
+                                <option value="true">Да</option>
+                                <option value="false">Нет</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>АРЕНДА С НДС</label>
+                            <select id="company-rent-nds" style="width:100%;">
+                                <option value="true">Да</option>
+                                <option value="false">Нет</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>ЛОГИСТИКА С НДС</label>
+                            <select id="company-logistics-nds" style="width:100%;">
+                                <option value="true">Да</option>
+                                <option value="false">Нет</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>IT-РАСХОДЫ С НДС</label>
+                            <select id="company-it-nds" style="width:100%;">
+                                <option value="true">Да</option>
+                                <option value="false">Нет</option>
+                            </select>
+                        </div>
                         <!-- Секция: Основные средства -->
                         <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
                             <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
@@ -829,6 +867,11 @@
                     if (graph.company.fa_da_rate !== undefined) document.getElementById('fa-da-rate').value = (graph.company.fa_da_rate * 100).toFixed(1);
                     if (graph.company.fa_remaining_months !== undefined) document.getElementById('fa-remaining-months').value = graph.company.fa_remaining_months;
                     renderSeasonGrid();
+                    if (graph.company.salary_mode) document.getElementById('company-salary-mode').value = graph.company.salary_mode;
+                    if (graph.company.materials_with_nds !== undefined) document.getElementById('company-materials-nds').value = graph.company.materials_with_nds ? 'true' : 'false';
+                    if (graph.company.rent_with_nds !== undefined) document.getElementById('company-rent-nds').value = graph.company.rent_with_nds ? 'true' : 'false';
+                    if (graph.company.logistics_with_nds !== undefined) document.getElementById('company-logistics-nds').value = graph.company.logistics_with_nds ? 'true' : 'false';
+                    if (graph.company.it_with_nds !== undefined) document.getElementById('company-it-nds').value = graph.company.it_with_nds ? 'true' : 'false';
                 }
 
             } else {
@@ -1029,6 +1072,11 @@
 
             renderAll();
             setTimeout(function () { renderSeasonGrid(); }, 300);
+            if (graph.company.salary_mode) document.getElementById('company-salary-mode').value = graph.company.salary_mode;
+            if (graph.company.materials_with_nds !== undefined) document.getElementById('company-materials-nds').value = graph.company.materials_with_nds ? 'true' : 'false';
+            if (graph.company.rent_with_nds !== undefined) document.getElementById('company-rent-nds').value = graph.company.rent_with_nds ? 'true' : 'false';
+            if (graph.company.logistics_with_nds !== undefined) document.getElementById('company-logistics-nds').value = graph.company.logistics_with_nds ? 'true' : 'false';
+            if (graph.company.it_with_nds !== undefined) document.getElementById('company-it-nds').value = graph.company.it_with_nds ? 'true' : 'false';
             window.renderInvestments();
             window.renderCredits();
             renderScenarios();
@@ -2940,6 +2988,11 @@
                 graph.company.profit_tax_rate = parseFloat(document.getElementById('company-profit-tax-rate').value);
                 graph.company.insurance_rate = parseFloat(document.getElementById('company-insurance-rate').value);
                 graph.company.receivables_days = parseInt(document.getElementById('company-receivables-days').value) || 30;
+                graph.company.salary_mode = document.getElementById('company-salary-mode').value;
+                graph.company.materials_with_nds = document.getElementById('company-materials-nds').value === 'true';
+                graph.company.rent_with_nds = document.getElementById('company-rent-nds').value === 'true';
+                graph.company.logistics_with_nds = document.getElementById('company-logistics-nds').value === 'true';
+                graph.company.it_with_nds = document.getElementById('company-it-nds').value === 'true';
                 graph.company.fa_start_value = parseFloat(document.getElementById('fa-start-value').value) || 0;
                 graph.company.fa_start_da = parseFloat(document.getElementById('fa-start-da').value) || 0;
                 graph.company.fa_da_rate = (parseFloat(document.getElementById('fa-da-rate').value) || 10) / 100;
@@ -3325,6 +3378,11 @@
                         if (graph.company.prepay_days !== undefined) document.getElementById('company-prepay-days').value = graph.company.prepay_days;
                         if (graph.company.prepay_share !== undefined) document.getElementById('company-prepay-share').value = graph.company.prepay_share;
                         renderSeasonGrid();
+                        if (graph.company.salary_mode) document.getElementById('company-salary-mode').value = graph.company.salary_mode;
+                        if (graph.company.materials_with_nds !== undefined) document.getElementById('company-materials-nds').value = graph.company.materials_with_nds ? 'true' : 'false';
+                        if (graph.company.rent_with_nds !== undefined) document.getElementById('company-rent-nds').value = graph.company.rent_with_nds ? 'true' : 'false';
+                        if (graph.company.logistics_with_nds !== undefined) document.getElementById('company-logistics-nds').value = graph.company.logistics_with_nds ? 'true' : 'false';
+                        if (graph.company.it_with_nds !== undefined) document.getElementById('company-it-nds').value = graph.company.it_with_nds ? 'true' : 'false';
                     }
 
 
