@@ -2341,94 +2341,56 @@
             var modelNode = graph.nodes[driverConfig.nodeId];
             if (!modelNode) return;
 
-            // Сохраняем старое значение
-            var oldValue = modelNode.value;
-
             // Применяем новое значение в модель
             modelNode.value = newValue;
 
             // Применяем нелинейности
             if (driverTreeData && driverTreeData._applyNonlinear) {
                 var nlChanges = driverTreeData._applyNonlinear(driverId, newValue);
-                // Сначала собираем все изменения, потом применяем
-                var nodesToUpdate = {};
                 Object.keys(nlChanges).forEach(function (targetId) {
                     var change = nlChanges[targetId];
                     if (graph.nodes[change.nodeId]) {
-                        nodesToUpdate[change.nodeId] = change.newValue;
+                        graph.nodes[change.nodeId].value = change.newValue;
                     }
                 });
-                
-                // Применяем все изменения разом
-                Object.keys(nodesToUpdate).forEach(function (nodeId) {
-                    graph.nodes[nodeId].value = nodesToUpdate[nodeId];
-                });
-                // Защищаем UNIT_MATERIAL от перезаписи формулами
-                if (nodesToUpdate['UNIT_MATERIAL'] !== undefined) {
-                    graph.nodes['UNIT_MATERIAL']._protected = true;
-                }
             }
 
-            // После применения нелинейностей — пересчитать формулы
-            if (graph.nodes['MATERIAL_COST'] && graph.nodes['MATERIAL_COST'].formula) {
-                graph.nodes['MATERIAL_COST'].value = graph._evalFormula(graph.nodes['MATERIAL_COST'].formula);
-            }
-            if (graph.nodes['ADMIN_PAYROLL'] && graph.nodes['ADMIN_PAYROLL'].formula) {
-                graph.nodes['ADMIN_PAYROLL'].value = graph._evalFormula(graph.nodes['ADMIN_PAYROLL'].formula);
-            }
             // Пересчитываем модель
-            // Пересчитываем ВСЕ формулы после изменения значений узлов
-            // Пересчитываем ВСЕ формулы после изменения значений узлов
-            Object.keys(graph.nodes).forEach(function (key) {
-                var n = graph.nodes[key];
-                if (n._protected) return; // не пересчитываем защищённые узлы
-                if (n.formula && n.enabled !== false) {
-                    try {
-                        n.value = graph._evalFormula(n.formula);
-                    } catch (e) {
-                        n.value = 0;
-                    }
-                }
-            });
-            // Снимаем защиту
-            Object.keys(nodesToUpdate).forEach(function (nodeId) {
-                if (graph.nodes[nodeId]) graph.nodes[nodeId]._protected = false;
-            });
             graph.compute();
 
-            graph.compute();
-
-            // Принудительно применяем скидку ПОСЛЕ compute — чтобы не перезаписалось
-            if (driverId === 'VOLUME') {
+            // Принудительно применяем скидку ПОСЛЕ compute
+            if (driverId === 'VOLUME' && driverTreeSnapshot) {
                 var materialNodeId = graph.industry === 'retail' ? 'UNIT_PURCHASE' : 'UNIT_MATERIAL';
                 var materialNode = graph.nodes[materialNodeId];
-                if (materialNode && driverTreeData.snapshots) {
-                    var basePrice = driverTreeData.snapshots[materialNodeId] || materialNode.value;
-                    var driverBase = driverTreeData.snapshots['VOLUME'] || 100;
-                    if (driverBase > 0) {
-                        var growthRatio = newValue / driverBase;
-                        var discount = 0;
-                        if (growthRatio >= 10) discount = 0.15;
-                        else if (growthRatio >= 5) discount = 0.12;
-                        else if (growthRatio >= 3) discount = 0.08;
-                        else if (growthRatio >= 2) discount = 0.05;
-                        else if (growthRatio >= 1.5) discount = 0.03;
-                        materialNode.value = Math.round(basePrice * (1 - discount));
+                if (materialNode) {
+                    var basePrice = driverTreeSnapshot[materialNodeId];
+                    if (!basePrice || basePrice === 0) basePrice = materialNode.value;
+                    var baseVolume = driverTreeSnapshot['VOLUME'];
+                    if (!baseVolume || baseVolume === 0) baseVolume = 100;
+                    var growthRatio = newValue / baseVolume;
+                    var discount = 0;
+                    if (growthRatio >= 10) discount = 0.15;
+                    else if (growthRatio >= 5) discount = 0.12;
+                    else if (growthRatio >= 3) discount = 0.08;
+                    else if (growthRatio >= 2) discount = 0.05;
+                    else if (growthRatio >= 1.5) discount = 0.03;
+                    materialNode.value = Math.round(basePrice * (1 - discount));
+
+                    // Пересчитываем MATERIAL_COST
+                    if (graph.nodes['MATERIAL_COST'] && graph.nodes['MATERIAL_COST'].formula) {
+                        graph.nodes['MATERIAL_COST'].value = graph._evalFormula(graph.nodes['MATERIAL_COST'].formula);
                     }
-                }
-                // Пересчитываем MATERIAL_COST с новой ценой
-                if (graph.nodes['MATERIAL_COST'] && graph.nodes['MATERIAL_COST'].formula) {
-                    graph.nodes['MATERIAL_COST'].value = graph._evalFormula(graph.nodes['MATERIAL_COST'].formula);
                 }
             }
 
-            // Перестраиваем только дерево
+            // Перестраиваем дерево (НЕ обновляет snapshots — используем driverTreeSnapshot)
             driverTreeData = graph.computeDriverTree(treeConfig);
+            // Восстанавливаем оригинальные snapshots
+            driverTreeData.snapshots = driverTreeSnapshot;
             renderDriverTreeGraphOnly();
 
-            // Обновляем только значение под ползунком
             var valEl = document.getElementById('driver-slider-value');
-            if (valEl) valEl.textContent = formatValue(newValue) + ' ' + (findNodeInTree(driverTreeData.tree, driverId)?.unit || '');
+            if (valEl) valEl.textContent = formatValue(newValue);
 
             saveCurrentModel();
             renderDashboard();
