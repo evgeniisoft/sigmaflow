@@ -65,7 +65,7 @@ var TEMPLATE_UNIVERSAL = [
     '    type: INTERMEDIATE',
     '    label: "Амортизация"',
     '    source: computed',
-    '    formula: "(FIXED_ASSETS + INTANGIBLE_ASSETS) * DA_RATE"',
+    '    formula: "(FIXED_ASSETS + INTANGIBLE_ASSETS) * DA_RATE / 12"',
     '',
     '  - id: INTEREST',
     '    type: INTERMEDIATE',
