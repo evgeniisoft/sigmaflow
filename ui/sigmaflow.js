@@ -1352,7 +1352,6 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
             }
         });
 
-        // Применяем каждую нелинейность
         Object.keys(driverConfig.nonlinear).forEach(function (targetId) {
             var nl = driverConfig.nonlinear[targetId];
             var targetConfig = tree.nodes[targetId];
@@ -1360,64 +1359,60 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
 
             var newTargetValue = baseValues[targetId];
 
+            // === STEP (ступенчатая функция) ===
             if (nl.type === 'step') {
-                // Ступенчатая: ceil(driver / param)
-                var paramValue = nl.defaultValue;
+                // Параметр — норма на единицу
+                var norm = nl.defaultValue || 15;
                 if (nl.paramNode && self.nodes[nl.paramNode]) {
-                    paramValue = self.nodes[nl.paramNode].value;
+                    norm = self.nodes[nl.paramNode].value;
                 }
-                newTargetValue = Math.ceil(newValue / paramValue);
-                if (nl.formula) {
-                    var expr = nl.formula
-                        .replace(/\bPROD_CAPACITY_PER_WORKER\b/g, paramValue)
-                        .replace(/\bVOLUME\b/g, newValue)
-                        .replace(/\bHOURS_SOLD\b/g, newValue)
-                        .replace(/\bHOURS_PER_SPECIALIST\b/g, paramValue)
-                        .replace(/\bUNITS_PER_WAREHOUSE_WORKER\b/g, paramValue)
-                        .replace(/\bWAREHOUSE_STAFF_base\b/g, baseValues[targetId]);
-                    try {
-                        newTargetValue = eval(expr);
-                    } catch (e) { }
+                newTargetValue = Math.max(1, Math.ceil(newValue / norm));
+
+                // Особый случай: PROD_HEADCOUNT не падает ниже min
+                if (targetId === 'PROD_HEADCOUNT') {
+                    var minProdHeadcount = 2;
+                    newTargetValue = Math.max(minProdHeadcount, Math.ceil(newValue / norm));
                 }
-            } else if (nl.type === 'capacity') {
-                // Производительность: driver × param
-                var paramValue = nl.defaultValue;
+            }
+
+            // === CAPACITY (производительность) ===
+            else if (nl.type === 'capacity') {
+                var norm = nl.defaultValue || 15;
                 if (nl.paramNode && self.nodes[nl.paramNode]) {
-                    paramValue = self.nodes[nl.paramNode].value;
+                    norm = self.nodes[nl.paramNode].value;
                 }
-                if (nl.formula) {
-                    var expr = nl.formula
-                        .replace(/\bPROD_HEADCOUNT\b/g, newValue)
-                        .replace(/\bPROD_CAPACITY_PER_WORKER\b/g, paramValue)
-                        .replace(/\bSPECIALIST_HEADCOUNT\b/g, newValue)
-                        .replace(/\bHOURS_PER_SPECIALIST\b/g, paramValue)
-                        .replace(/\bSALES_HEADCOUNT\b/g, newValue)
-                        .replace(/\bUNITS_PER_SALESPERSON\b/g, paramValue);
-                    try { newTargetValue = eval(expr); } catch (e) { }
-                } else {
-                    newTargetValue = newValue * paramValue;
-                }
-            } else if (nl.type === 'elasticity') {
-                // Эластичность: base × (new/base)^elasticity
+                newTargetValue = newValue * norm;
+            }
+
+            // === ELASTICITY (эластичность спроса) ===
+            else if (nl.type === 'elasticity') {
                 var elasticity = nl.defaultValue || -0.8;
                 if (nl.elasticityNode && self.nodes[nl.elasticityNode]) {
                     elasticity = self.nodes[nl.elasticityNode].value;
                 }
                 var driverBase = snapshots[driverConfig.nodeId] || newValue;
-                if (driverBase !== 0) {
+                if (driverBase !== 0 && newValue !== 0) {
                     newTargetValue = baseValues[targetId] * Math.pow(newValue / driverBase, elasticity);
                 }
-            } else if (nl.type === 'diminishing_returns') {
-                // Убывающая отдача: base + a × driver^b
-                var a = nl.params ? nl.params.a : 0.5;
-                var b = nl.params ? nl.params.b : 0.5;
-                var driverBase = snapshots[driverConfig.nodeId] || 0;
-                var baseEffect = Math.pow(Math.max(0, driverBase), b) * a;
-                var newEffect = Math.pow(Math.max(0, newValue), b) * a;
-                newTargetValue = baseValues[targetId] - baseEffect + newEffect;
-                if (newTargetValue < 0) newTargetValue = 0;
-            } else if (nl.type === 'overtime') {
-                // Сверхурочные: base × (1 + max(0, driver - threshold) × rate / 100)
+            }
+
+            // === DIMINISHING_RETURNS (убывающая отдача маркетинга) ===
+            else if (nl.type === 'diminishing_returns') {
+                var a = nl.params ? nl.params.a : 0.15;
+                var saturation = nl.params ? nl.params.saturation : 500000;
+                var driverBase = snapshots[driverConfig.nodeId] || 1;
+
+                // Логарифмическая модель с насыщением
+                var ratio = newValue / Math.max(1, driverBase);
+                var growthFactor = 1 + a * Math.log(ratio) / Math.log(2);
+                var saturationFactor = 1 - (newValue / (newValue + saturation));
+                growthFactor = 1 + (growthFactor - 1) * saturationFactor;
+
+                newTargetValue = Math.max(0, baseValues[targetId] * growthFactor);
+            }
+
+            // === OVERTIME (сверхурочные) ===
+            else if (nl.type === 'overtime') {
                 var threshold = nl.defaultThreshold || 85;
                 var rate = nl.defaultRate || 0.5;
                 if (nl.paramNodes) {
@@ -1429,8 +1424,10 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
                     }
                 }
                 newTargetValue = baseValues[targetId] * (1 + Math.max(0, newValue - threshold) * rate / 100);
-            } else if (nl.type === 'ramp_up') {
-                // Вход в должность: утилизация временно падает
+            }
+
+            // === RAMP_UP (вход в должность) ===
+            else if (nl.type === 'ramp_up') {
                 var driverBase = snapshots[driverConfig.nodeId] || 0;
                 var newDevs = newValue - driverBase;
                 if (newDevs > 0) {
@@ -1438,21 +1435,104 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
                     var lossPct = (newDevs / Math.max(1, newValue)) * rampUpLoss;
                     newTargetValue = baseValues[targetId] * (1 - lossPct);
                 }
-            } else if (nl.type === 'scale_discount') {
-                // Скидка за объём
-                var threshold = nl.defaultThreshold || 500;
-                var rate = nl.defaultRate || 0.5;
-                if (nl.paramNodes) {
-                    if (nl.paramNodes.threshold && self.nodes[nl.paramNodes.threshold]) {
-                        threshold = self.nodes[nl.paramNodes.threshold].value;
-                    }
-                    if (nl.paramNodes.rate && self.nodes[nl.paramNodes.rate]) {
-                        rate = self.nodes[nl.paramNodes.rate].value;
-                    }
+            }
+
+            // === SCALE_DISCOUNT (скидка за объём — СТУПЕНЧАТАЯ) ===
+            else if (nl.type === 'scale_discount') {
+                var unitPrice = baseValues[targetId];
+                var discount = 0;
+
+                if (newValue >= 1000) discount = 0.25;
+                else if (newValue >= 500) discount = 0.18;
+                else if (newValue >= 250) discount = 0.12;
+                else if (newValue >= 100) discount = 0.07;
+                else if (newValue >= 50) discount = 0.03;
+
+                newTargetValue = unitPrice * (1 - discount);
+            }
+
+            // === TWO_PART (двухкомпонентная: база + переменная × объём) ===
+            else if (nl.type === 'two_part') {
+                var base = nl.params ? nl.params.base : 0;
+                var perUnit = nl.params ? nl.params.perUnit : 1;
+                newTargetValue = base + perUnit * newValue;
+            }
+
+            // === BATCH_STEP (ступенчатая по партиям: логистика) ===
+            else if (nl.type === 'batch_step') {
+                var base = nl.params ? nl.params.base : 10000;
+                var batchSize = nl.params ? nl.params.batchSize : 50;
+                var batchCost = nl.params ? nl.params.batchCost : 8000;
+                var batches = Math.ceil(Math.max(0, newValue) / batchSize);
+                newTargetValue = base + batches * batchCost;
+            }
+
+            // === DEFECT (брак растёт с переработкой) ===
+            else if (nl.type === 'defect') {
+                var baseRate = nl.params ? nl.params.baseRate : 2;
+                var ratePerOvertime = nl.params ? nl.params.ratePerOvertime : 0.05;
+                var normalVolumePerWorker = nl.params ? nl.params.normalPerWorker : 15;
+
+                // Получаем текущий PROD_HEADCOUNT
+                var headcount = 10;
+                if (self.nodes['PROD_HEADCOUNT']) {
+                    headcount = self.nodes['PROD_HEADCOUNT'].value || 10;
                 }
-                var discount = Math.max(0, newValue - threshold) * rate / 1000;
-                newTargetValue = baseValues[targetId] * (1 - discount);
-                if (newTargetValue < 0) newTargetValue = 0;
+
+                var normalVolume = headcount * normalVolumePerWorker;
+                var overtimePct = newValue > normalVolume ? (newValue - normalVolume) / normalVolume * 100 : 0;
+                var defectRate = baseRate + overtimePct * ratePerOvertime;
+
+                // Применяем к материальным затратам
+                var materialCost = self.nodes['MATERIAL_COST'] ? Math.abs(self.nodes['MATERIAL_COST'].value) : 0;
+                newTargetValue = materialCost * defectRate / 100;
+            }
+
+            // === SPAN_OF_CONTROL_IT (АУП для IT) ===
+            else if (nl.type === 'span_of_control_it') {
+                var devs = newValue;
+                if (devs <= 10) newTargetValue = 1;
+                else if (devs <= 25) newTargetValue = 2;
+                else if (devs <= 50) newTargetValue = 3;
+                else newTargetValue = Math.ceil(devs / 25);
+            }
+
+            // === PER_HEAD (расходы на человека) ===
+            else if (nl.type === 'per_head') {
+                var costPerHead = nl.params ? nl.params.costPerHead : 15000;
+                newTargetValue = newValue * costPerHead;
+            }
+
+            // === PER_HEAD_SPACE (аренда на человека) ===
+            else if (nl.type === 'per_head_space') {
+                var sqm = nl.params ? nl.params.sqmPerHead : 6;
+                var costPerSqm = nl.params ? nl.params.costPerSqm : 2000;
+                newTargetValue = newValue * sqm * costPerSqm;
+            }
+
+            // === PERCENT_OF_REVENUE (возвраты) ===
+            else if (nl.type === 'percent_of_revenue') {
+                var baseRate = nl.params ? nl.params.baseRate : 2;
+                var fatigueRate = nl.params ? nl.params.fatigueRate : 0.01;
+                var revenue = self.nodes['REVENUE'] ? Math.abs(self.nodes['REVENUE'].value) : 0;
+                // При превышении объёма над нормой продавца — возвраты растут
+                var salesHeadcount = self.nodes['SALES_HEADCOUNT'] ? self.nodes['SALES_HEADCOUNT'].value : 1;
+                var normPerSales = 150;
+                var normalVolume = salesHeadcount * normPerSales;
+                var overloadPct = newValue > normalVolume ? (newValue - normalVolume) / normalVolume * 100 : 0;
+                var totalRate = baseRate + overloadPct * fatigueRate;
+                newTargetValue = revenue * totalRate / 100;
+            }
+
+            // === SPAN_OF_CONTROL (ступенчатый АУП) ===
+            else if (nl.type === 'span_of_control') {
+                var prodHeadcount = newValue; // newValue — это PROD_HEADCOUNT
+                if (prodHeadcount <= 10) newTargetValue = 2;
+                else if (prodHeadcount <= 25) newTargetValue = 3;
+                else if (prodHeadcount <= 50) newTargetValue = 4;
+                else if (prodHeadcount <= 100) newTargetValue = 6;
+                else if (prodHeadcount <= 200) newTargetValue = 9;
+                else newTargetValue = Math.ceil(prodHeadcount / 15) + 1;
             }
 
             changes[targetId] = {
