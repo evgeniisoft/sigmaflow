@@ -2945,6 +2945,8 @@
                 // Пересчитываем модель
                 graph.compute();
 
+                console.log('p=' + p + ' DEV_PAYROLL=' + graph.nodes['DEV_PAYROLL'].value + ' COGS=' + graph.nodes['COGS'].value + ' NET_PROFIT=' + graph.nodes['NET_PROFIT'].value);
+
                 var rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
                 var profit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
                 var cfo = graph.nodes['CFO'] ? graph.nodes['CFO'].value : 0;
