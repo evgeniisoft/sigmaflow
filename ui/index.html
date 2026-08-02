@@ -2892,14 +2892,6 @@
             var chartData = { revenue: [], profit: [], cash: [], baseRevenue: [] };
             var runningCash = graph.nodes['CASH'] ? graph.nodes['CASH'].value : (graph.nodes['CASH_START'] ? graph.nodes['CASH_START'].value : 0);
 
-            console.log('=== ПРОГНОЗ: ' + (forecastMode === 'drivers' ? 'ДРАЙВЕРЫ' : 'МАКРО') + ' ===');
-            console.log('БАЗА: REVENUE=' + formatValue(baseValues['REVENUE']) +
-                ' DEV_AVG_SALARY=' + formatValue(baseValues['DEV_AVG_SALARY']) +
-                ' DEV_HEADCOUNT=' + baseValues['DEV_HEADCOUNT'] +
-                ' DEV_PAYROLL=' + formatValue(baseValues['DEV_PAYROLL']));
-            console.log('СОБЫТИЯ:', JSON.stringify(forecastEvents));
-            console.log('МЕСЯЦ | REVENUE | COGS | DEV_PAYROLL | DEV_AVG_SALARY | NET_PROFIT | CASH');
-            console.log('------|---------|------|-------------|----------------|------------|-----');
             for (var p = 0; p < horizon; p++) {
                 var mo = (currentMonth + p) % 12;
                 var label = months[mo] + ' ' + (currentYear + Math.floor((currentMonth + p) / 12));
@@ -2950,17 +2942,19 @@
                         }
                     }
                 });
+                // Принудительно пересчитываем ВСЕ формулы (включая DEV_PAYROLL)
+                for (var formulaPass = 0; formulaPass < 3; formulaPass++) {
+                    Object.keys(graph.nodes).forEach(function (key) {
+                        var n = graph.nodes[key];
+                        if (n.formula && n.enabled !== false) {
+                            try {
+                                n.value = graph._evalFormula(n.formula);
+                            } catch (e) { }
+                        }
+                    });
+                }
                 // Пересчитываем модель
                 graph.compute();
-                console.log(
-                    String(p).padStart(5) + ' | ' +
-                    formatValue(graph.nodes['REVENUE']?.value || 0).padStart(7) + ' | ' +
-                    formatValue(graph.nodes['COGS']?.value || 0).padStart(4) + ' | ' +
-                    formatValue(graph.nodes['DEV_PAYROLL']?.value || 0).padStart(11) + ' | ' +
-                    formatValue(graph.nodes['DEV_AVG_SALARY']?.value || 0).padStart(14) + ' | ' +
-                    formatValue(graph.nodes['NET_PROFIT']?.value || 0).padStart(10) + ' | ' +
-                    formatValue(runningCash).padStart(5)
-                );
 
                 var rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
                 var profit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
