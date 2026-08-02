@@ -68,6 +68,7 @@
                         style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
                     </div>
                     <button id="btn-analysis" style="margin-top:8px;">▶ АНАЛИЗ И РЕКОМЕНДАЦИИ</button>
+                    <button id="btn-export-excel" style="margin-top:8px;font-size:11px;">ЭКСПОРТ В EXCEL</button>
                     <button id="btn-goto-live" style="margin-top:8px;font-size:11px;">▶ ОТКРЫТЬ ЖИВУЮ МОДЕЛЬ</button>
                     <div id="dashboard-analysis-panel"
                         style="display:none;margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border);max-width:100%;overflow-x:auto;word-break:break-word;">
@@ -704,6 +705,7 @@
 
     <!-- СКРИПТЫ -->
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="sigmaflow.js"></script>
     <script src="template_universal.js"></script>
     <script src="allowed_connections.js"></script>
@@ -3534,6 +3536,203 @@
             document.getElementById('forecast-chart-legend').innerHTML = '';
             document.getElementById('forecast-summary').innerHTML = '';
         });
+
+        // ============================================================
+        // ЭКСПОРТ В EXCEL
+        // ============================================================
+
+        function exportToExcel() {
+            if (!graph) { notify('Сначала загрузите модель', true); return; }
+
+            var wb = XLSX.utils.book_new();
+            var headerStyle = { font: { bold: true, color: { rgb: "6A7080" }, sz: 9 }, fill: { fgColor: { rgb: "131820" } } };
+            var greenFont = { font: { color: { rgb: "4B8C5A" }, sz: 10 } };
+            var redFont = { font: { color: { rgb: "D44B3C" }, sz: 10 } };
+            var boldFont = { font: { bold: true, sz: 10 } };
+            var titleFont = { font: { bold: true, sz: 16, color: { rgb: "E0E3E8" } } };
+            var subtitleFont = { font: { bold: true, sz: 11, color: { rgb: "C8CCD4" } } };
+
+            var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+            var startMonth = new Date().getMonth();
+            var pnl = graph.getPnL(startMonth, 12);
+            var cal = graph.getCashFlowCalendar(startMonth, 12);
+            var rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
+            var profit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
+            var ebitda = graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0;
+            var ros = rev > 0 ? (profit / rev * 100) : 0;
+            var payroll = 0;
+            ['DIRECT_LABOR', 'DEV_PAYROLL', 'SPECIALIST_PAYROLL', 'SALES_PAYROLL', 'WAREHOUSE_PAYROLL', 'ADMIN_PAYROLL'].forEach(function (pid) {
+                if (graph.nodes[pid]) payroll += Math.abs(graph.nodes[pid].value);
+            });
+            var payrollShare = rev > 0 ? (payroll / rev * 100) : 0;
+
+            // Фиксированные/переменные для точки безубыточности
+            var totalFixed = 0, totalVariable = 0;
+            var fixedItems = {}, variableItems = {};
+            ['ADMIN_PAYROLL', 'RENT', 'IT_EXP', 'DA', 'SELLING_EXP', 'LEGAL_COST', 'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAVEL_COST', 'RD_EXP', 'TRAINING_COST', 'OUTSOURCE_COST'].forEach(function (id) {
+                if (graph.nodes[id]) { var v = Math.abs(graph.nodes[id].value); fixedItems[id] = v; totalFixed += v; }
+            });
+            ['MATERIAL_COST', 'DIRECT_LABOR', 'DEV_PAYROLL', 'SPECIALIST_PAYROLL', 'ENERGY_COST', 'LOGISTICS_COST', 'MARKETING', 'DEFECT_COST', 'WAREHOUSE_COST', 'SALES_PAYROLL', 'WAREHOUSE_PAYROLL'].forEach(function (id) {
+                if (graph.nodes[id] && !fixedItems[id]) { var v = Math.abs(graph.nodes[id].value); variableItems[id] = v; totalVariable += v; }
+            });
+            var marginality = rev > 0 ? (rev - totalVariable) / rev * 100 : 0;
+            var breakeven = marginality > 0 ? totalFixed / (marginality / 100) : 0;
+            var safetyMargin = rev > 0 ? (rev - breakeven) / rev * 100 : 0;
+
+            // ==================== ТИТУЛ ====================
+            var titleData = [
+                ['SIGMAFLOW — Финансовая модель компании'],
+                [''],
+                ['Компания:', graph.name || 'Новая компания'],
+                ['Отрасль:', graph.industry || ''],
+                ['Дата построения:', new Date().toLocaleDateString('ru-RU')],
+                ['Горизонт:', '12 месяцев'],
+                ['Налоговый режим:', (graph.company && graph.company.tax_system) || 'ОСНО'],
+                [''],
+                ['КЛЮЧЕВЫЕ ЦИФРЫ', '', ''],
+                ['Месячная выручка', formatValue(rev).replace(/[^\d]/g, ' ') + ' ₽', ''],
+                ['Чистая прибыль', formatValue(profit).replace(/[^\d]/g, ' ') + ' ₽', ''],
+                ['Рентабельность (ROS)', ros.toFixed(1) + '%', ''],
+                ['Точка безубыточности', breakeven > 0 ? formatValue(breakeven).replace(/[^\d]/g, ' ') + ' ₽' : 'Недостижима', ''],
+                ['Запас прочности', safetyMargin.toFixed(1) + '%', '']
+            ];
+            var wsTitle = XLSX.utils.aoa_to_sheet(titleData);
+            wsTitle['!cols'] = [{ wch: 30 }, { wch: 30 }, { wch: 30 }];
+            XLSX.utils.book_append_sheet(wb, wsTitle, 'ТИТУЛ');
+
+            // ==================== P&L ====================
+            var pnlHeader = ['СТАТЬЯ'];
+            for (var p = 0; p < 12; p++) {
+                var mo = (startMonth + p) % 12;
+                pnlHeader.push(months[mo] + "'" + String(26 + Math.floor((startMonth + p) / 12)).slice(-2));
+            }
+            pnlHeader.push('ИТОГО');
+            var pnlData = [pnlHeader];
+
+            function addPnLRow(label, getVal, isBold) {
+                var row = [label];
+                var sum = 0;
+                for (var p = 0; p < 12; p++) {
+                    var v = getVal(p);
+                    sum += v;
+                    row.push(v);
+                }
+                row.push(Math.round(sum));
+                pnlData.push(row);
+            }
+
+            addPnLRow('Выручка', function (p) { return Math.round(pnl.rows[p].revenue); });
+            addPnLRow('Себестоимость', function (p) { return Math.round(pnl.rows[p].cogs); });
+            addPnLRow('Валовая прибыль', function (p) { return Math.round(pnl.rows[p].gross); }, true);
+            addPnLRow('Коммерческие', function (p) { return Math.round(pnl.rows[p].selling); });
+            addPnLRow('Управленческие', function (p) { return Math.round(pnl.rows[p].admin); });
+            addPnLRow('EBITDA', function (p) { return Math.round(pnl.rows[p].ebitda); }, true);
+            addPnLRow('Амортизация', function (p) { return Math.round(pnl.rows[p].da); });
+            addPnLRow('EBIT', function (p) { return Math.round(pnl.rows[p].ebit); }, true);
+            addPnLRow('Проценты', function (p) { return Math.round(pnl.rows[p].interest); });
+            addPnLRow('Прочие', function (p) { return Math.round(pnl.rows[p].other); });
+            addPnLRow('EBT', function (p) { return Math.round(pnl.rows[p].ebt); }, true);
+            addPnLRow('Налог на прибыль', function (p) { return Math.round(pnl.rows[p].tax); });
+            addPnLRow('ЧИСТАЯ ПРИБЫЛЬ', function (p) { return Math.round(pnl.rows[p].net); }, true);
+            addPnLRow('Накопленная', function (p) { return Math.round(pnl.rows[p].cumulative); });
+
+            var wsPnl = XLSX.utils.aoa_to_sheet(pnlData);
+            wsPnl['!cols'] = [{ wch: 22 }].concat(Array(12).fill({ wch: 14 })).concat([{ wch: 14 }]);
+            XLSX.utils.book_append_sheet(wb, wsPnl, 'P&L');
+
+            // ==================== ДДС ====================
+            var calHeader = ['СТАТЬЯ'];
+            for (var p = 0; p < 12; p++) {
+                calHeader.push(months[(startMonth + p) % 12] + "'" + String(26 + Math.floor((startMonth + p) / 12)).slice(-2));
+            }
+            calHeader.push('ИТОГО');
+            var calData = [calHeader];
+
+            function addCalRow(label, getVal, isSpacer) {
+                if (isSpacer) {
+                    calData.push([label].concat(Array(12).fill('')).concat(['']));
+                    return;
+                }
+                var row = [label];
+                var sum = 0;
+                for (var p = 0; p < 12; p++) {
+                    var v = getVal(p);
+                    sum += v;
+                    row.push(Math.round(v));
+                }
+                row.push(Math.round(sum));
+                calData.push(row);
+            }
+
+            addCalRow('── ПРИХОДЫ ──', null, true);
+            addCalRow('Выручка', function (p) { return cal.periods[p].revenue; });
+            addCalRow('Новые кредиты', function (p) { return cal.periods[p].newLoans; });
+            addCalRow('Прочие доходы', function (p) { return cal.periods[p].otherIncome + cal.periods[p].interestIncome; });
+            addCalRow('── ОПЕРАЦИОННЫЕ ──', null, true);
+            addCalRow('ФОТ персонала', function (p) { return -cal.periods[p].payrollProd - cal.periods[p].payrollAdm; });
+            addCalRow('Материалы', function (p) { return -cal.periods[p].material; });
+            addCalRow('Энергия', function (p) { return -cal.periods[p].energy; });
+            addCalRow('Логистика', function (p) { return -cal.periods[p].logistics; });
+            addCalRow('Маркетинг', function (p) { return -cal.periods[p].marketing; });
+            addCalRow('Аренда', function (p) { return -cal.periods[p].rent; });
+            addCalRow('IT/R&D/Обучение', function (p) { return -cal.periods[p].itRdTraining; });
+            addCalRow('── НАЛОГИ ──', null, true);
+            addCalRow('НДС', function (p) { return -cal.periods[p].nds; });
+            addCalRow('Налог на прибыль', function (p) { return -cal.periods[p].profitTax; });
+            addCalRow('Страховые', function (p) { return -cal.periods[p].insurance; });
+            addCalRow('НДФЛ', function (p) { return -cal.periods[p].ndfl; });
+            addCalRow('── ФИНАНСИРОВАНИЕ ──', null, true);
+            addCalRow('Проценты', function (p) { return -cal.periods[p].interest; });
+            addCalRow('Погашение тела', function (p) { return -cal.periods[p].loanRepayment; });
+            addCalRow('CAPEX', function (p) { return -cal.periods[p].capex; });
+            addCalRow('Дивиденды', function (p) { return -cal.periods[p].dividends; });
+            addCalRow('── ИТОГО ──', null, true);
+            addCalRow('Чистый поток', function (p) { return cal.periods[p].netFlow; });
+            addCalRow('Остаток на конец', function (p) { return cal.periods[p].endCash; });
+            addCalRow('Кассовый разрыв', function (p) { return cal.periods[p].isGap ? 'ДА' : '—'; });
+
+            var wsCal = XLSX.utils.aoa_to_sheet(calData);
+            wsCal['!cols'] = [{ wch: 22 }].concat(Array(12).fill({ wch: 14 })).concat([{ wch: 14 }]);
+            XLSX.utils.book_append_sheet(wb, wsCal, 'ДДС');
+
+            // ==================== КЛЮЧЕВЫЕ МЕТРИКИ ====================
+            var metricsData = [
+                ['КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ', '', ''],
+                ['', '', ''],
+                ['Чистая прибыль', formatValue(profit).replace(/[^\d]/g, ' ') + ' ₽', profit >= 0 ? '+' : ''],
+                ['Выручка', formatValue(rev).replace(/[^\d]/g, ' ') + ' ₽', ''],
+                ['Рентабельность (ROS)', ros.toFixed(1) + '%', ''],
+                ['EBITDA', formatValue(ebitda).replace(/[^\d]/g, ' ') + ' ₽', ''],
+                ['Доля ФОТ', payrollShare.toFixed(1) + '%', ''],
+                ['Точка безубыточности', breakeven > 0 ? formatValue(breakeven).replace(/[^\d]/g, ' ') + ' ₽' : 'Недостижима', ''],
+                ['Запас прочности', safetyMargin.toFixed(1) + '%', safetyMargin > 30 ? 'Комфортно' : (safetyMargin > 0 ? 'Низкий' : 'Критично')],
+                ['', '', ''],
+                ['ФАКТОРНЫЙ АНАЛИЗ', '', ''],
+                ['Себестоимость', formatValue(Math.abs(pnl.rows[0].cogs)).replace(/[^\d]/g, ' ') + ' ₽', (Math.abs(pnl.rows[0].cogs) / rev * 100).toFixed(1) + '% от выручки'],
+                ['Коммерческие', formatValue(Math.abs(pnl.rows[0].selling)).replace(/[^\d]/g, ' ') + ' ₽', (Math.abs(pnl.rows[0].selling) / rev * 100).toFixed(1) + '%'],
+                ['Управленческие', formatValue(Math.abs(pnl.rows[0].admin)).replace(/[^\d]/g, ' ') + ' ₽', (Math.abs(pnl.rows[0].admin) / rev * 100).toFixed(1) + '%']
+            ];
+            var wsMetrics = XLSX.utils.aoa_to_sheet(metricsData);
+            wsMetrics['!cols'] = [{ wch: 30 }, { wch: 30 }, { wch: 30 }];
+            XLSX.utils.book_append_sheet(wb, wsMetrics, 'МЕТРИКИ');
+
+            // ==================== ДАННЫЕ ====================
+            var inputData = [['ПАРАМЕТР', 'ТЕКУЩЕЕ ЗНАЧЕНИЕ', '']];
+            Object.keys(graph.nodes).forEach(function (key) {
+                var n = graph.nodes[key];
+                if ((n.type === 'INPUT' || n.type === 'EXTERNAL') && n.value !== null && n.value !== undefined) {
+                    inputData.push([n.label || key, formatValue(n.value).replace(/[^\d]/g, ' ')]);
+                }
+            });
+            var wsInput = XLSX.utils.aoa_to_sheet(inputData);
+            wsInput['!cols'] = [{ wch: 35 }, { wch: 25 }, { wch: 25 }];
+            XLSX.utils.book_append_sheet(wb, wsInput, 'ДАННЫЕ');
+
+            // Сохраняем
+            var fileName = (graph.name || 'SigmaFlow') + ' — ' + new Date().toLocaleDateString('ru-RU') + '.xlsx';
+            XLSX.writeFile(wb, fileName);
+            notify('Отчёт экспортирован в Excel');
+        }
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
         // ============================================================
@@ -3598,6 +3797,8 @@
                 renderAll();
                 notify('Изменения применены');
             });
+
+            document.getElementById('btn-export-excel').addEventListener('click', exportToExcel);
 
             document.getElementById('btn-save').addEventListener('click', saveProject);
             document.getElementById('btn-run-diagnostics').addEventListener('click', runDiagnostics);
