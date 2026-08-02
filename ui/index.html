@@ -856,6 +856,7 @@
                 graph.compute();
                 elProjectName.textContent = graph.name;
                 updateStatusBar('Компания загружена');
+                currentTracedNode = 'NET_PROFIT';
                 renderAll();
                 setTimeout(function () {
                     renderBreakeven();
@@ -3666,6 +3667,7 @@
                     graph.compute();
                     elProjectName.textContent = graph.name;
                     elProjectName.textContent = graph.name;
+                    currentTracedNode = 'NET_PROFIT';
                     renderAll();
                     renderBreakeven();
                     if (currentTracedNode) renderAnalysis(currentTracedNode);
