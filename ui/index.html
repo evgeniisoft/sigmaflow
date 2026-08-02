@@ -3543,19 +3543,57 @@
 
         function exportToExcel() {
             if (!graph) { notify('Сначала загрузите модель', true); return; }
-
-            var wb = XLSX.utils.book_new();
-            var headerStyle = { font: { bold: true, color: { rgb: "6A7080" }, sz: 9 }, fill: { fgColor: { rgb: "131820" } } };
-            var greenFont = { font: { color: { rgb: "4B8C5A" }, sz: 10 } };
-            var redFont = { font: { color: { rgb: "D44B3C" }, sz: 10 } };
-            var boldFont = { font: { bold: true, sz: 10 } };
-            var titleFont = { font: { bold: true, sz: 16, color: { rgb: "E0E3E8" } } };
-            var subtitleFont = { font: { bold: true, sz: 11, color: { rgb: "C8CCD4" } } };
+            if (typeof XLSX === 'undefined') { notify('Библиотека Excel не загружена', true); return; }
 
             var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
             var startMonth = new Date().getMonth();
             var pnl = graph.getPnL(startMonth, 12);
             var cal = graph.getCashFlowCalendar(startMonth, 12);
+
+            // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+
+            function fmt(num) {
+                // Формат: 1 234 567 (без копеек)
+                if (num === null || num === undefined || isNaN(num)) return '—';
+                return Math.round(num).toLocaleString('ru-RU').replace(/,/g, ' ');
+            }
+
+            function cell(v, style) {
+                var c = { v: v, t: 's' };
+                if (style) c.s = style;
+                return c;
+            }
+
+            function numCell(v, style) {
+                var c = { v: typeof v === 'number' ? v : 0, t: 'n' };
+                if (style) c.s = style;
+                return c;
+            }
+
+            // Стили
+            var S = {
+                header: { font: { bold: true, color: { rgb: "E0E3E8" }, sz: 10 }, fill: { fgColor: { rgb: "1A1F2B" } }, alignment: { horizontal: "center" } },
+                title: { font: { bold: true, color: { rgb: "5A9FD4" }, sz: 18 } },
+                subtitle: { font: { bold: true, color: { rgb: "C8CCD4" }, sz: 12 } },
+                label: { font: { bold: true, color: { rgb: "C8CCD4" }, sz: 10 }, fill: { fgColor: { rgb: "131820" } } },
+                spacer: { font: { bold: true, color: { rgb: "6A7080" }, sz: 9 }, fill: { fgColor: { rgb: "0E1218" } } },
+                total: { font: { bold: true, color: { rgb: "E0E3E8" }, sz: 10 }, fill: { fgColor: { rgb: "1A2A3A" } } },
+                green: { font: { color: { rgb: "4B8C5A" }, sz: 10 }, alignment: { horizontal: "right" } },
+                red: { font: { color: { rgb: "D44B3C" }, sz: 10 }, alignment: { horizontal: "right" } },
+                normal: { font: { color: { rgb: "C8CCD4" }, sz: 10 }, alignment: { horizontal: "right" } },
+                boldRight: { font: { bold: true, color: { rgb: "E0E3E8" }, sz: 10 }, alignment: { horizontal: "right" } },
+                metricLabel: { font: { bold: true, color: { rgb: "C8CCD4" }, sz: 11 } },
+                metricValue: { font: { bold: true, color: { rgb: "E0E3E8" }, sz: 14 }, alignment: { horizontal: "right" } },
+                metricValueGreen: { font: { bold: true, color: { rgb: "4B8C5A" }, sz: 14 }, alignment: { horizontal: "right" } },
+                metricValueRed: { font: { bold: true, color: { rgb: "D44B3C" }, sz: 14 }, alignment: { horizontal: "right" } }
+            };
+
+            function numFmt(v, style) {
+                if (v >= 0) return numCell(v, style || S.normal);
+                return numCell(v, style || S.red);
+            }
+
+            // ==================== ДАННЫЕ ====================
             var rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
             var profit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
             var ebitda = graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0;
@@ -3566,109 +3604,133 @@
             });
             var payrollShare = rev > 0 ? (payroll / rev * 100) : 0;
 
-            // Фиксированные/переменные для точки безубыточности
             var totalFixed = 0, totalVariable = 0;
-            var fixedItems = {}, variableItems = {};
+            var fixedSet = {};
             ['ADMIN_PAYROLL', 'RENT', 'IT_EXP', 'DA', 'SELLING_EXP', 'LEGAL_COST', 'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAVEL_COST', 'RD_EXP', 'TRAINING_COST', 'OUTSOURCE_COST'].forEach(function (id) {
-                if (graph.nodes[id]) { var v = Math.abs(graph.nodes[id].value); fixedItems[id] = v; totalFixed += v; }
+                if (graph.nodes[id]) { var v = Math.abs(graph.nodes[id].value); fixedSet[id] = true; totalFixed += v; }
             });
             ['MATERIAL_COST', 'DIRECT_LABOR', 'DEV_PAYROLL', 'SPECIALIST_PAYROLL', 'ENERGY_COST', 'LOGISTICS_COST', 'MARKETING', 'DEFECT_COST', 'WAREHOUSE_COST', 'SALES_PAYROLL', 'WAREHOUSE_PAYROLL'].forEach(function (id) {
-                if (graph.nodes[id] && !fixedItems[id]) { var v = Math.abs(graph.nodes[id].value); variableItems[id] = v; totalVariable += v; }
+                if (graph.nodes[id] && !fixedSet[id]) { totalVariable += Math.abs(graph.nodes[id].value); }
             });
+            if (graph.industry === 'it') {
+                totalFixed += graph.nodes['DEV_PAYROLL'] ? Math.abs(graph.nodes['DEV_PAYROLL'].value) : 0;
+                totalVariable -= graph.nodes['DEV_PAYROLL'] ? Math.abs(graph.nodes['DEV_PAYROLL'].value) : 0;
+            }
             var marginality = rev > 0 ? (rev - totalVariable) / rev * 100 : 0;
-            var breakeven = marginality > 0 ? totalFixed / (marginality / 100) : 0;
+            var breakeven = marginality > 0 ? totalFixed / (marginality / 100) : -1;
             var safetyMargin = rev > 0 ? (rev - breakeven) / rev * 100 : 0;
 
             // ==================== ТИТУЛ ====================
-            var titleData = [
-                ['SIGMAFLOW — Финансовая модель компании'],
-                [''],
-                ['Компания:', graph.name || 'Новая компания'],
-                ['Отрасль:', graph.industry || ''],
-                ['Дата построения:', new Date().toLocaleDateString('ru-RU')],
-                ['Горизонт:', '12 месяцев'],
-                ['Налоговый режим:', (graph.company && graph.company.tax_system) || 'ОСНО'],
-                [''],
-                ['КЛЮЧЕВЫЕ ЦИФРЫ', '', ''],
-                ['Месячная выручка', formatValue(rev).replace(/[^\d]/g, ' ') + ' ₽', ''],
-                ['Чистая прибыль', formatValue(profit).replace(/[^\d]/g, ' ') + ' ₽', ''],
-                ['Рентабельность (ROS)', ros.toFixed(1) + '%', ''],
-                ['Точка безубыточности', breakeven > 0 ? formatValue(breakeven).replace(/[^\d]/g, ' ') + ' ₽' : 'Недостижима', ''],
-                ['Запас прочности', safetyMargin.toFixed(1) + '%', '']
+            var titleRows = [
+                [cell('', S.title), cell('', S.title), cell('', S.title)],
+                [cell('S I G M A F L O W', S.title), cell('', S.title), cell('', S.title)],
+                [cell('Финансовая модель компании', S.subtitle), cell('', S.subtitle), cell('', S.subtitle)],
+                [cell(''), cell(''), cell('')],
+                [cell('Компания:', S.label), cell(graph.name || 'Новая компания', S.normal), cell('')],
+                [cell('Отрасль:', S.label), cell(graph.industry || '', S.normal), cell('')],
+                [cell('Дата:', S.label), cell(new Date().toLocaleDateString('ru-RU'), S.normal), cell('')],
+                [cell('Горизонт:', S.label), cell('12 месяцев', S.normal), cell('')],
+                [cell('Налоговый режим:', S.label), cell((graph.company && graph.company.tax_system) || 'ОСНО', S.normal), cell('')],
+                [cell(''), cell(''), cell('')],
+                [cell('КЛЮЧЕВЫЕ ЦИФРЫ', S.subtitle), cell('', S.subtitle), cell('', S.subtitle)],
+                [cell(''), cell(''), cell('')],
+                [cell('Месячная выручка', S.metricLabel), cell(fmt(rev) + ' ₽', S.metricValue), cell('')],
+                [cell('Чистая прибыль', S.metricLabel), cell(fmt(profit) + ' ₽', profit >= 0 ? S.metricValueGreen : S.metricValueRed), cell('')],
+                [cell('Рентабельность (ROS)', S.metricLabel), cell(ros.toFixed(1) + '%', ros >= 0 ? S.metricValueGreen : S.metricValueRed), cell('')],
+                [cell('Точка безубыточности', S.metricLabel), cell(breakeven > 0 ? fmt(breakeven) + ' ₽' : 'Недостижима', S.metricValue), cell('')],
+                [cell('Запас прочности', S.metricLabel), cell(safetyMargin.toFixed(1) + '%', safetyMargin > 30 ? S.metricValueGreen : S.metricValueRed), cell('')]
             ];
-            var wsTitle = XLSX.utils.aoa_to_sheet(titleData);
-            wsTitle['!cols'] = [{ wch: 30 }, { wch: 30 }, { wch: 30 }];
+            var wsTitle = XLSX.utils.aoa_to_sheet(titleRows);
+            wsTitle['!cols'] = [{ wch: 28 }, { wch: 30 }, { wch: 25 }];
+            wsTitle['!merges'] = [
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: 2 } },
+                { s: { r: 10, c: 0 }, e: { r: 10, c: 2 } }
+            ];
+            XLSX.utils.book_append_sheet(XLSX.utils.book_new(), wsTitle, 'ТИТУЛ');
+            var wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, wsTitle, 'ТИТУЛ');
 
             // ==================== P&L ====================
-            var pnlHeader = ['СТАТЬЯ'];
+            var pnlRows = [];
+            // Заголовок
+            var hdr = [cell('СТАТЬЯ', S.header)];
             for (var p = 0; p < 12; p++) {
                 var mo = (startMonth + p) % 12;
-                pnlHeader.push(months[mo] + "'" + String(26 + Math.floor((startMonth + p) / 12)).slice(-2));
+                hdr.push(cell(months[mo] + "'" + String(26 + Math.floor((startMonth + p) / 12)).slice(-2), S.header));
             }
-            pnlHeader.push('ИТОГО');
-            var pnlData = [pnlHeader];
+            hdr.push(cell('ИТОГО', S.header));
+            pnlRows.push(hdr);
 
-            function addPnLRow(label, getVal, isBold) {
-                var row = [label];
+            function addRow(label, getVal, isTotal, isSpacer) {
+                var row = [cell(label, isSpacer ? S.spacer : (isTotal ? S.total : S.label))];
                 var sum = 0;
                 for (var p = 0; p < 12; p++) {
-                    var v = getVal(p);
+                    var v = Math.round(getVal(p));
                     sum += v;
-                    row.push(v);
+                    if (isSpacer) {
+                        row.push(cell('', S.spacer));
+                    } else {
+                        row.push(numFmt(v, isTotal ? S.boldRight : S.normal));
+                    }
                 }
-                row.push(Math.round(sum));
-                pnlData.push(row);
+                row.push(numFmt(Math.round(sum), S.boldRight));
+                pnlRows.push(row);
             }
 
-            addPnLRow('Выручка', function (p) { return Math.round(pnl.rows[p].revenue); });
-            addPnLRow('Себестоимость', function (p) { return Math.round(pnl.rows[p].cogs); });
-            addPnLRow('Валовая прибыль', function (p) { return Math.round(pnl.rows[p].gross); }, true);
-            addPnLRow('Коммерческие', function (p) { return Math.round(pnl.rows[p].selling); });
-            addPnLRow('Управленческие', function (p) { return Math.round(pnl.rows[p].admin); });
-            addPnLRow('EBITDA', function (p) { return Math.round(pnl.rows[p].ebitda); }, true);
-            addPnLRow('Амортизация', function (p) { return Math.round(pnl.rows[p].da); });
-            addPnLRow('EBIT', function (p) { return Math.round(pnl.rows[p].ebit); }, true);
-            addPnLRow('Проценты', function (p) { return Math.round(pnl.rows[p].interest); });
-            addPnLRow('Прочие', function (p) { return Math.round(pnl.rows[p].other); });
-            addPnLRow('EBT', function (p) { return Math.round(pnl.rows[p].ebt); }, true);
-            addPnLRow('Налог на прибыль', function (p) { return Math.round(pnl.rows[p].tax); });
-            addPnLRow('ЧИСТАЯ ПРИБЫЛЬ', function (p) { return Math.round(pnl.rows[p].net); }, true);
-            addPnLRow('Накопленная', function (p) { return Math.round(pnl.rows[p].cumulative); });
+            addRow('── ВЫРУЧКА ──', null, false, true);
+            addRow('Выручка', function (p) { return pnl.rows[p].revenue; });
+            addRow('Себестоимость', function (p) { return pnl.rows[p].cogs; });
+            addRow('Валовая прибыль', function (p) { return pnl.rows[p].gross; }, true);
+            addRow('── OPEX ──', null, false, true);
+            addRow('Коммерческие', function (p) { return pnl.rows[p].selling; });
+            addRow('Управленческие', function (p) { return pnl.rows[p].admin; });
+            addRow('EBITDA', function (p) { return pnl.rows[p].ebitda; }, true);
+            addRow('── АМОРТИЗАЦИЯ И ПРОЦЕНТЫ ──', null, false, true);
+            addRow('Амортизация', function (p) { return pnl.rows[p].da; });
+            addRow('EBIT', function (p) { return pnl.rows[p].ebit; }, true);
+            addRow('Проценты', function (p) { return pnl.rows[p].interest; });
+            addRow('Прочие', function (p) { return pnl.rows[p].other; });
+            addRow('EBT', function (p) { return pnl.rows[p].ebt; }, true);
+            addRow('── НАЛОГИ ──', null, false, true);
+            addRow('Налог на прибыль', function (p) { return pnl.rows[p].tax; });
+            addRow('ЧИСТАЯ ПРИБЫЛЬ', function (p) { return pnl.rows[p].net; }, true);
+            addRow('Накопленная', function (p) { return pnl.rows[p].cumulative; });
 
-            var wsPnl = XLSX.utils.aoa_to_sheet(pnlData);
-            wsPnl['!cols'] = [{ wch: 22 }].concat(Array(12).fill({ wch: 14 })).concat([{ wch: 14 }]);
+            var wsPnl = XLSX.utils.aoa_to_sheet(pnlRows);
+            wsPnl['!cols'] = [{ wch: 24 }].concat(Array(13).fill({ wch: 15 }));
             XLSX.utils.book_append_sheet(wb, wsPnl, 'P&L');
 
             // ==================== ДДС ====================
-            var calHeader = ['СТАТЬЯ'];
+            var calRows = [];
+            var calHdr = [cell('СТАТЬЯ', S.header)];
             for (var p = 0; p < 12; p++) {
-                calHeader.push(months[(startMonth + p) % 12] + "'" + String(26 + Math.floor((startMonth + p) / 12)).slice(-2));
+                calHdr.push(cell(months[(startMonth + p) % 12] + "'" + String(26 + Math.floor((startMonth + p) / 12)).slice(-2), S.header));
             }
-            calHeader.push('ИТОГО');
-            var calData = [calHeader];
+            calHdr.push(cell('ИТОГО', S.header));
+            calRows.push(calHdr);
 
-            function addCalRow(label, getVal, isSpacer) {
-                if (isSpacer) {
-                    calData.push([label].concat(Array(12).fill('')).concat(['']));
-                    return;
-                }
-                var row = [label];
+            function addCalRow(label, getVal, isTotal, isSpacer) {
+                var row = [cell(label, isSpacer ? S.spacer : (isTotal ? S.total : S.label))];
                 var sum = 0;
                 for (var p = 0; p < 12; p++) {
-                    var v = getVal(p);
+                    var v = Math.round(getVal(p));
                     sum += v;
-                    row.push(Math.round(v));
+                    if (isSpacer) {
+                        row.push(cell('', S.spacer));
+                    } else {
+                        row.push(numFmt(v, isTotal ? S.boldRight : S.normal));
+                    }
                 }
-                row.push(Math.round(sum));
-                calData.push(row);
+                row.push(numFmt(Math.round(sum), S.boldRight));
+                calRows.push(row);
             }
 
-            addCalRow('── ПРИХОДЫ ──', null, true);
+            addCalRow('── ПРИХОДЫ ──', null, false, true);
             addCalRow('Выручка', function (p) { return cal.periods[p].revenue; });
             addCalRow('Новые кредиты', function (p) { return cal.periods[p].newLoans; });
             addCalRow('Прочие доходы', function (p) { return cal.periods[p].otherIncome + cal.periods[p].interestIncome; });
-            addCalRow('── ОПЕРАЦИОННЫЕ ──', null, true);
+            addCalRow('── ОПЕРАЦИОННЫЕ РАСХОДЫ ──', null, false, true);
             addCalRow('ФОТ персонала', function (p) { return -cal.periods[p].payrollProd - cal.periods[p].payrollAdm; });
             addCalRow('Материалы', function (p) { return -cal.periods[p].material; });
             addCalRow('Энергия', function (p) { return -cal.periods[p].energy; });
@@ -3676,60 +3738,62 @@
             addCalRow('Маркетинг', function (p) { return -cal.periods[p].marketing; });
             addCalRow('Аренда', function (p) { return -cal.periods[p].rent; });
             addCalRow('IT/R&D/Обучение', function (p) { return -cal.periods[p].itRdTraining; });
-            addCalRow('── НАЛОГИ ──', null, true);
+            addCalRow('── НАЛОГИ ──', null, false, true);
             addCalRow('НДС', function (p) { return -cal.periods[p].nds; });
             addCalRow('Налог на прибыль', function (p) { return -cal.periods[p].profitTax; });
             addCalRow('Страховые', function (p) { return -cal.periods[p].insurance; });
             addCalRow('НДФЛ', function (p) { return -cal.periods[p].ndfl; });
-            addCalRow('── ФИНАНСИРОВАНИЕ ──', null, true);
+            addCalRow('── ФИНАНСИРОВАНИЕ ──', null, false, true);
             addCalRow('Проценты', function (p) { return -cal.periods[p].interest; });
             addCalRow('Погашение тела', function (p) { return -cal.periods[p].loanRepayment; });
             addCalRow('CAPEX', function (p) { return -cal.periods[p].capex; });
             addCalRow('Дивиденды', function (p) { return -cal.periods[p].dividends; });
-            addCalRow('── ИТОГО ──', null, true);
-            addCalRow('Чистый поток', function (p) { return cal.periods[p].netFlow; });
-            addCalRow('Остаток на конец', function (p) { return cal.periods[p].endCash; });
-            addCalRow('Кассовый разрыв', function (p) { return cal.periods[p].isGap ? 'ДА' : '—'; });
+            addCalRow('── ИТОГО ──', null, false, true);
+            addCalRow('Чистый поток', function (p) { return cal.periods[p].netFlow; }, true);
+            addCalRow('Остаток на конец', function (p) { return cal.periods[p].endCash; }, true);
+            addCalRow('Кассовый разрыв', function (p) { return cal.periods[p].isGap ? 'ДА' : 'НЕТ'; });
 
-            var wsCal = XLSX.utils.aoa_to_sheet(calData);
-            wsCal['!cols'] = [{ wch: 22 }].concat(Array(12).fill({ wch: 14 })).concat([{ wch: 14 }]);
+            var wsCal = XLSX.utils.aoa_to_sheet(calRows);
+            wsCal['!cols'] = [{ wch: 24 }].concat(Array(13).fill({ wch: 15 }));
             XLSX.utils.book_append_sheet(wb, wsCal, 'ДДС');
 
-            // ==================== КЛЮЧЕВЫЕ МЕТРИКИ ====================
-            var metricsData = [
-                ['КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ', '', ''],
-                ['', '', ''],
-                ['Чистая прибыль', formatValue(profit).replace(/[^\d]/g, ' ') + ' ₽', profit >= 0 ? '+' : ''],
-                ['Выручка', formatValue(rev).replace(/[^\d]/g, ' ') + ' ₽', ''],
-                ['Рентабельность (ROS)', ros.toFixed(1) + '%', ''],
-                ['EBITDA', formatValue(ebitda).replace(/[^\d]/g, ' ') + ' ₽', ''],
-                ['Доля ФОТ', payrollShare.toFixed(1) + '%', ''],
-                ['Точка безубыточности', breakeven > 0 ? formatValue(breakeven).replace(/[^\d]/g, ' ') + ' ₽' : 'Недостижима', ''],
-                ['Запас прочности', safetyMargin.toFixed(1) + '%', safetyMargin > 30 ? 'Комфортно' : (safetyMargin > 0 ? 'Низкий' : 'Критично')],
-                ['', '', ''],
-                ['ФАКТОРНЫЙ АНАЛИЗ', '', ''],
-                ['Себестоимость', formatValue(Math.abs(pnl.rows[0].cogs)).replace(/[^\d]/g, ' ') + ' ₽', (Math.abs(pnl.rows[0].cogs) / rev * 100).toFixed(1) + '% от выручки'],
-                ['Коммерческие', formatValue(Math.abs(pnl.rows[0].selling)).replace(/[^\d]/g, ' ') + ' ₽', (Math.abs(pnl.rows[0].selling) / rev * 100).toFixed(1) + '%'],
-                ['Управленческие', formatValue(Math.abs(pnl.rows[0].admin)).replace(/[^\d]/g, ' ') + ' ₽', (Math.abs(pnl.rows[0].admin) / rev * 100).toFixed(1) + '%']
+            // ==================== МЕТРИКИ ====================
+            var metricsRows = [
+                [cell('КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ', S.subtitle), cell(''), cell('')],
+                [cell(''), cell(''), cell('')],
+                [cell('Показатель', S.header), cell('Значение', S.header), cell('Оценка', S.header)],
+                [cell('Чистая прибыль', S.label), cell(fmt(profit) + ' ₽', profit >= 0 ? S.metricValueGreen : S.metricValueRed), cell(profit >= 0 ? '✓ Прибыль' : '✗ Убыток', S.normal)],
+                [cell('Выручка', S.label), cell(fmt(rev) + ' ₽', S.metricValue), cell('')],
+                [cell('Рентабельность (ROS)', S.label), cell(ros.toFixed(1) + '%', ros > 15 ? S.metricValueGreen : S.metricValueRed), cell(ros > 15 ? 'Выше средней' : 'Ниже средней', S.normal)],
+                [cell('EBITDA', S.label), cell(fmt(ebitda) + ' ₽', S.metricValue), cell('')],
+                [cell('Доля ФОТ', S.label), cell(payrollShare.toFixed(1) + '%', payrollShare < 40 ? S.metricValueGreen : S.metricValueRed), cell(payrollShare < 40 ? 'Норма' : 'Высокая', S.normal)],
+                [cell('Точка безубыточности', S.label), cell(breakeven > 0 ? fmt(breakeven) + ' ₽' : 'Недостижима', S.metricValue), cell('')],
+                [cell('Запас прочности', S.label), cell(safetyMargin.toFixed(1) + '%', safetyMargin > 30 ? S.metricValueGreen : S.metricValueRed), cell(safetyMargin > 30 ? 'Комфортно' : (safetyMargin > 0 ? 'Низкий' : 'Критично'), S.normal)]
             ];
-            var wsMetrics = XLSX.utils.aoa_to_sheet(metricsData);
-            wsMetrics['!cols'] = [{ wch: 30 }, { wch: 30 }, { wch: 30 }];
+            var wsMetrics = XLSX.utils.aoa_to_sheet(metricsRows);
+            wsMetrics['!cols'] = [{ wch: 28 }, { wch: 25 }, { wch: 22 }];
+            wsMetrics['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
             XLSX.utils.book_append_sheet(wb, wsMetrics, 'МЕТРИКИ');
 
             // ==================== ДАННЫЕ ====================
-            var inputData = [['ПАРАМЕТР', 'ТЕКУЩЕЕ ЗНАЧЕНИЕ', '']];
+            var inputRows = [
+                [cell('ИСХОДНЫЕ ПАРАМЕТРЫ', S.subtitle), cell(''), cell('')],
+                [cell(''), cell(''), cell('')],
+                [cell('Параметр', S.header), cell('Текущее значение', S.header), cell('Изменённое', S.header)]
+            ];
             Object.keys(graph.nodes).forEach(function (key) {
                 var n = graph.nodes[key];
-                if ((n.type === 'INPUT' || n.type === 'EXTERNAL') && n.value !== null && n.value !== undefined) {
-                    inputData.push([n.label || key, formatValue(n.value).replace(/[^\d]/g, ' ')]);
+                if ((n.type === 'INPUT' || n.type === 'EXTERNAL') && n.value !== null && n.value !== undefined && n.value !== 0) {
+                    inputRows.push([cell(n.label || key, S.label), cell(fmt(n.value), S.normal), cell('', S.normal)]);
                 }
             });
-            var wsInput = XLSX.utils.aoa_to_sheet(inputData);
-            wsInput['!cols'] = [{ wch: 35 }, { wch: 25 }, { wch: 25 }];
+            var wsInput = XLSX.utils.aoa_to_sheet(inputRows);
+            wsInput['!cols'] = [{ wch: 35 }, { wch: 22 }, { wch: 22 }];
+            wsInput['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
             XLSX.utils.book_append_sheet(wb, wsInput, 'ДАННЫЕ');
 
             // Сохраняем
-            var fileName = (graph.name || 'SigmaFlow') + ' — ' + new Date().toLocaleDateString('ru-RU') + '.xlsx';
+            var fileName = (graph.name || 'SigmaFlow').replace(/[^a-zA-Zа-яА-Я0-9]/g, '_') + '.xlsx';
             XLSX.writeFile(wb, fileName);
             notify('Отчёт экспортирован в Excel');
         }
