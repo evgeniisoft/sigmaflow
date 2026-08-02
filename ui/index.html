@@ -857,6 +857,10 @@
                 elProjectName.textContent = graph.name;
                 updateStatusBar('Компания загружена');
                 renderAll();
+                setTimeout(function () {
+                    renderBreakeven();
+                    if (currentTracedNode) renderAnalysis(currentTracedNode);
+                }, 200);
                 window.renderInvestments();
                 window.renderCredits();
                 renderScenarios();
@@ -1590,6 +1594,7 @@
             renderDashboard();
             renderDataTable();
             renderComputeResults();
+            renderBreakeven();
         }
 
         function dragstarted(event, d) {
@@ -1785,6 +1790,7 @@
             renderDashboard();
             renderDataTable();
             renderComputeResults();
+            renderBreakeven();
         }
 
         // ============================================================
@@ -3659,6 +3665,8 @@
                     elProjectName.textContent = graph.name;
                     elProjectName.textContent = graph.name;
                     renderAll();
+                    renderBreakeven();
+                    if (currentTracedNode) renderAnalysis(currentTracedNode);
                     window.renderInvestments();
                     window.renderCredits();
                     refreshCompanyList();
