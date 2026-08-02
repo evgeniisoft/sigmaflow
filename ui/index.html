@@ -2990,14 +2990,13 @@
                 var tax = basePnL.rows[p].tax;
                 var profit = ebt + tax;
 
-                // Кэш считаем накопительно
+                // Кэш = базовый кэш из Календаря + накопленная разница в прибыли (упрощённо)
+                var profitDiff = profit - basePnL.rows[p].net;
                 if (p === 0) {
-                    runningCash = graph.nodes['CASH'] ? graph.nodes['CASH'].value :
-                        (graph.nodes['CASH_START'] ? graph.nodes['CASH_START'].value : 0);
+                    runningCash = baseCal.periods[0].startCash + baseCal.periods[0].netFlow + profitDiff;
+                } else {
+                    runningCash += baseCal.periods[p].netFlow + profitDiff;
                 }
-                var cashFlowAdjustment = (rev - basePnL.rows[p].revenue) - (cogs - basePnL.rows[p].cogs) - (selling - basePnL.rows[p].selling) - (admin - basePnL.rows[p].admin);
-                var baseNetFlow = baseCal.periods[p].netFlow;
-                runningCash += baseNetFlow + cashFlowAdjustment;
                 var cash = runningCash;
 
                 rows.push({
