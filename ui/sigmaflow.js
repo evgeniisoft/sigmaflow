@@ -869,7 +869,16 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
     var matBase = self._val('MATERIAL_COST');
     var enerBase = self._val('ENERGY_COST');
     var logBase = self._val('LOGISTICS_COST');
-    var prodBase = self._val('DIRECT_LABOR');
+    var prodBase = 0;
+    if (self.industry === 'it') {
+        prodBase = self._val('DEV_PAYROLL');
+    } else if (self.industry === 'services') {
+        prodBase = self._val('SPECIALIST_PAYROLL');
+    } else if (self.industry === 'retail') {
+        prodBase = self._val('SALES_PAYROLL') + self._val('WAREHOUSE_PAYROLL');
+    } else {
+        prodBase = self._val('DIRECT_LABOR');
+    }
     var admBase = self._val('ADMIN_PAYROLL');
     var markBase = self._val('MARKETING');
     var rentBase = self._val('RENT');
@@ -1030,16 +1039,16 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
             var outputNDS = (revBase * seasonCoef) * ndsRateForCal / (1 + ndsRateForCal);
             // Входящий НДС: материалы + аренда + IT + логистика (упрощённо)
             var inputNDS = 0;
-            if (self._company('materials_with_nds', true)) {
+            if (self._company('materials_with_nds', true) && matThis > 0) {
                 inputNDS += matThis * ndsRateForCal / (1 + ndsRateForCal);
             }
-            if (self._company('rent_with_nds', true)) {
+            if (self._company('rent_with_nds', true) && rentBase > 0) {
                 inputNDS += rentBase * ndsRateForCal / (1 + ndsRateForCal);
             }
-            if (self._company('logistics_with_nds', true)) {
+            if (self._company('logistics_with_nds', true) && logThis > 0) {
                 inputNDS += logThis * ndsRateForCal / (1 + ndsRateForCal);
             }
-            if (self._company('it_with_nds', true)) {
+            if (self._company('it_with_nds', true) && itBase > 0) {
                 inputNDS += itBase * ndsRateForCal / (1 + ndsRateForCal);
             }
             ndsThis = Math.max(0, outputNDS - inputNDS);
