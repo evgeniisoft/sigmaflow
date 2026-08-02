@@ -641,195 +641,195 @@ var DRIVER_TREES = {
                         },
                         description: 'При >500 клиентов/мес — стоимость привлечения падает на 10% (сарафанное радио, бренд)'
                     }
-                },
-                'CLIENTS_PER_SPECIALIST': {
-                    label: 'Клиентов на специалиста',
-                    type: 'hidden',
-                    nodeId: 'CLIENTS_PER_SPECIALIST',
-                    defaultValue: 50
-                },
-                'SPECIALIST_PAYROLL': {
-                    label: 'ФОТ специалистов',
-                    type: 'computed',
-                    children: ['SPECIALIST_HEADCOUNT', 'SPECIALIST_AVG_SALARY'],
-                    formula: 'SPECIALIST_HEADCOUNT * SPECIALIST_AVG_SALARY',
-                    drivers: ['SPECIALIST_AVG_SALARY']
-                },
-                'SPECIALIST_HEADCOUNT': {
-                    label: 'Специалисты',
-                    type: 'driver',
-                    nodeId: 'SPECIALIST_HEADCOUNT',
-                    min: 1, max: 200, step: 1,
-                    unit: 'чел',
-                    affects: ['SPECIALIST_PAYROLL', 'HOURS_SOLD', 'CLIENTS'],
-                    nonlinear: {
-                        'HOURS_SOLD': {
-                            type: 'capacity',
-                            paramNode: 'HOURS_PER_SPECIALIST',
-                            defaultValue: 160,
-                            description: 'Максимум часов = специалисты × 160 ч/мес'
-                        },
-                        'CLIENTS': {
-                            type: 'capacity',
-                            paramNode: 'CLIENTS_PER_SPECIALIST',
-                            defaultValue: 50,
-                            description: 'Максимум клиентов = специалисты × 50 чел/мес'
-                        },
-                        'RENT': {
-                            type: 'space_efficiency',
-                            params: {
-                                sqmPerHead: 6,
-                                costPerSqm: 2000,
-                                efficiencyThreshold: 10,
-                                efficiencyGain: 0.15
-                            },
-                            description: 'До 10 чел — 6 м²/чел. После 10 чел — эффективнее на 15% (open space, shared desks)'
-                        }
-                    }
-                },
-                'SPECIALIST_AVG_SALARY': {
-                    label: 'Средняя ЗП специалиста',
-                    type: 'driver',
-                    nodeId: 'SPECIALIST_AVG_SALARY',
-                    min: 30000, max: 250000, step: 10000,
-                    unit: '₽/мес'
-                },
-                'TOTAL_COSTS': {
-                    label: 'Общие расходы',
-                    type: 'computed',
-                    children: ['SPECIALIST_PAYROLL', 'ADMIN_PAYROLL', 'RENT', 'MARKETING', 'IT_EXP', 'OTHER_OPEX', 'INTEREST', 'TAX']
-                },
-                'ADMIN_PAYROLL': {
-                    label: 'ФОТ АУП',
-                    type: 'computed',
-                    children: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY'],
-                    formula: 'ADMIN_HEADCOUNT * ADMIN_AVG_SALARY',
-                    drivers: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY']
-                },
-                'ADMIN_HEADCOUNT': {
-                    label: 'Административный персонал',
-                    type: 'driver',
-                    nodeId: 'ADMIN_HEADCOUNT',
-                    min: 0, max: 30, step: 1,
-                    unit: 'чел'
-                },
-                'ADMIN_AVG_SALARY': {
-                    label: 'Средняя ЗП АУП',
-                    type: 'driver',
-                    nodeId: 'ADMIN_AVG_SALARY',
-                    min: 30000, max: 300000, step: 10000,
-                    unit: '₽/мес'
-                },
-                'RENT': {
-                    label: 'Аренда',
-                    type: 'driver',
-                    nodeId: 'RENT',
-                    min: 0, max: 1000000, step: 10000,
-                    unit: '₽/мес'
-                },
-                'MARKETING': {
-                    label: 'Маркетинг',
-                    type: 'driver',
-                    nodeId: 'MARKETING',
-                    min: 0, max: 5000000, step: 10000,
-                    unit: '₽/мес',
-                    affects: ['CLIENTS'],
-                    nonlinear: {
-                        'CLIENTS': {
-                            type: 'diminishing_returns',
-                            params: { a: 0.1, saturation: 2000000 },
-                            lag: 2,
-                            description: 'Удвоение бюджета → +7-10% клиентов через 2 мес. Эффект затухает к 2 млн.'
-                        }
-                    }
-                },
-                'IT_EXP': {
-                    label: 'IT-расходы',
-                    type: 'driver',
-                    nodeId: 'IT_EXP',
-                    min: 0, max: 1000000, step: 5000,
-                    unit: '₽/мес'
-                },
-                'OTHER_OPEX': {
-                    label: 'Прочие операционные',
-                    type: 'computed',
-                    children: ['TRAINING_COST', 'LEGAL_COST', 'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAVEL_COST', 'RD_EXP', 'OUTSOURCE_COST']
-                },
-                'TRAINING_COST': {
-                    label: 'Обучение',
-                    type: 'driver',
-                    nodeId: 'TRAINING_COST',
-                    min: 0, max: 500000, step: 5000,
-                    unit: '₽/мес'
-                },
-                'LEGAL_COST': {
-                    label: 'Юридические',
-                    type: 'driver',
-                    nodeId: 'LEGAL_COST',
-                    min: 0, max: 200000, step: 5000,
-                    unit: '₽/мес'
-                },
-                'BANK_FEES': {
-                    label: 'Комиссии банка',
-                    type: 'driver',
-                    nodeId: 'BANK_FEES',
-                    min: 0, max: 100000, step: 1000,
-                    unit: '₽/мес'
-                },
-                'INSURANCE_COST': {
-                    label: 'Страхование',
-                    type: 'driver',
-                    nodeId: 'INSURANCE_COST',
-                    min: 0, max: 200000, step: 5000,
-                    unit: '₽/мес'
-                },
-                'UTILITIES': {
-                    label: 'Коммунальные',
-                    type: 'driver',
-                    nodeId: 'UTILITIES',
-                    min: 0, max: 200000, step: 5000,
-                    unit: '₽/мес'
-                },
-                'OFFICE_EXP': {
-                    label: 'Офисные',
-                    type: 'driver',
-                    nodeId: 'OFFICE_EXP',
-                    min: 0, max: 100000, step: 2000,
-                    unit: '₽/мес'
-                },
-                'TRAVEL_COST': {
-                    label: 'Командировочные',
-                    type: 'driver',
-                    nodeId: 'TRAVEL_COST',
-                    min: 0, max: 300000, step: 5000,
-                    unit: '₽/мес'
-                },
-                'RD_EXP': {
-                    label: 'R&D',
-                    type: 'driver',
-                    nodeId: 'RD_EXP',
-                    min: 0, max: 1000000, step: 10000,
-                    unit: '₽/мес'
-                },
-                'OUTSOURCE_COST': {
-                    label: 'Аутсорсинг',
-                    type: 'driver',
-                    nodeId: 'OUTSOURCE_COST',
-                    min: 0, max: 1000000, step: 10000,
-                    unit: '₽/мес'
-                },
-                'INTEREST': {
-                    label: 'Проценты',
-                    type: 'driver',
-                    nodeId: 'INTEREST',
-                    computed: true
-                },
-                'TAX': {
-                    label: 'Налог на прибыль',
-                    type: 'driver',
-                    nodeId: 'TAX',
-                    computed: true
                 }
+            },
+            'CLIENTS_PER_SPECIALIST': {
+                label: 'Клиентов на специалиста',
+                type: 'hidden',
+                nodeId: 'CLIENTS_PER_SPECIALIST',
+                defaultValue: 50
+            },
+            'SPECIALIST_PAYROLL': {
+                label: 'ФОТ специалистов',
+                type: 'computed',
+                children: ['SPECIALIST_HEADCOUNT', 'SPECIALIST_AVG_SALARY'],
+                formula: 'SPECIALIST_HEADCOUNT * SPECIALIST_AVG_SALARY',
+                drivers: ['SPECIALIST_AVG_SALARY']
+            },
+            'SPECIALIST_HEADCOUNT': {
+                label: 'Специалисты',
+                type: 'driver',
+                nodeId: 'SPECIALIST_HEADCOUNT',
+                min: 1, max: 200, step: 1,
+                unit: 'чел',
+                affects: ['SPECIALIST_PAYROLL', 'HOURS_SOLD', 'CLIENTS'],
+                nonlinear: {
+                    'HOURS_SOLD': {
+                        type: 'capacity',
+                        paramNode: 'HOURS_PER_SPECIALIST',
+                        defaultValue: 160,
+                        description: 'Максимум часов = специалисты × 160 ч/мес'
+                    },
+                    'CLIENTS': {
+                        type: 'capacity',
+                        paramNode: 'CLIENTS_PER_SPECIALIST',
+                        defaultValue: 50,
+                        description: 'Максимум клиентов = специалисты × 50 чел/мес'
+                    },
+                    'RENT': {
+                        type: 'space_efficiency',
+                        params: {
+                            sqmPerHead: 6,
+                            costPerSqm: 2000,
+                            efficiencyThreshold: 10,
+                            efficiencyGain: 0.15
+                        },
+                        description: 'До 10 чел — 6 м²/чел. После 10 чел — эффективнее на 15% (open space, shared desks)'
+                    }
+                }
+            },
+            'SPECIALIST_AVG_SALARY': {
+                label: 'Средняя ЗП специалиста',
+                type: 'driver',
+                nodeId: 'SPECIALIST_AVG_SALARY',
+                min: 30000, max: 250000, step: 10000,
+                unit: '₽/мес'
+            },
+            'TOTAL_COSTS': {
+                label: 'Общие расходы',
+                type: 'computed',
+                children: ['SPECIALIST_PAYROLL', 'ADMIN_PAYROLL', 'RENT', 'MARKETING', 'IT_EXP', 'OTHER_OPEX', 'INTEREST', 'TAX']
+            },
+            'ADMIN_PAYROLL': {
+                label: 'ФОТ АУП',
+                type: 'computed',
+                children: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY'],
+                formula: 'ADMIN_HEADCOUNT * ADMIN_AVG_SALARY',
+                drivers: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY']
+            },
+            'ADMIN_HEADCOUNT': {
+                label: 'Административный персонал',
+                type: 'driver',
+                nodeId: 'ADMIN_HEADCOUNT',
+                min: 0, max: 30, step: 1,
+                unit: 'чел'
+            },
+            'ADMIN_AVG_SALARY': {
+                label: 'Средняя ЗП АУП',
+                type: 'driver',
+                nodeId: 'ADMIN_AVG_SALARY',
+                min: 30000, max: 300000, step: 10000,
+                unit: '₽/мес'
+            },
+            'RENT': {
+                label: 'Аренда',
+                type: 'driver',
+                nodeId: 'RENT',
+                min: 0, max: 1000000, step: 10000,
+                unit: '₽/мес'
+            },
+            'MARKETING': {
+                label: 'Маркетинг',
+                type: 'driver',
+                nodeId: 'MARKETING',
+                min: 0, max: 5000000, step: 10000,
+                unit: '₽/мес',
+                affects: ['CLIENTS'],
+                nonlinear: {
+                    'CLIENTS': {
+                        type: 'diminishing_returns',
+                        params: { a: 0.1, saturation: 2000000 },
+                        lag: 2,
+                        description: 'Удвоение бюджета → +7-10% клиентов через 2 мес. Эффект затухает к 2 млн.'
+                    }
+                }
+            },
+            'IT_EXP': {
+                label: 'IT-расходы',
+                type: 'driver',
+                nodeId: 'IT_EXP',
+                min: 0, max: 1000000, step: 5000,
+                unit: '₽/мес'
+            },
+            'OTHER_OPEX': {
+                label: 'Прочие операционные',
+                type: 'computed',
+                children: ['TRAINING_COST', 'LEGAL_COST', 'BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAVEL_COST', 'RD_EXP', 'OUTSOURCE_COST']
+            },
+            'TRAINING_COST': {
+                label: 'Обучение',
+                type: 'driver',
+                nodeId: 'TRAINING_COST',
+                min: 0, max: 500000, step: 5000,
+                unit: '₽/мес'
+            },
+            'LEGAL_COST': {
+                label: 'Юридические',
+                type: 'driver',
+                nodeId: 'LEGAL_COST',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'BANK_FEES': {
+                label: 'Комиссии банка',
+                type: 'driver',
+                nodeId: 'BANK_FEES',
+                min: 0, max: 100000, step: 1000,
+                unit: '₽/мес'
+            },
+            'INSURANCE_COST': {
+                label: 'Страхование',
+                type: 'driver',
+                nodeId: 'INSURANCE_COST',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'UTILITIES': {
+                label: 'Коммунальные',
+                type: 'driver',
+                nodeId: 'UTILITIES',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'OFFICE_EXP': {
+                label: 'Офисные',
+                type: 'driver',
+                nodeId: 'OFFICE_EXP',
+                min: 0, max: 100000, step: 2000,
+                unit: '₽/мес'
+            },
+            'TRAVEL_COST': {
+                label: 'Командировочные',
+                type: 'driver',
+                nodeId: 'TRAVEL_COST',
+                min: 0, max: 300000, step: 5000,
+                unit: '₽/мес'
+            },
+            'RD_EXP': {
+                label: 'R&D',
+                type: 'driver',
+                nodeId: 'RD_EXP',
+                min: 0, max: 1000000, step: 10000,
+                unit: '₽/мес'
+            },
+            'OUTSOURCE_COST': {
+                label: 'Аутсорсинг',
+                type: 'driver',
+                nodeId: 'OUTSOURCE_COST',
+                min: 0, max: 1000000, step: 10000,
+                unit: '₽/мес'
+            },
+            'INTEREST': {
+                label: 'Проценты',
+                type: 'driver',
+                nodeId: 'INTEREST',
+                computed: true
+            },
+            'TAX': {
+                label: 'Налог на прибыль',
+                type: 'driver',
+                nodeId: 'TAX',
+                computed: true
             }
         }
     },
@@ -1177,5 +1177,109 @@ var DRIVER_TREES = {
                 computed: true
             }
         }
+    }
+};
+
+var MACRO_FORMULAS = {
+    // Общие для всех отраслей
+    common: {
+        'INFLATION': {
+            'ADMIN_AVG_SALARY': { coeff: 0.8, type: 'relative', desc: 'Рост инфляции → индексация ЗП АУП' }
+        },
+        'LABOR_INDEX': {
+            'ADMIN_AVG_SALARY': { coeff: 0.4, type: 'relative', desc: 'Дефицит кадров → рост ЗП АУП' }
+        }
     },
+
+    // Производство
+    production: {
+        'CB_RATE': {
+            'VOLUME': { coeff: -0.15, type: 'absolute_pct', desc: 'Ставка ↑ → спрос ↓ → объём ↓' }
+        },
+        'INFLATION': {
+            'PROD_AVG_SALARY': { coeff: 0.8, type: 'relative', desc: 'Инфляция → индексация ЗП' },
+            'PRICE': { coeff: 0.6, type: 'relative', desc: 'Инфляция → рост цен' }
+        },
+        'FX_RATE': {
+            'UNIT_MATERIAL': { coeff: 0.3, type: 'relative', desc: 'Курс ↑ → импортное сырьё дороже' }
+        },
+        'COMPETITION': {
+            'VOLUME': { coeff: -0.25, type: 'absolute_pct', desc: 'Конкуренция ↑ → объём ↓' },
+            'PRICE': { coeff: -0.2, type: 'absolute_pct', desc: 'Конкуренция ↑ → цена ↓' }
+        },
+        'TARIFFS': {
+            'ENERGY_COST': { coeff: 0.5, type: 'relative', desc: 'Тарифы ↑ → энергия дороже' },
+            'LOGISTICS_COST': { coeff: 0.5, type: 'relative', desc: 'Тарифы ↑ → логистика дороже' }
+        },
+        'LABOR_INDEX': {
+            'PROD_AVG_SALARY': { coeff: 0.4, type: 'relative', desc: 'Дефицит кадров → рост ЗП' }
+        }
+    },
+
+    // IT
+    it: {
+        'CB_RATE': {
+            'UTILIZATION': { coeff: -0.3, type: 'absolute_pct', desc: 'Ставка ↑ → клиенты реже заказывают → утилизация ↓' }
+        },
+        'INFLATION': {
+            'DEV_AVG_SALARY': { coeff: 0.8, type: 'relative', desc: 'Инфляция → индексация ЗП разработчиков' }
+        },
+        'COMPETITION': {
+            'MONTHLY_RATE_PER_DEV': { coeff: -0.3, type: 'relative', desc: 'Конкуренция ↑ → ставку приходится снижать' },
+            'UTILIZATION': { coeff: -0.2, type: 'absolute_pct', desc: 'Конкуренция ↑ → утилизация ↓' }
+        },
+        'LABOR_INDEX': {
+            'DEV_AVG_SALARY': { coeff: 0.4, type: 'relative', desc: 'Дефицит кадров → рост ЗП' }
+        },
+        'TARIFFS': {
+            'IT_EXP': { coeff: 0.3, type: 'relative', desc: 'Тарифы ↑ → облака и хостинг дороже' }
+        }
+    },
+
+    // Услуги
+    services: {
+        'CB_RATE': {
+            'HOURS_SOLD': { coeff: -0.1, type: 'absolute_pct', desc: 'Ставка ↑ → спрос на услуги ↓' },
+            'CLIENTS': { coeff: -0.15, type: 'absolute_pct', desc: 'Ставка ↑ → клиентов меньше' }
+        },
+        'INFLATION': {
+            'SPECIALIST_AVG_SALARY': { coeff: 0.8, type: 'relative', desc: 'Инфляция → индексация ЗП' },
+            'HOURLY_RATE': { coeff: 0.5, type: 'relative', desc: 'Инфляция → рост ставок' },
+            'AVG_CHECK': { coeff: 0.5, type: 'relative', desc: 'Инфляция → рост чеков' }
+        },
+        'COMPETITION': {
+            'HOURLY_RATE': { coeff: -0.2, type: 'relative', desc: 'Конкуренция → ставки под давлением' },
+            'AVG_CHECK': { coeff: -0.2, type: 'relative', desc: 'Конкуренция → чеки под давлением' },
+            'CLIENTS': { coeff: -0.3, type: 'absolute_pct', desc: 'Конкуренция → клиентов меньше' }
+        },
+        'LABOR_INDEX': {
+            'SPECIALIST_AVG_SALARY': { coeff: 0.4, type: 'relative', desc: 'Дефицит кадров → рост ЗП' }
+        }
+    },
+
+    // Ритейл
+    retail: {
+        'CB_RATE': {
+            'VOLUME': { coeff: -0.2, type: 'absolute_pct', desc: 'Ставка ↑ → покупательская способность ↓' }
+        },
+        'INFLATION': {
+            'SALES_AVG_SALARY': { coeff: 0.8, type: 'relative', desc: 'Инфляция → индексация ЗП' },
+            'WAREHOUSE_AVG_SALARY': { coeff: 0.8, type: 'relative', desc: 'Инфляция → индексация ЗП склада' },
+            'PRICE': { coeff: 0.7, type: 'relative', desc: 'Инфляция → рост розничных цен' }
+        },
+        'FX_RATE': {
+            'UNIT_PURCHASE': { coeff: 0.3, type: 'relative', desc: 'Курс ↑ → импортный товар дороже' }
+        },
+        'COMPETITION': {
+            'VOLUME': { coeff: -0.35, type: 'absolute_pct', desc: 'Конкуренция → объём продаж ↓ (высокая чувствительность)' },
+            'PRICE': { coeff: -0.25, type: 'absolute_pct', desc: 'Конкуренция → демпинг' }
+        },
+        'TARIFFS': {
+            'LOGISTICS_COST': { coeff: 0.5, type: 'relative', desc: 'Тарифы → доставка дороже' }
+        },
+        'LABOR_INDEX': {
+            'SALES_AVG_SALARY': { coeff: 0.4, type: 'relative', desc: 'Дефицит → рост ЗП продавцов' },
+            'WAREHOUSE_AVG_SALARY': { coeff: 0.4, type: 'relative', desc: 'Дефицит → рост ЗП склада' }
+        }
+    }
 };
