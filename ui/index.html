@@ -3332,9 +3332,9 @@
                 html += '<td>' + mp.label + '</td>';
                 html += '<td class="value-cell">' + formatForecastValue(currentVal, mp.isPercent) + '</td>';
                 for (var q = 0; q < 4; q++) {
-                    html += '<td><input type="text" class="macro-quarter" data-param="' + mp.id + '" data-q="' + q +
-                        '" value="' + formatForecastValue(forecastMacro[mp.id].quarters[q], mp.isPercent) +
-                        '" style="width:60px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;"></td>';
+                    html += '<td><input type="number" class="macro-quarter" data-param="' + mp.id + '" data-q="' + q +
+                        '" value="' + (mp.isPercent ? (forecastMacro[mp.id].quarters[q] * 100).toFixed(1) : forecastMacro[mp.id].quarters[q]) +
+                        '" step="' + mp.step + '" style="width:70px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;"></td>';
                 }
                 html += '</tr>';
             });
@@ -3348,7 +3348,9 @@
                     var paramId = inp.dataset.param;
                     var q = parseInt(inp.dataset.q);
                     var mp = MACRO_PARAMS.find(function (p) { return p.id === paramId; });
-                    var val = parseForecastValue(inp.value, mp ? mp.isPercent : false);
+                    var val = parseFloat(inp.value);
+                    if (isNaN(val)) val = 0;
+                    if (mp && mp.isPercent) val = val / 100;
                     if (!forecastMacro[paramId]) {
                         forecastMacro[paramId] = { current: val, quarters: [val, val, val, val] };
                     }
