@@ -54,6 +54,15 @@
                     <div id="dashboard-metrics"
                         style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
                     </div>
+                    <div id="dashboard-breakeven"
+                        style="padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
+                        <div id="breakeven-header"
+                            style="cursor:pointer;font-size:13px;font-weight:600;margin-bottom:8px;"
+                            onclick="toggleBreakeven()">
+                            ▼ ТОЧКА БЕЗУБЫТОЧНОСТИ
+                        </div>
+                        <div id="breakeven-body"></div>
+                    </div>
                     <div id="dashboard-analysis"
                         style="display:none;padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
                     </div>
@@ -1165,6 +1174,184 @@
         var currentTracedNode = null;
         var graphDepth = 2;
 
+
+        function toggleBreakeven() {
+            var body = document.getElementById('breakeven-body');
+            var header = document.getElementById('breakeven-header');
+            if (body.style.display === 'none') {
+                body.style.display = 'block';
+                header.innerHTML = '▼ ТОЧКА БЕЗУБЫТОЧНОСТИ';
+            } else {
+                body.style.display = 'none';
+                header.innerHTML = '▶ ТОЧКА БЕЗУБЫТОЧНОСТИ';
+            }
+        }
+
+        function renderBreakeven() {
+            if (!graph) return;
+
+            var body = document.getElementById('breakeven-body');
+            if (!body) return;
+
+            // Постоянные расходы — не зависят от объёма
+            var fixedCosts = {
+                'ФОТ АУП': graph.nodes['ADMIN_PAYROLL'] ? Math.abs(graph.nodes['ADMIN_PAYROLL'].value) : 0,
+                'Аренда': graph.nodes['RENT'] ? Math.abs(graph.nodes['RENT'].value) : 0,
+                'Амортизация': graph.nodes['DA'] ? Math.abs(graph.nodes['DA'].value) : 0,
+                'IT': graph.nodes['IT_EXP'] ? Math.abs(graph.nodes['IT_EXP'].value) : 0,
+                'Коммерческие': graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : 0,
+                'Прочие пост.': (graph.nodes['LEGAL_COST'] ? Math.abs(graph.nodes['LEGAL_COST'].value) : 0) +
+                    (graph.nodes['BANK_FEES'] ? Math.abs(graph.nodes['BANK_FEES'].value) : 0) +
+                    (graph.nodes['INSURANCE_COST'] ? Math.abs(graph.nodes['INSURANCE_COST'].value) : 0) +
+                    (graph.nodes['UTILITIES'] ? Math.abs(graph.nodes['UTILITIES'].value) : 0) +
+                    (graph.nodes['OFFICE_EXP'] ? Math.abs(graph.nodes['OFFICE_EXP'].value) : 0) +
+                    (graph.nodes['TRAVEL_COST'] ? Math.abs(graph.nodes['TRAVEL_COST'].value) : 0) +
+                    (graph.nodes['RD_EXP'] ? Math.abs(graph.nodes['RD_EXP'].value) : 0) +
+                    (graph.nodes['TRAINING_COST'] ? Math.abs(graph.nodes['TRAINING_COST'].value) : 0) +
+                    (graph.nodes['OUTSOURCE_COST'] ? Math.abs(graph.nodes['OUTSOURCE_COST'].value) : 0),
+                'Миним. ФОТ': 0
+            };
+
+            // Минимальный производственный персонал (даже при нулевом объёме)
+            var minProdHeadcount = 2;
+            var prodAvgSalary = graph.nodes['PROD_AVG_SALARY'] ? graph.nodes['PROD_AVG_SALARY'].value : 0;
+            var devAvgSalary = graph.nodes['DEV_AVG_SALARY'] ? graph.nodes['DEV_AVG_SALARY'].value : 0;
+            var specAvgSalary = graph.nodes['SPECIALIST_AVG_SALARY'] ? graph.nodes['SPECIALIST_AVG_SALARY'].value : 0;
+            var salesAvgSalary = graph.nodes['SALES_AVG_SALARY'] ? graph.nodes['SALES_AVG_SALARY'].value : 0;
+            var warehouseAvgSalary = graph.nodes['WAREHOUSE_AVG_SALARY'] ? graph.nodes['WAREHOUSE_AVG_SALARY'].value : 0;
+
+            if (graph.industry === 'production') {
+                fixedCosts['Миним. ФОТ'] = minProdHeadcount * prodAvgSalary;
+            } else if (graph.industry === 'it') {
+                fixedCosts['Миним. ФОТ'] = minProdHeadcount * devAvgSalary;
+            } else if (graph.industry === 'services') {
+                fixedCosts['Миним. ФОТ'] = minProdHeadcount * specAvgSalary;
+            } else if (graph.industry === 'retail') {
+                fixedCosts['Миним. ФОТ'] = minProdHeadcount * (salesAvgSalary + warehouseAvgSalary) / 2;
+            }
+
+            // Переменные расходы — зависят от объёма
+            var variableCosts = {
+                'Материалы': graph.nodes['MATERIAL_COST'] ? Math.abs(graph.nodes['MATERIAL_COST'].value) : 0,
+                'ФОТ произв.': graph.nodes['DIRECT_LABOR'] ? Math.abs(graph.nodes['DIRECT_LABOR'].value) : 0,
+                'ФОТ разработчиков': graph.nodes['DEV_PAYROLL'] ? Math.abs(graph.nodes['DEV_PAYROLL'].value) : 0,
+                'ФОТ специалистов': graph.nodes['SPECIALIST_PAYROLL'] ? Math.abs(graph.nodes['SPECIALIST_PAYROLL'].value) : 0,
+                'ФОТ продавцов': graph.nodes['SALES_PAYROLL'] ? Math.abs(graph.nodes['SALES_PAYROLL'].value) : 0,
+                'ФОТ склада': graph.nodes['WAREHOUSE_PAYROLL'] ? Math.abs(graph.nodes['WAREHOUSE_PAYROLL'].value) : 0,
+                'Энергия': graph.nodes['ENERGY_COST'] ? Math.abs(graph.nodes['ENERGY_COST'].value) : 0,
+                'Логистика': graph.nodes['LOGISTICS_COST'] ? Math.abs(graph.nodes['LOGISTICS_COST'].value) : 0,
+                'Маркетинг': graph.nodes['MARKETING'] ? Math.abs(graph.nodes['MARKETING'].value) : 0,
+                'Аутсорсинг': graph.nodes['OUTSOURCE_COST'] ? Math.abs(graph.nodes['OUTSOURCE_COST'].value) : 0
+            };
+
+            var totalFixed = 0;
+            Object.keys(fixedCosts).forEach(function (k) { totalFixed += fixedCosts[k]; });
+
+            var totalVariable = 0;
+            Object.keys(variableCosts).forEach(function (k) { totalVariable += variableCosts[k]; });
+
+            var revenue = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
+            var price = graph.nodes['PRICE'] ? graph.nodes['PRICE'].value : 0;
+            var avgCheck = graph.nodes['AVG_CHECK'] ? graph.nodes['AVG_CHECK'].value : 0;
+            var unitPrice = price || avgCheck || 1;
+
+            var marginality = revenue > 0 ? (revenue - totalVariable) / revenue * 100 : 0;
+            var breakevenRevenue = marginality > 0 ? totalFixed / (marginality / 100) : 0;
+            var breakevenUnits = unitPrice > 0 ? Math.ceil(breakevenRevenue / unitPrice) : 0;
+            var currentUnits = unitPrice > 0 ? Math.round(revenue / unitPrice) : 0;
+            var safetyMargin = revenue > 0 ? (revenue - breakevenRevenue) / revenue * 100 : 0;
+
+            // Индикатор запаса прочности
+            var safetyDots = '';
+            if (safetyMargin < 10) safetyDots = '●○○○○○○ (критично)';
+            else if (safetyMargin < 25) safetyDots = '●●○○○○○ (низкий)';
+            else if (safetyMargin < 50) safetyDots = '●●●●○○○ (нормально)';
+            else if (safetyMargin < 100) safetyDots = '●●●●●○○ (комфортно)';
+            else safetyDots = '●●●●●●● (отлично)';
+
+            // Шкала
+            var maxScale = Math.max(revenue, breakevenRevenue * 1.5);
+            var bePct = maxScale > 0 ? (breakevenRevenue / maxScale * 100) : 0;
+            var revPct = maxScale > 0 ? (revenue / maxScale * 100) : 0;
+            var markerPos = Math.min(revPct, 98);
+
+            var html = '';
+
+            // Две колонки с расходами
+            html += '<div style="display:flex;gap:16px;margin-bottom:12px;">';
+
+            // Постоянные
+            html += '<div style="flex:1;padding:8px;background:var(--bg-primary);border:1px solid var(--border);">';
+            html += '<div style="font-size:10px;color:var(--text-hint);letter-spacing:1px;margin-bottom:6px;">ПОСТОЯННЫЕ РАСХОДЫ</div>';
+            Object.keys(fixedCosts).forEach(function (k) {
+                if (fixedCosts[k] > 0) {
+                    html += '<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0;">';
+                    html += '<span>' + k + '</span>';
+                    html += '<span>' + formatValue(fixedCosts[k]) + '</span>';
+                    html += '</div>';
+                }
+            });
+            html += '<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;">';
+            html += '<span>ИТОГО</span><span>' + formatValue(totalFixed) + '</span>';
+            html += '</div></div>';
+
+            // Переменные
+            html += '<div style="flex:1;padding:8px;background:var(--bg-primary);border:1px solid var(--border);">';
+            html += '<div style="font-size:10px;color:var(--text-hint);letter-spacing:1px;margin-bottom:6px;">ПЕРЕМЕННЫЕ РАСХОДЫ</div>';
+            Object.keys(variableCosts).forEach(function (k) {
+                if (variableCosts[k] > 0) {
+                    html += '<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0;">';
+                    html += '<span>' + k + '</span>';
+                    html += '<span>' + formatValue(variableCosts[k]) + '</span>';
+                    html += '</div>';
+                }
+            });
+            html += '<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;">';
+            html += '<span>ИТОГО</span><span>' + formatValue(totalVariable) + '</span>';
+            html += '</div></div>';
+
+            html += '</div>';
+
+            // Шкала
+            html += '<div style="padding:12px;background:var(--bg-primary);border:1px solid var(--border);margin-bottom:12px;">';
+            html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">ВЫРУЧКА: <span style="color:var(--text-heading);font-weight:600;">' + formatValue(revenue) + '</span></div>';
+            html += '<div style="position:relative;height:32px;background:linear-gradient(to right, #d44b3c 0%, #d44b3c ' + bePct + '%, #4b8c5a ' + bePct + '%, #4b8c5a 100%);margin:8px 0;border-radius:2px;">';
+            html += '<div style="position:absolute;left:' + markerPos + '%;top:-4px;width:2px;height:40px;background:var(--text-heading);"></div>';
+            html += '<div style="position:absolute;left:' + markerPos + '%;top:34px;font-size:9px;color:var(--text-heading);white-space:nowrap;transform:translateX(-50%);">Вы здесь</div>';
+            html += '</div>';
+            html += '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);">';
+            html += '<span>0</span><span>' + formatValue(breakevenRevenue) + ' (точка)</span><span>' + formatValue(maxScale) + '</span>';
+            html += '</div></div>';
+
+            // Итоговые показатели
+            html += '<div style="padding:12px;background:var(--bg-primary);border:1px solid var(--border);">';
+            html += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;">';
+            html += '<span>Маржинальность</span><span style="font-weight:600;">' + marginality.toFixed(1) + '%</span>';
+            html += '</div>';
+            html += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;">';
+            html += '<span>Точка безубыточности</span><span style="font-weight:600;color:var(--warning);">' + formatValue(breakevenRevenue) + ' /мес</span>';
+            html += '</div>';
+            html += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;">';
+            html += '<span>В натуральном выражении</span><span style="font-weight:600;">' + breakevenUnits + ' ед (сейчас ' + currentUnits + ')</span>';
+            html += '</div>';
+            html += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;">';
+            html += '<span>Запас прочности</span><span style="font-weight:600;color:' + (safetyMargin > 30 ? 'var(--ok)' : 'var(--critical)') + ';">' + safetyMargin.toFixed(1) + '% ' + safetyDots + '</span>';
+            html += '</div>';
+            html += '<div style="font-size:10px;color:var(--text-hint);margin-top:6px;">';
+            if (safetyMargin > 50) {
+                html += 'Компания работает с хорошим запасом. Даже при падении выручки на ' + Math.round(safetyMargin) + '% остаётся прибыльной.';
+            } else if (safetyMargin > 25) {
+                html += 'Нормальный запас прочности. Рекомендуется контролировать постоянные расходы.';
+            } else if (safetyMargin > 0) {
+                html += 'Низкий запас прочности. Компания близка к точке безубыточности. Рекомендуется снизить постоянные расходы или увеличить маржинальность.';
+            } else {
+                html += 'Компания работает ниже точки безубыточности. Срочно требуется пересмотр затрат или рост выручки.';
+            }
+            html += '</div></div>';
+
+            body.innerHTML = html;
+        }
+
         function renderDashboard() {
             if (!graph) return;
 
@@ -1248,6 +1435,7 @@
                 document.getElementById('graph-selected-node').textContent = ' — Чистая прибыль';
                 renderTraceGraph('NET_PROFIT', 2);
                 renderAnalysis('NET_PROFIT');
+                renderBreakeven();
             }
         }
 
