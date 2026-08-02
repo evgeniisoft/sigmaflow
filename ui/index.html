@@ -1900,6 +1900,9 @@
                     var panel = document.getElementById(panelId);
                     if (panel) {
                         panel.classList.add('active');
+                        if (btn.dataset.panel === 'scenarios') {
+                            renderScenarios();
+                        }
                         // При переключении на СТРАТЕГИЮ — перерисовать граф
                         if (btn.dataset.panel === 'strategy' && graph) {
                             setTimeout(function () { renderDashboard(); }, 100);
