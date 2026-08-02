@@ -40,6 +40,7 @@
         <button class="nav-btn" data-panel="editor">РЕДАКТОР</button>
         <button class="nav-btn" data-panel="driver-tree">KPI-МОСТЫ</button>
         <button class="nav-btn" data-panel="company">НАСТРОЙКИ</button>
+        <button class="nav-btn" data-panel="forecast">ПРОГНОЗ</button>
         <button class="nav-btn nav-btn-alert" data-panel="diagnostics" id="nav-diagnostics">ДИАГНОСТИКА</button>
     </nav>
 
@@ -647,6 +648,38 @@
             </div>
         </div>
 
+        <!-- ПАНЕЛЬ ПРОГНОЗ -->
+        <div id="panel-forecast" class="panel">
+            <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;">
+                <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-shrink:0;">
+                    <h3 style="margin:0;">ПРОГНОЗ НА 12 МЕСЯЦЕВ</h3>
+                    <button id="btn-build-forecast" class="primary" style="margin-left:auto;">ПОСТРОИТЬ ПРОГНОЗ</button>
+                    <button id="btn-reset-forecast" style="font-size:11px;">↺ СБРОСИТЬ</button>
+                </div>
+
+                <!-- Переключатель режимов -->
+                <div style="display:flex;gap:0;margin-bottom:16px;flex-shrink:0;">
+                    <button id="btn-mode-drivers" class="forecast-mode-btn active" style="flex:1;">● ДРАЙВЕРЫ</button>
+                    <button id="btn-mode-macro" class="forecast-mode-btn" style="flex:1;">○ МАКРО</button>
+                </div>
+
+                <div style="display:flex;gap:16px;flex:1;min-height:0;">
+                    <!-- Левая панель: события или макро -->
+                    <div id="forecast-left" style="width:350px;overflow-y:auto;flex-shrink:0;padding-right:8px;"></div>
+
+                    <!-- Правая панель: таблица результатов и график -->
+                    <div style="flex:1;display:flex;flex-direction:column;overflow-y:auto;">
+                        <div id="forecast-table" style="overflow-x:auto;margin-bottom:16px;"></div>
+                        <div id="forecast-chart"
+                            style="flex:1;min-height:300px;background:var(--bg-primary);border:1px solid var(--border);position:relative;">
+                        </div>
+                        <div id="forecast-summary"
+                            style="margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border);font-size:11px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- ПАНЕЛЬ ДИАГНОСТИКА -->
         <div id="panel-diagnostics" class="panel">
             <div style="padding:16px;overflow-y:auto;flex:1;">
@@ -2743,6 +2776,416 @@
             return null;
         }
 
+
+        // ============================================================
+        // ПРОГНОЗ НА 12 МЕСЯЦЕВ
+        // ============================================================
+
+        var forecastMode = 'drivers'; // 'drivers' | 'macro'
+        var forecastEvents = [];      // список событий
+        var forecastMacro = {};       // прогноз макро-показателей
+        var forecastData = null;      // результат расчёта
+
+        // Список доступных параметров для событий
+        var FORECAST_PARAMS = [
+            { id: 'PRICE', label: 'Цена', unit: '₽', step: 1000 },
+            { id: 'VOLUME', label: 'Объём продаж', unit: 'ед', step: 10 },
+            { id: 'PROD_HEADCOUNT', label: 'Произв. персонал', unit: 'чел', step: 1 },
+            { id: 'DEV_HEADCOUNT', label: 'Разработчики', unit: 'чел', step: 1 },
+            { id: 'SPECIALIST_HEADCOUNT', label: 'Специалисты', unit: 'чел', step: 1 },
+            { id: 'SALES_HEADCOUNT', label: 'Продавцы', unit: 'чел', step: 1 },
+            { id: 'ADMIN_HEADCOUNT', label: 'АУП', unit: 'чел', step: 1 },
+            { id: 'PROD_AVG_SALARY', label: 'ЗП произв.', unit: '₽', step: 5000 },
+            { id: 'DEV_AVG_SALARY', label: 'ЗП разработчика', unit: '₽', step: 5000 },
+            { id: 'ADMIN_AVG_SALARY', label: 'ЗП АУП', unit: '₽', step: 5000 },
+            { id: 'UNIT_MATERIAL', label: 'Цена сырья', unit: '₽', step: 100 },
+            { id: 'UNIT_PURCHASE', label: 'Закупочная цена', unit: '₽', step: 100 },
+            { id: 'MONTHLY_RATE_PER_DEV', label: 'Ставка разработчика', unit: '₽', step: 10000 },
+            { id: 'HOURLY_RATE', label: 'Ставка часа', unit: '₽', step: 500 },
+            { id: 'AVG_CHECK', label: 'Средний чек', unit: '₽', step: 500 },
+            { id: 'MARKETING', label: 'Маркетинг', unit: '₽', step: 10000 },
+            { id: 'RENT', label: 'Аренда', unit: '₽', step: 10000 },
+            { id: 'ENERGY_COST', label: 'Энергозатраты', unit: '₽', step: 5000 },
+            { id: 'LOGISTICS_COST', label: 'Логистика', unit: '₽', step: 5000 }
+        ];
+
+        var MACRO_PARAMS = [
+            { id: 'CB_RATE', label: 'Ключевая ставка ЦБ', unit: '%', current: 21, min: 5, max: 30, step: 0.5 },
+            { id: 'INFLATION', label: 'Инфляция', unit: '%', current: 7, min: 1, max: 25, step: 0.5 },
+            { id: 'FX_RATE', label: 'Курс USD/RUB', unit: '₽', current: 95, min: 50, max: 200, step: 1 },
+            { id: 'COMPETITION', label: 'Конкуренция', unit: '', current: 0.5, min: 0, max: 1, step: 0.05 },
+            { id: 'TARIFFS', label: 'Тарифы монополий', unit: '', current: 1.05, min: 0.8, max: 2, step: 0.01 },
+            { id: 'LABOR_INDEX', label: 'Индекс рынка труда', unit: '', current: 0.8, min: 0.3, max: 1.5, step: 0.01 }
+        ];
+
+        function buildForecast() {
+            if (!graph) { notify('Сначала загрузите модель', true); return; }
+            graph.compute();
+
+            var horizon = 12;
+            var startMonth = new Date().getMonth();
+            var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+
+            // Сохраняем базовые значения
+            var baseValues = {};
+            Object.keys(graph.nodes).forEach(function (k) {
+                baseValues[k] = graph.nodes[k].value;
+            });
+
+            // Применяем прогноз и считаем каждый месяц
+            var rows = [];
+            var chartData = { revenue: [], profit: [], cash: [] };
+
+            // Кэш на начало — из модели
+            var runningCash = graph.nodes['CASH'] ? graph.nodes['CASH'].value : (graph.nodes['CASH_START'] ? graph.nodes['CASH_START'].value : 0);
+
+            for (var p = 0; p < horizon; p++) {
+                var mo = (startMonth + p) % 12;
+                var label = months[mo] + ' ' + (2026 + Math.floor((startMonth + p) / 12));
+
+                // Восстанавливаем базу
+                Object.keys(baseValues).forEach(function (k) {
+                    if (graph.nodes[k]) graph.nodes[k].value = baseValues[k];
+                });
+
+                // Применяем события (драйверный режим)
+                if (forecastMode === 'drivers') {
+                    forecastEvents.forEach(function (evt) {
+                        if (p >= evt.month && graph.nodes[evt.param]) {
+                            if (evt.type === 'set') {
+                                graph.nodes[evt.param].value = evt.value;
+                            } else if (evt.type === 'delta') {
+                                graph.nodes[evt.param].value += evt.value;
+                            }
+                        }
+                    });
+                }
+
+                // Применяем макро-прогноз (линейная интерполяция)
+                if (forecastMode === 'macro') {
+                    Object.keys(forecastMacro).forEach(function (paramId) {
+                        var macro = forecastMacro[paramId];
+                        if (macro && graph.nodes[paramId]) {
+                            var progress = p / (horizon - 1);
+                            var newVal = macro.current + (macro.future - macro.current) * progress;
+                            graph.nodes[paramId].value = newVal;
+                        }
+                    });
+                }
+
+                // Пересчитываем модель
+                graph.compute();
+
+                var rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
+                var profit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
+                var cfo = graph.nodes['CFO'] ? graph.nodes['CFO'].value : 0;
+                var cfi = graph.nodes['CFI'] ? graph.nodes['CFI'].value : 0;
+                var cff = graph.nodes['CFF'] ? graph.nodes['CFF'].value : 0;
+                runningCash += cfo + cfi + cff;
+
+                rows.push({
+                    label: label,
+                    revenue: rev,
+                    profit: profit,
+                    cash: runningCash,
+                    isPositive: profit >= 0
+                });
+
+                chartData.revenue.push(rev);
+                chartData.profit.push(profit);
+                chartData.cash.push(runningCash);
+            }
+
+            // Восстанавливаем модель
+            Object.keys(baseValues).forEach(function (k) {
+                if (graph.nodes[k]) graph.nodes[k].value = baseValues[k];
+            });
+            graph.compute();
+
+            forecastData = { rows: rows, chartData: chartData, months: months, startMonth: startMonth };
+
+            renderForecastTable();
+            renderForecastChart();
+            renderForecastSummary();
+        }
+
+        function renderForecastTable() {
+            if (!forecastData) return;
+            var html = '<table style="min-width:600px;"><thead><tr>';
+            html += '<th>МЕСЯЦ</th><th>ВЫРУЧКА</th><th>ПРИБЫЛЬ</th><th>КЭШ</th>';
+            html += '</tr></thead><tbody>';
+
+            forecastData.rows.forEach(function (r) {
+                var profitColor = r.profit >= 0 ? 'var(--ok)' : 'var(--critical)';
+                var cashColor = r.cash >= 0 ? 'var(--text-heading)' : 'var(--critical)';
+                html += '<tr>';
+                html += '<td>' + r.label + '</td>';
+                html += '<td class="value-cell">' + formatValue(r.revenue) + '</td>';
+                html += '<td class="value-cell" style="color:' + profitColor + ';">' + formatValue(r.profit) + '</td>';
+                html += '<td class="value-cell" style="color:' + cashColor + ';">' + formatValue(r.cash) + '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('forecast-table').innerHTML = html;
+        }
+
+        function renderForecastChart() {
+            var container = document.getElementById('forecast-chart');
+            if (!container || !forecastData) return;
+            container.innerHTML = '';
+
+            var width = container.clientWidth;
+            var height = container.clientHeight;
+            if (width === 0 || height === 0) return;
+
+            var data = forecastData.chartData;
+            var allValues = data.revenue.concat(data.profit).concat(data.cash);
+            var maxVal = Math.max.apply(null, allValues.map(Math.abs));
+            var minVal = Math.min.apply(null, data.profit.concat([0]));
+
+            var svg = d3.select('#forecast-chart').append('svg')
+                .attr('width', width).attr('height', height);
+
+            var margin = { top: 20, right: 60, bottom: 40, left: 80 };
+            var w = width - margin.left - margin.right;
+            var h = height - margin.top - margin.bottom;
+
+            var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+            var xScale = d3.scaleLinear().domain([0, 11]).range([0, w]);
+            var yScale = d3.scaleLinear().domain([minVal, maxVal * 1.1]).range([h, 0]);
+
+            // Оси
+            var xAxis = d3.axisBottom(xScale).ticks(12).tickFormat(function (d) {
+                return forecastData.months[(forecastData.startMonth + d) % 12];
+            });
+            g.append('g').attr('transform', 'translate(0,' + h + ')').call(xAxis)
+                .attr('font-size', '9px').attr('color', '#6a7080');
+
+            // Линии
+            var lineRevenue = d3.line().x(function (d, i) { return xScale(i); }).y(function (d) { return yScale(d); });
+            var lineProfit = d3.line().x(function (d, i) { return xScale(i); }).y(function (d) { return yScale(d); });
+            var lineCash = d3.line().x(function (d, i) { return xScale(i); }).y(function (d) { return yScale(d); });
+
+            g.append('path').datum(data.revenue).attr('fill', 'none').attr('stroke', '#5a9fd4').attr('stroke-width', 2).attr('d', lineRevenue);
+            g.append('path').datum(data.profit).attr('fill', 'none').attr('stroke', '#4b8c5a').attr('stroke-width', 2).attr('d', lineProfit);
+            g.append('path').datum(data.cash).attr('fill', 'none').attr('stroke', '#d4a843').attr('stroke-width', 2).attr('stroke-dasharray', '4 2').attr('d', lineCash);
+
+            // Нулевая линия
+            g.append('line').attr('x1', 0).attr('x2', w).attr('y1', yScale(0)).attr('y2', yScale(0))
+                .attr('stroke', '#2a3040').attr('stroke-width', 1);
+
+            // Легенда
+            var legend = [
+                { label: 'Выручка', color: '#5a9fd4' },
+                { label: 'Прибыль', color: '#4b8c5a' },
+                { label: 'Кэш', color: '#d4a843' }
+            ];
+            legend.forEach(function (l, i) {
+                g.append('circle').attr('cx', w - 100).attr('cy', 10 + i * 16).attr('r', 4).attr('fill', l.color);
+                g.append('text').attr('x', w - 90).attr('y', 13 + i * 16).attr('fill', '#c8ccd4').attr('font-size', '9px').text(l.label);
+            });
+        }
+
+        function renderForecastSummary() {
+            if (!forecastData) return;
+            var rows = forecastData.rows;
+
+            var breakevenMonth = -1;
+            for (var i = 0; i < rows.length; i++) {
+                if (rows[i].profit >= 0) { breakevenMonth = i; break; }
+            }
+
+            var minCash = rows[0].cash;
+            var minCashMonth = 0;
+            rows.forEach(function (r, i) {
+                if (r.cash < minCash) { minCash = r.cash; minCashMonth = i; }
+            });
+
+            var gapCount = rows.filter(function (r) { return r.cash < 0; }).length;
+            var totalProfit = rows.reduce(function (s, r) { return s + r.profit; }, 0);
+            var revFirst = rows[0].revenue;
+            var revLast = rows[rows.length - 1].revenue;
+            var revGrowth = revFirst > 0 ? ((revLast - revFirst) / revFirst * 100) : 0;
+
+            var html = '<div style="font-weight:600;margin-bottom:8px;">КЛЮЧЕВЫЕ ВЫВОДЫ</div>';
+
+            if (breakevenMonth >= 0) {
+                html += '<div>● Выход на безубыточность: <span style="color:var(--ok);">' + rows[breakevenMonth].label + '</span> (' + (breakevenMonth + 1) + '-й месяц)</div>';
+            } else {
+                html += '<div>● <span style="color:var(--critical);">Компания не выходит на безубыточность за 12 месяцев</span></div>';
+            }
+
+            html += '<div>● Минимальный остаток кэша: ' + formatValue(minCash) + ' (' + rows[minCashMonth].label + ')</div>';
+            html += '<div>● Кассовых разрывов: <span style="color:' + (gapCount > 0 ? 'var(--critical)' : 'var(--ok)') + ';">' + gapCount + '</span></div>';
+            html += '<div>● Годовая прибыль (прогноз): ' + formatValue(totalProfit) + '</div>';
+            html += '<div>● Рост выручки за 12 мес: ' + (revGrowth >= 0 ? '+' : '') + revGrowth.toFixed(1) + '%</div>';
+
+            document.getElementById('forecast-summary').innerHTML = html;
+        }
+
+        function renderForecastDrivers() {
+            var container = document.getElementById('forecast-left');
+            if (!container) return;
+
+            var html = '<div style="margin-bottom:12px;">';
+            html += '<button id="btn-add-event" class="primary" style="width:100%;">+ ДОБАВИТЬ СОБЫТИЕ</button>';
+            html += '</div>';
+
+            if (forecastEvents.length === 0) {
+                html += '<div style="color:var(--text-hint);font-size:12px;text-align:center;padding:20px;">Нет событий.<br>Нажмите «+ ДОБАВИТЬ СОБЫТИЕ»</div>';
+            } else {
+                html += '<div style="font-size:11px;color:var(--text-hint);margin-bottom:4px;">СОБЫТИЯ:</div>';
+                forecastEvents.forEach(function (evt, idx) {
+                    var paramInfo = FORECAST_PARAMS.find(function (p) { return p.id === evt.param; });
+                    var paramLabel = paramInfo ? paramInfo.label : evt.param;
+                    var typeLabel = evt.type === 'set' ? '=' : (evt.value >= 0 ? '+' : '');
+                    html += '<div class="forecast-event-row">';
+                    html += '<span style="flex:1;">' + evt.monthLabel + ': ' + paramLabel + ' ' + typeLabel + evt.value + '</span>';
+                    html += '<button class="btn-delete" onclick="deleteForecastEvent(' + idx + ')">✕</button>';
+                    html += '</div>';
+                });
+            }
+
+            // Форма добавления (скрыта)
+            html += '<div id="forecast-event-form" style="display:none;margin-top:12px;padding:8px;background:var(--bg-input);border:1px solid var(--border);">';
+            html += '<div class="form-group"><label>ПАРАМЕТР</label><select id="fe-param" style="width:100%;">';
+            FORECAST_PARAMS.forEach(function (p) {
+                html += '<option value="' + p.id + '">' + p.label + '</option>';
+            });
+            html += '</select></div>';
+            html += '<div class="form-group"><label>ТИП ИЗМЕНЕНИЯ</label><select id="fe-type" style="width:100%;">';
+            html += '<option value="delta">+ / − (изменить на)</option>';
+            html += '<option value="set">= (установить)</option>';
+            html += '</select></div>';
+            html += '<div class="form-group"><label>ЗНАЧЕНИЕ</label><input type="number" id="fe-value" step="1" style="width:100%;"></div>';
+            html += '<div class="form-group"><label>С КАКОГО МЕСЯЦА</label><select id="fe-month" style="width:100%;">';
+            var months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+            for (var m = 0; m < 12; m++) {
+                html += '<option value="' + m + '">' + months[m] + ' (месяц ' + (m + 1) + ')</option>';
+            }
+            html += '</select></div>';
+            html += '<button id="btn-save-event" class="primary" style="width:100%;">СОХРАНИТЬ</button>';
+            html += '<button id="btn-cancel-event" style="width:100%;margin-top:4px;">ОТМЕНА</button>';
+            html += '</div>';
+
+            container.innerHTML = html;
+
+            document.getElementById('btn-add-event').addEventListener('click', function () {
+                document.getElementById('forecast-event-form').style.display = 'block';
+            });
+            document.getElementById('btn-cancel-event').addEventListener('click', function () {
+                document.getElementById('forecast-event-form').style.display = 'none';
+            });
+            document.getElementById('btn-save-event').addEventListener('click', function () {
+                var param = document.getElementById('fe-param').value;
+                var type = document.getElementById('fe-type').value;
+                var value = parseFloat(document.getElementById('fe-value').value);
+                var month = parseInt(document.getElementById('fe-month').value);
+                if (isNaN(value)) { notify('Введите значение', true); return; }
+
+                forecastEvents.push({
+                    param: param,
+                    type: type,
+                    value: value,
+                    month: month,
+                    monthLabel: months[month]
+                });
+                forecastEvents.sort(function (a, b) { return a.month - b.month; });
+                document.getElementById('forecast-event-form').style.display = 'none';
+                renderForecastDrivers();
+                buildForecast();
+            });
+        }
+
+        function renderForecastMacro() {
+            var container = document.getElementById('forecast-left');
+            if (!container) return;
+
+            var html = '<div style="font-size:11px;color:var(--text-hint);margin-bottom:8px;">ПРОГНОЗ ВНЕШНИХ ФАКТОРОВ</div>';
+            html += '<table style="font-size:11px;"><thead><tr><th>ПОКАЗАТЕЛЬ</th><th>СЕЙЧАС</th><th>ЧЕРЕЗ 12 МЕС</th></tr></thead><tbody>';
+
+            MACRO_PARAMS.forEach(function (mp) {
+                var currentVal = mp.current;
+                var node = graph.nodes[mp.id];
+                if (node && node.value !== null && node.value !== undefined) currentVal = node.value;
+
+                if (!forecastMacro[mp.id]) {
+                    forecastMacro[mp.id] = { current: currentVal, future: currentVal };
+                }
+
+                html += '<tr>';
+                html += '<td>' + mp.label + '</td>';
+                html += '<td class="value-cell">' + currentVal + ' ' + mp.unit + '</td>';
+                html += '<td><input type="number" class="macro-future" data-param="' + mp.id +
+                    '" value="' + forecastMacro[mp.id].future + '" step="' + mp.step +
+                    '" style="width:80px;font-size:11px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;"> ' + mp.unit + '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            html += '<button id="btn-apply-macro" class="primary" style="width:100%;margin-top:8px;">ПРИМЕНИТЬ ПРОГНОЗ</button>';
+            container.innerHTML = html;
+
+            document.getElementById('btn-apply-macro').addEventListener('click', function () {
+                document.querySelectorAll('.macro-future').forEach(function (inp) {
+                    var paramId = inp.dataset.param;
+                    var futureVal = parseFloat(inp.value);
+                    if (!isNaN(futureVal)) {
+                        forecastMacro[paramId].future = futureVal;
+                    }
+                });
+                buildForecast();
+            });
+        }
+
+        function deleteForecastEvent(idx) {
+            forecastEvents.splice(idx, 1);
+            renderForecastDrivers();
+            buildForecast();
+        }
+
+        // Инициализация вкладки
+        document.querySelector('[data-panel="forecast"]').addEventListener('click', function () {
+            renderForecastDrivers();
+            setTimeout(buildForecast, 100);
+        });
+
+        document.getElementById('btn-build-forecast').addEventListener('click', buildForecast);
+
+        document.getElementById('btn-reset-forecast').addEventListener('click', function () {
+            forecastEvents = [];
+            forecastMacro = {};
+            forecastData = null;
+            document.getElementById('forecast-table').innerHTML = '';
+            document.getElementById('forecast-chart').innerHTML = '';
+            document.getElementById('forecast-summary').innerHTML = '';
+            renderForecastDrivers();
+            notify('Прогноз сброшен');
+        });
+
+        document.getElementById('btn-mode-drivers').addEventListener('click', function () {
+            forecastMode = 'drivers';
+            document.getElementById('btn-mode-drivers').classList.add('active');
+            document.getElementById('btn-mode-macro').classList.remove('active');
+            forecastData = null;
+            renderForecastDrivers();
+            document.getElementById('forecast-table').innerHTML = '';
+            document.getElementById('forecast-chart').innerHTML = '';
+            document.getElementById('forecast-summary').innerHTML = '';
+        });
+
+        document.getElementById('btn-mode-macro').addEventListener('click', function () {
+            forecastMode = 'macro';
+            document.getElementById('btn-mode-macro').classList.add('active');
+            document.getElementById('btn-mode-drivers').classList.remove('active');
+            forecastData = null;
+            renderForecastMacro();
+            document.getElementById('forecast-table').innerHTML = '';
+            document.getElementById('forecast-chart').innerHTML = '';
+            document.getElementById('forecast-summary').innerHTML = '';
+        });
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
         // ============================================================
