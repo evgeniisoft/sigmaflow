@@ -2952,6 +2952,15 @@
                 });
                 // Пересчитываем модель
                 graph.compute();
+                console.log(
+                    String(p).padStart(5) + ' | ' +
+                    formatValue(graph.nodes['REVENUE']?.value || 0).padStart(7) + ' | ' +
+                    formatValue(graph.nodes['COGS']?.value || 0).padStart(4) + ' | ' +
+                    formatValue(graph.nodes['DEV_PAYROLL']?.value || 0).padStart(11) + ' | ' +
+                    formatValue(graph.nodes['DEV_AVG_SALARY']?.value || 0).padStart(14) + ' | ' +
+                    formatValue(graph.nodes['NET_PROFIT']?.value || 0).padStart(10) + ' | ' +
+                    formatValue(runningCash).padStart(5)
+                );
 
                 var rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
                 var profit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
