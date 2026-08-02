@@ -2931,6 +2931,17 @@
                     });
                 }
 
+                // Принудительно пересчитываем все формулы перед compute
+                Object.keys(graph.nodes).forEach(function (key) {
+                    var n = graph.nodes[key];
+                    if (n.formula && n.enabled !== false) {
+                        try {
+                            n.value = graph._evalFormula(n.formula);
+                        } catch (e) {
+                            n.value = 0;
+                        }
+                    }
+                });
                 // Пересчитываем модель
                 graph.compute();
 
