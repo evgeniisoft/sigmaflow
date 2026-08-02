@@ -3665,6 +3665,12 @@
             function addRow(label, getVal, isTotal, isSpacer) {
                 var row = [cell(label, isSpacer ? S.spacer : (isTotal ? S.total : S.label))];
                 var sum = 0;
+                if (isSpacer) {
+                    for (var p = 0; p < 12; p++) row.push(cell('', S.spacer));
+                    row.push(cell('', S.spacer));
+                    pnlRows.push(row);
+                    return;
+                }
                 for (var p = 0; p < 12; p++) {
                     var v = Math.round(getVal(p));
                     sum += v;
@@ -3713,6 +3719,12 @@
             function addCalRow(label, getVal, isTotal, isSpacer) {
                 var row = [cell(label, isSpacer ? S.spacer : (isTotal ? S.total : S.label))];
                 var sum = 0;
+                if (isSpacer) {
+                    for (var p = 0; p < 12; p++) row.push(cell('', S.spacer));
+                    row.push(cell('', S.spacer));
+                    calRows.push(row);
+                    return;
+                }
                 for (var p = 0; p < 12; p++) {
                     var v = Math.round(getVal(p));
                     sum += v;
