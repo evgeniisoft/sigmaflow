@@ -2897,6 +2897,7 @@
             var rows = [];
             var chartData = { revenue: [], profit: [], cash: [], baseRevenue: [] };
             var runningCash = 0;
+            var savedMacroBase = null;
 
             for (var p = 0; p < horizon; p++) {
                 var baseRev = basePnL.rows[p].revenue;
@@ -2957,6 +2958,19 @@
                     var nextQuarterIndex = Math.min(quarterIndex + 1, 3);
                     var progressInQuarter = (p % 3) / 3;
 
+                    // Восстанавливаем базу макро-параметров
+                    if (!savedMacroBase) {
+                        savedMacroBase = {};
+                        MACRO_PARAMS.forEach(function (mp) {
+                            if (graph.nodes[mp.id]) {
+                                savedMacroBase[mp.id] = graph.nodes[mp.id].value;
+                            }
+                        });
+                    }
+                    Object.keys(savedMacroBase).forEach(function (id) {
+                        if (graph.nodes[id]) graph.nodes[id].value = savedMacroBase[id];
+                    });
+
                     // Применяем макро-значения к модели
                     Object.keys(forecastMacro).forEach(function (paramId) {
                         var macro = forecastMacro[paramId];
@@ -2967,17 +2981,45 @@
                         }
                     });
 
-                    // Принудительный пересчёт формул
+                    // Применяем макро-формулы к INPUT-узлам
+                    var industryFormulas = MACRO_FORMULAS[graph.industry] || {};
+                    var commonFormulas = MACRO_FORMULAS['common'] || {};
+
+                    [commonFormulas, industryFormulas].forEach(function (formulaSet) {
+                        Object.keys(formulaSet).forEach(function (macroId) {
+                            var newMacroVal = graph.nodes[macroId] ? graph.nodes[macroId].value : 0;
+                            var baseMacroVal = savedMacroBase[macroId] || newMacroVal;
+                            var targets = formulaSet[macroId];
+
+                            Object.keys(targets).forEach(function (targetId) {
+                                var rule = targets[targetId];
+                                if (!graph.nodes[targetId]) return;
+                                var baseTargetVal = savedMacroBase[targetId] || graph.nodes[targetId].value;
+                                if (!baseTargetVal) baseTargetVal = 1;
+
+                                if (rule.type === 'relative') {
+                                    // Относительное изменение: target = base × (1 + coeff × (macro - base_macro) / base_macro)
+                                    var macroChange = baseMacroVal > 0 ? (newMacroVal - baseMacroVal) / baseMacroVal : 0;
+                                    graph.nodes[targetId].value = baseTargetVal * (1 + rule.coeff * macroChange);
+                                } else if (rule.type === 'absolute_pct') {
+                                    // Абсолютное изменение в процентах: target = base × (1 + coeff × (macro - base_macro))
+                                    var delta = rule.coeff * (newMacroVal - baseMacroVal);
+                                    graph.nodes[targetId].value = baseTargetVal * (1 + delta);
+                                }
+                            });
+                        });
+                    });
+
+                    // Пересчитываем формулы и модель
                     Object.keys(graph.nodes).forEach(function (key) {
                         var n = graph.nodes[key];
                         if (n.formula && n.enabled !== false) {
                             try { n.value = graph._evalFormula(n.formula); } catch (e) { }
                         }
                     });
-                    // Пересчитываем модель с макро-значениями
                     graph.compute();
 
-                    // Берём результаты напрямую из модели
+                    // Результаты из модели
                     rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : baseRev;
                     cogs = graph.nodes['COGS'] ? graph.nodes['COGS'].value : basePnL.rows[p].cogs;
                     gross = rev + cogs;
@@ -3033,6 +3075,13 @@
                 });
             }
             graph.compute();
+
+            if (savedMacroBase) {
+                Object.keys(savedMacroBase).forEach(function (id) {
+                    if (graph.nodes[id]) graph.nodes[id].value = savedMacroBase[id];
+                });
+                graph.compute();
+            }
 
             forecastData = { rows: rows, chartData: chartData, months: MONTHS_NAMES, startMonth: startMonth };
 
