@@ -3032,10 +3032,10 @@
 
                     // Результаты из модели
                     rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : baseRev;
-                    cogs = graph.nodes['COGS'] ? graph.nodes['COGS'].value : basePnL.rows[p].cogs;
+                    cogs = graph.nodes['COGS'] ? -Math.abs(graph.nodes['COGS'].value) : basePnL.rows[p].cogs;
                     gross = rev + cogs;
-                    selling = graph.nodes['SELLING_EXP'] ? graph.nodes['SELLING_EXP'].value : basePnL.rows[p].selling;
-                    admin = graph.nodes['ADMIN_EXP'] ? graph.nodes['ADMIN_EXP'].value : basePnL.rows[p].admin;
+                    selling = graph.nodes['SELLING_EXP'] ? -Math.abs(graph.nodes['SELLING_EXP'].value) : basePnL.rows[p].selling;
+                    admin = graph.nodes['ADMIN_EXP'] ? -Math.abs(graph.nodes['ADMIN_EXP'].value) : basePnL.rows[p].admin;
                     ebitda = gross + selling + admin;
                     da = basePnL.rows[p].da;
                     ebit = ebitda + da;
