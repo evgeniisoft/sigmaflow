@@ -2896,6 +2896,7 @@
 
             var rows = [];
             var chartData = { revenue: [], profit: [], cash: [], baseRevenue: [] };
+            var runningCash = 0;
 
             for (var p = 0; p < horizon; p++) {
                 // Берём базовые значения из P&L
@@ -2989,9 +2990,15 @@
                 var tax = basePnL.rows[p].tax;
                 var profit = ebt + tax;
 
-                // Кэш корректируем пропорционально изменению выручки
+                // Кэш считаем накопительно
+                if (p === 0) {
+                    runningCash = graph.nodes['CASH'] ? graph.nodes['CASH'].value :
+                        (graph.nodes['CASH_START'] ? graph.nodes['CASH_START'].value : 0);
+                }
                 var cashFlowAdjustment = (rev - basePnL.rows[p].revenue) - (cogs - basePnL.rows[p].cogs) - (selling - basePnL.rows[p].selling) - (admin - basePnL.rows[p].admin);
-                var cash = baseCal.periods[p].endCash + cashFlowAdjustment * (p + 1);
+                var baseNetFlow = baseCal.periods[p].netFlow;
+                runningCash += baseNetFlow + cashFlowAdjustment;
+                var cash = runningCash;
 
                 rows.push({
                     label: basePnL.rows[p].label,
