@@ -2798,34 +2798,48 @@
         function getForecastParams() {
             if (!graph) return [];
             var allParams = [
-                { id: 'PRICE', label: 'Цена за единицу', unit: '₽', step: 500, industry: 'all' },
-                { id: 'VOLUME', label: 'Объём продаж', unit: 'ед', step: 5, industry: 'all' },
-                { id: 'PROD_HEADCOUNT', label: 'Произв. персонал', unit: 'чел', step: 1, industry: 'production' },
-                { id: 'DEV_HEADCOUNT', label: 'Разработчики', unit: 'чел', step: 1, industry: 'it' },
-                { id: 'SPECIALIST_HEADCOUNT', label: 'Специалисты', unit: 'чел', step: 1, industry: 'services' },
-                { id: 'SALES_HEADCOUNT', label: 'Продавцы', unit: 'чел', step: 1, industry: 'retail' },
-                { id: 'ADMIN_HEADCOUNT', label: 'АУП', unit: 'чел', step: 1, industry: 'all' },
-                { id: 'PROD_AVG_SALARY', label: 'ЗП произв.', unit: '₽', step: 5000, industry: 'production' },
-                { id: 'DEV_AVG_SALARY', label: 'ЗП разработчика', unit: '₽', step: 10000, industry: 'it' },
-                { id: 'SPECIALIST_AVG_SALARY', label: 'ЗП специалиста', unit: '₽', step: 5000, industry: 'services' },
-                { id: 'SALES_AVG_SALARY', label: 'ЗП продавца', unit: '₽', step: 5000, industry: 'retail' },
-                { id: 'ADMIN_AVG_SALARY', label: 'ЗП АУП', unit: '₽', step: 5000, industry: 'all' },
-                { id: 'UNIT_MATERIAL', label: 'Цена сырья', unit: '₽/ед', step: 50, industry: 'production' },
-                { id: 'UNIT_PURCHASE', label: 'Закупочная цена', unit: '₽/ед', step: 50, industry: 'retail' },
-                { id: 'MONTHLY_RATE_PER_DEV', label: 'Ставка за разработчика', unit: '₽', step: 10000, industry: 'it' },
-                { id: 'HOURLY_RATE', label: 'Ставка часа', unit: '₽', step: 500, industry: 'services' },
-                { id: 'AVG_CHECK', label: 'Средний чек', unit: '₽', step: 500, industry: 'services' },
-                { id: 'CLIENTS', label: 'Клиенты', unit: 'чел/мес', step: 5, industry: 'services' },
-                { id: 'MARKETING', label: 'Маркетинг', unit: '₽', step: 10000, industry: 'all' },
-                { id: 'RENT', label: 'Аренда', unit: '₽', step: 10000, industry: 'all' },
-                { id: 'ENERGY_COST', label: 'Энергозатраты', unit: '₽', step: 5000, industry: 'production' },
-                { id: 'LOGISTICS_COST', label: 'Логистика', unit: '₽', step: 5000, industry: 'all' },
-                { id: 'OUTSOURCE_COST', label: 'Аутсорсинг', unit: '₽', step: 50000, industry: 'services' },
-                { id: 'IT_EXP', label: 'IT-расходы', unit: '₽', step: 5000, industry: 'all' }
+                { id: 'PRICE', label: 'Цена за единицу', unit: '₽', step: 500, industry: ['production', 'retail'] },
+                { id: 'VOLUME', label: 'Объём продаж', unit: 'ед', step: 5, industry: ['production', 'retail'] },
+                { id: 'PROD_HEADCOUNT', label: 'Произв. персонал', unit: 'чел', step: 1, industry: ['production'] },
+                { id: 'DEV_HEADCOUNT', label: 'Разработчики', unit: 'чел', step: 1, industry: ['it'] },
+                { id: 'SPECIALIST_HEADCOUNT', label: 'Специалисты', unit: 'чел', step: 1, industry: ['services'] },
+                { id: 'SALES_HEADCOUNT', label: 'Продавцы', unit: 'чел', step: 1, industry: ['production', 'retail', 'it', 'services'] },
+                { id: 'WAREHOUSE_STAFF', label: 'Персонал склада', unit: 'чел', step: 1, industry: ['retail'] },
+                { id: 'ADMIN_HEADCOUNT', label: 'АУП', unit: 'чел', step: 1, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'PROD_AVG_SALARY', label: 'ЗП произв.', unit: '₽', step: 5000, industry: ['production'] },
+                { id: 'DEV_AVG_SALARY', label: 'ЗП разработчика', unit: '₽', step: 10000, industry: ['it'] },
+                { id: 'SPECIALIST_AVG_SALARY', label: 'ЗП специалиста', unit: '₽', step: 5000, industry: ['services'] },
+                { id: 'SALES_AVG_SALARY', label: 'ЗП продавца', unit: '₽', step: 5000, industry: ['production', 'retail', 'it', 'services'] },
+                { id: 'WAREHOUSE_AVG_SALARY', label: 'ЗП склада', unit: '₽', step: 5000, industry: ['retail'] },
+                { id: 'ADMIN_AVG_SALARY', label: 'ЗП АУП', unit: '₽', step: 5000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'UNIT_MATERIAL', label: 'Цена сырья', unit: '₽/ед', step: 50, industry: ['production'] },
+                { id: 'UNIT_PURCHASE', label: 'Закупочная цена', unit: '₽/ед', step: 50, industry: ['retail'] },
+                { id: 'MONTHLY_RATE_PER_DEV', label: 'Ставка за разработчика', unit: '₽', step: 10000, industry: ['it'] },
+                { id: 'UTILIZATION', label: 'Утилизация', unit: '%', step: 5, industry: ['it'] },
+                { id: 'HOURLY_RATE', label: 'Ставка часа', unit: '₽', step: 500, industry: ['services'] },
+                { id: 'HOURS_SOLD', label: 'Оплаченные часы', unit: 'ч', step: 50, industry: ['services'] },
+                { id: 'AVG_CHECK', label: 'Средний чек', unit: '₽', step: 500, industry: ['services'] },
+                { id: 'CLIENTS', label: 'Клиенты', unit: 'чел/мес', step: 5, industry: ['services'] },
+                { id: 'MARKETING', label: 'Маркетинг', unit: '₽', step: 10000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'RENT', label: 'Аренда', unit: '₽', step: 10000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'ENERGY_COST', label: 'Энергозатраты', unit: '₽', step: 5000, industry: ['production'] },
+                { id: 'LOGISTICS_COST', label: 'Логистика', unit: '₽', step: 5000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'OUTSOURCE_COST', label: 'Аутсорсинг', unit: '₽', step: 50000, industry: ['production', 'services'] },
+                { id: 'IT_EXP', label: 'IT-расходы', unit: '₽', step: 5000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'DEFECT_RATE', label: 'Брак (%)', unit: '%', step: 0.5, industry: ['production'] },
+                { id: 'RETURN_RATE', label: 'Возвраты (%)', unit: '%', step: 0.5, industry: ['retail'] },
+                { id: 'TRAINING_COST', label: 'Обучение', unit: '₽', step: 5000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'LEGAL_COST', label: 'Юридические', unit: '₽', step: 5000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'BANK_FEES', label: 'Комиссии банка', unit: '₽', step: 1000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'INSURANCE_COST', label: 'Страхование', unit: '₽', step: 5000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'UTILITIES', label: 'Коммунальные', unit: '₽', step: 2000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'OFFICE_EXP', label: 'Офисные расходы', unit: '₽', step: 1000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'TRAVEL_COST', label: 'Командировочные', unit: '₽', step: 5000, industry: ['production', 'it', 'services', 'retail'] },
+                { id: 'RD_EXP', label: 'R&D', unit: '₽', step: 10000, industry: ['production', 'it', 'services', 'retail'] }
             ];
 
             return allParams.filter(function (p) {
-                return p.industry === 'all' || p.industry === graph.industry;
+                return p.industry.indexOf(graph.industry) >= 0;
             }).filter(function (p) {
                 return graph.nodes[p.id] !== undefined;
             });
