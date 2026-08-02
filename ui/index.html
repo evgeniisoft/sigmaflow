@@ -2942,19 +2942,48 @@
                         }
                     }
                 });
-                // Принудительно пересчитываем ВСЕ формулы (включая DEV_PAYROLL)
-                for (var formulaPass = 0; formulaPass < 3; formulaPass++) {
-                    Object.keys(graph.nodes).forEach(function (key) {
-                        var n = graph.nodes[key];
-                        if (n.formula && n.enabled !== false) {
-                            try {
-                                n.value = graph._evalFormula(n.formula);
-                            } catch (e) { }
-                        }
-                    });
-                }
-                // Пересчитываем модель
-                graph.compute();
+                // Полный ручной пересчёт (4 шага)
+                var self = graph;
+
+                // Шаг 1: формулы (кроме lateNodes)
+                var lateNodes = ['EBITDA', 'EBIT', 'EBT', 'TAX', 'INTEREST', 'CFO', 'CFI', 'CFF', 'FCF', 'CASH'];
+                Object.keys(self.nodes).forEach(function (key) {
+                    if (lateNodes.indexOf(key) >= 0) return;
+                    var n = self.nodes[key];
+                    if (n.formula && n.enabled !== false) {
+                        try { n.value = self._evalFormula(n.formula); } catch (e) { }
+                    }
+                });
+
+                // Шаг 2: сброс
+                Object.keys(self.nodes).forEach(function (key) {
+                    var n = self.nodes[key];
+                    if ((n.type === 'INTERMEDIATE' || n.type === 'TARGET') && !n.formula) {
+                        n.value = 0;
+                    }
+                });
+
+                // Шаг 3: рёбра
+                self.edges.forEach(function (edge) {
+                    var fromNode = self.nodes[edge.from];
+                    var toNode = self.nodes[edge.to];
+                    if (!fromNode || !toNode) return;
+                    if (fromNode.enabled === false || toNode.enabled === false) return;
+                    if (fromNode.value === null || fromNode.value === undefined) return;
+                    if (toNode.formula) return;
+                    if (toNode.type !== 'INTERMEDIATE' && toNode.type !== 'TARGET') return;
+                    var coeff = edge.coefficient !== null ? edge.coefficient : 1.0;
+                    var contrib = computeEdge(edge.type, coeff, fromNode.value, edge.threshold, edge.above, edge.below);
+                    toNode.value = (toNode.value || 0) + contrib;
+                });
+
+                // Шаг 4: lateNodes
+                lateNodes.forEach(function (key) {
+                    var n = self.nodes[key];
+                    if (n && n.formula && n.enabled !== false) {
+                        try { n.value = self._evalFormula(n.formula); } catch (e) { }
+                    }
+                });
 
                 var rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
                 var profit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
