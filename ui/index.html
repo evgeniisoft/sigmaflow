@@ -2899,17 +2899,15 @@
             var runningCash = 0;
 
             for (var p = 0; p < horizon; p++) {
-                // Берём базовые значения из P&L
                 var baseRev = basePnL.rows[p].revenue;
                 var baseProfit = basePnL.rows[p].net;
                 var baseCash = baseCal.periods[p].endCash;
-
-                // Коэффициент корректировки (по умолчанию 1 = без изменений)
                 var revMultiplier = 1;
                 var costMultiplier = 1;
+                var rev, cogs, gross, selling, admin, ebitda, da, ebit, interest, other, ebt, tax, profit;
 
                 if (forecastMode === 'drivers') {
-                    // Восстанавливаем узлы, изменённые событиями
+                    // Восстанавливаем узлы
                     Object.keys(savedNodes).forEach(function (nodeId) {
                         if (graph.nodes[nodeId]) {
                             graph.nodes[nodeId].value = savedNodes[nodeId];
@@ -2927,30 +2925,39 @@
                         }
                     });
 
-                    // Пересчитываем модель один раз для получения коэффициентов
+                    // Пересчитываем модель
                     graph.compute();
 
-                    // Сравниваем с базой — получаем коэффициент изменения
-                    var newRev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : baseRev;
-                    var baseRevFirst = basePnL.rows[0].revenue;
-                    revMultiplier = baseRevFirst > 0 ? newRev / baseRevFirst : 1;
+                    var newRev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : basePnL.rows[0].revenue;
+                    revMultiplier = basePnL.rows[0].revenue > 0 ? newRev / basePnL.rows[0].revenue : 1;
 
                     var newCosts = graph.nodes['COGS'] ? Math.abs(graph.nodes['COGS'].value) : 0;
                     var newOpex = (graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : 0) +
                         (graph.nodes['ADMIN_EXP'] ? Math.abs(graph.nodes['ADMIN_EXP'].value) : 0);
-                    var baseCostsFirst = (basePnL.rows[0].cogs ? Math.abs(basePnL.rows[0].cogs) : 0) +
-                        (basePnL.rows[0].selling ? Math.abs(basePnL.rows[0].selling) : 0) +
-                        (basePnL.rows[0].admin ? Math.abs(basePnL.rows[0].admin) : 0);
+                    var baseCostsFirst = Math.abs(basePnL.rows[0].cogs) + Math.abs(basePnL.rows[0].selling) + Math.abs(basePnL.rows[0].admin);
                     costMultiplier = baseCostsFirst > 0 ? (newCosts + newOpex) / baseCostsFirst : 1;
+
+                    rev = basePnL.rows[p].revenue * revMultiplier;
+                    cogs = basePnL.rows[p].cogs * costMultiplier;
+                    gross = rev + cogs;
+                    selling = basePnL.rows[p].selling * costMultiplier;
+                    admin = basePnL.rows[p].admin * costMultiplier;
+                    ebitda = gross + selling + admin;
+                    da = basePnL.rows[p].da;
+                    ebit = ebitda + da;
+                    interest = basePnL.rows[p].interest;
+                    other = basePnL.rows[p].other;
+                    ebt = ebit + interest + other;
+                    tax = basePnL.rows[p].tax;
+                    profit = ebt + tax;
                 }
 
                 if (forecastMode === 'macro') {
-                    // Макро: линейная интерполяция между кварталами
                     var quarterIndex = Math.floor(p / 3);
                     var nextQuarterIndex = Math.min(quarterIndex + 1, 3);
                     var progressInQuarter = (p % 3) / 3;
 
-                    // Применяем макро к модели
+                    // Применяем макро-значения к модели
                     Object.keys(forecastMacro).forEach(function (paramId) {
                         var macro = forecastMacro[paramId];
                         if (macro && macro.quarters && graph.nodes[paramId]) {
@@ -2960,38 +2967,27 @@
                         }
                     });
 
+                    // Пересчитываем модель с макро-значениями
                     graph.compute();
 
-                    var newRevM = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : baseRev;
-                    var baseRevFirstM = basePnL.rows[0].revenue;
-                    revMultiplier = baseRevFirstM > 0 ? newRevM / baseRevFirstM : 1;
-
-                    var newCostsM = graph.nodes['COGS'] ? Math.abs(graph.nodes['COGS'].value) : 0;
-                    var newOpexM = (graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : 0) +
-                        (graph.nodes['ADMIN_EXP'] ? Math.abs(graph.nodes['ADMIN_EXP'].value) : 0);
-                    var baseCostsFirstM = (basePnL.rows[0].cogs ? Math.abs(basePnL.rows[0].cogs) : 0) +
-                        (basePnL.rows[0].selling ? Math.abs(basePnL.rows[0].selling) : 0) +
-                        (basePnL.rows[0].admin ? Math.abs(basePnL.rows[0].admin) : 0);
-                    costMultiplier = baseCostsFirstM > 0 ? (newCostsM + newOpexM) / baseCostsFirstM : 1;
+                    // Берём результаты напрямую из модели
+                    rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : baseRev;
+                    cogs = graph.nodes['COGS'] ? graph.nodes['COGS'].value : basePnL.rows[p].cogs;
+                    gross = rev + cogs;
+                    selling = graph.nodes['SELLING_EXP'] ? graph.nodes['SELLING_EXP'].value : basePnL.rows[p].selling;
+                    admin = graph.nodes['ADMIN_EXP'] ? graph.nodes['ADMIN_EXP'].value : basePnL.rows[p].admin;
+                    ebitda = gross + selling + admin;
+                    da = basePnL.rows[p].da;
+                    ebit = ebitda + da;
+                    interest = basePnL.rows[p].interest;
+                    other = basePnL.rows[p].other;
+                    ebt = ebit + interest + other;
+                    tax = basePnL.rows[p].tax;
+                    profit = ebt + tax;
                 }
 
-                // Применяем коэффициенты к базовому P&L
-                var rev = basePnL.rows[p].revenue * revMultiplier;
-                var cogs = basePnL.rows[p].cogs * costMultiplier;
-                var gross = rev + cogs;
-                var selling = basePnL.rows[p].selling * costMultiplier;
-                var admin = basePnL.rows[p].admin * costMultiplier;
-                var ebitda = gross + selling + admin;
-                var da = basePnL.rows[p].da; // амортизация не меняется от операционных событий
-                var ebit = ebitda + da;
-                var interest = basePnL.rows[p].interest;
-                var other = basePnL.rows[p].other;
-                var ebt = ebit + interest + other;
-                var tax = basePnL.rows[p].tax;
-                var profit = ebt + tax;
-
-                // Кэш = базовый кэш из Календаря + накопленная разница в прибыли (упрощённо)
-                var profitDiff = profit - basePnL.rows[p].net;
+                // Кэш
+                var profitDiff = profit - baseProfit;
                 if (p === 0) {
                     runningCash = baseCal.periods[0].startCash + baseCal.periods[0].netFlow + profitDiff;
                 } else {
@@ -3014,18 +3010,18 @@
                 chartData.baseRevenue.push(basePnL.rows[p].revenue);
             }
 
-            // Восстанавливаем модель
-            if (forecastMode === 'drivers') {
-                Object.keys(savedNodes).forEach(function (nodeId) {
-                    if (graph.nodes[nodeId]) {
-                        graph.nodes[nodeId].value = savedNodes[nodeId];
-                    }
-                });
-            }
+            // Восстанавливаем модель после макро
             if (forecastMode === 'macro') {
                 Object.keys(forecastMacro).forEach(function (paramId) {
                     if (graph.nodes[paramId]) {
                         graph.nodes[paramId].value = forecastMacro[paramId].current;
+                    }
+                });
+            }
+            if (forecastMode === 'drivers') {
+                Object.keys(savedNodes).forEach(function (nodeId) {
+                    if (graph.nodes[nodeId]) {
+                        graph.nodes[nodeId].value = savedNodes[nodeId];
                     }
                 });
             }
