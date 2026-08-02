@@ -1595,6 +1595,7 @@
             renderDataTable();
             renderComputeResults();
             renderBreakeven();
+            if (currentTracedNode) renderAnalysis(currentTracedNode);
         }
 
         function dragstarted(event, d) {
@@ -1791,6 +1792,7 @@
             renderDataTable();
             renderComputeResults();
             renderBreakeven();
+            if (currentTracedNode) renderAnalysis(currentTracedNode);
         }
 
         // ============================================================
