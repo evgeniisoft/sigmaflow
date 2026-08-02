@@ -2874,147 +2874,158 @@
 
         function buildForecast() {
             if (!graph) { notify('Сначала загрузите модель', true); return; }
-            graph.compute();
 
             var horizon = 12;
-            var months = MONTHS_NAMES;
+            var startMonth = currentMonth;
 
-            // Сохраняем базовые значения
-            var baseValues = {};
-            Object.keys(graph.nodes).forEach(function (k) {
-                baseValues[k] = graph.nodes[k].value;
-            });
+            // Получаем базовый P&L (уже считает правильно с сезонностью и налогами)
+            var basePnL = graph.getPnL(startMonth, horizon);
 
-            // Считаем базовую выручку без прогноза (для сравнения)
-            var baseRevenueMonthly = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
+            // Получаем базовый Календарь (для кэша)
+            var baseCal = graph.getCashFlowCalendar(startMonth, horizon);
+
+            // Сохраняем копии узлов, которые могут меняться от событий
+            var savedNodes = {};
+            if (forecastMode === 'drivers') {
+                forecastEvents.forEach(function (evt) {
+                    if (!savedNodes[evt.param] && graph.nodes[evt.param]) {
+                        savedNodes[evt.param] = graph.nodes[evt.param].value;
+                    }
+                });
+            }
 
             var rows = [];
             var chartData = { revenue: [], profit: [], cash: [], baseRevenue: [] };
-            var runningCash = graph.nodes['CASH'] ? graph.nodes['CASH'].value : (graph.nodes['CASH_START'] ? graph.nodes['CASH_START'].value : 0);
 
             for (var p = 0; p < horizon; p++) {
-                var mo = (currentMonth + p) % 12;
-                var label = months[mo] + ' ' + (currentYear + Math.floor((currentMonth + p) / 12));
+                // Берём базовые значения из P&L
+                var baseRev = basePnL.rows[p].revenue;
+                var baseProfit = basePnL.rows[p].net;
+                var baseCash = baseCal.periods[p].endCash;
 
-                // Восстанавливаем базу
-                Object.keys(baseValues).forEach(function (k) {
-                    if (graph.nodes[k]) graph.nodes[k].value = baseValues[k];
-                });
+                // Коэффициент корректировки (по умолчанию 1 = без изменений)
+                var revMultiplier = 1;
+                var costMultiplier = 1;
 
-                // Применяем события (драйверный режим)
                 if (forecastMode === 'drivers') {
+                    // Восстанавливаем узлы, изменённые событиями
+                    Object.keys(savedNodes).forEach(function (nodeId) {
+                        if (graph.nodes[nodeId]) {
+                            graph.nodes[nodeId].value = savedNodes[nodeId];
+                        }
+                    });
+
+                    // Применяем события этого месяца
                     forecastEvents.forEach(function (evt) {
                         if (p >= evt.month && graph.nodes[evt.param]) {
                             if (evt.type === 'set') {
                                 graph.nodes[evt.param].value = evt.value;
                             } else if (evt.type === 'delta') {
-                                graph.nodes[evt.param].value = baseValues[evt.param] + evt.value;
+                                graph.nodes[evt.param].value = savedNodes[evt.param] + evt.value;
                             }
                         }
                     });
+
+                    // Пересчитываем модель один раз для получения коэффициентов
+                    graph.compute();
+
+                    // Сравниваем с базой — получаем коэффициент изменения
+                    var newRev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : baseRev;
+                    var baseRevFirst = basePnL.rows[0].revenue;
+                    revMultiplier = baseRevFirst > 0 ? newRev / baseRevFirst : 1;
+
+                    var newCosts = graph.nodes['COGS'] ? Math.abs(graph.nodes['COGS'].value) : 0;
+                    var newOpex = (graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : 0) +
+                        (graph.nodes['ADMIN_EXP'] ? Math.abs(graph.nodes['ADMIN_EXP'].value) : 0);
+                    var baseCostsFirst = (basePnL.rows[0].cogs ? Math.abs(basePnL.rows[0].cogs) : 0) +
+                        (basePnL.rows[0].selling ? Math.abs(basePnL.rows[0].selling) : 0) +
+                        (basePnL.rows[0].admin ? Math.abs(basePnL.rows[0].admin) : 0);
+                    costMultiplier = baseCostsFirst > 0 ? (newCosts + newOpex) / baseCostsFirst : 1;
                 }
 
-                // Применяем макро-прогноз (поквартальная интерполяция)
                 if (forecastMode === 'macro') {
+                    // Макро: линейная интерполяция между кварталами
                     var quarterIndex = Math.floor(p / 3);
                     var nextQuarterIndex = Math.min(quarterIndex + 1, 3);
                     var progressInQuarter = (p % 3) / 3;
 
+                    // Применяем макро к модели
                     Object.keys(forecastMacro).forEach(function (paramId) {
                         var macro = forecastMacro[paramId];
                         if (macro && macro.quarters && graph.nodes[paramId]) {
                             var qVal = macro.quarters[quarterIndex];
                             var nextQVal = macro.quarters[nextQuarterIndex];
-                            var newVal = qVal + (nextQVal - qVal) * progressInQuarter;
-                            graph.nodes[paramId].value = newVal;
+                            graph.nodes[paramId].value = qVal + (nextQVal - qVal) * progressInQuarter;
                         }
                     });
+
+                    graph.compute();
+
+                    var newRevM = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : baseRev;
+                    var baseRevFirstM = basePnL.rows[0].revenue;
+                    revMultiplier = baseRevFirstM > 0 ? newRevM / baseRevFirstM : 1;
+
+                    var newCostsM = graph.nodes['COGS'] ? Math.abs(graph.nodes['COGS'].value) : 0;
+                    var newOpexM = (graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : 0) +
+                        (graph.nodes['ADMIN_EXP'] ? Math.abs(graph.nodes['ADMIN_EXP'].value) : 0);
+                    var baseCostsFirstM = (basePnL.rows[0].cogs ? Math.abs(basePnL.rows[0].cogs) : 0) +
+                        (basePnL.rows[0].selling ? Math.abs(basePnL.rows[0].selling) : 0) +
+                        (basePnL.rows[0].admin ? Math.abs(basePnL.rows[0].admin) : 0);
+                    costMultiplier = baseCostsFirstM > 0 ? (newCostsM + newOpexM) / baseCostsFirstM : 1;
                 }
 
-                // Принудительно пересчитываем все формулы перед compute
-                Object.keys(graph.nodes).forEach(function (key) {
-                    var n = graph.nodes[key];
-                    if (n.formula && n.enabled !== false) {
-                        try {
-                            n.value = graph._evalFormula(n.formula);
-                        } catch (e) {
-                            n.value = 0;
-                        }
-                    }
-                });
-                // Полный ручной пересчёт (4 шага)
-                var self = graph;
+                // Применяем коэффициенты к базовому P&L
+                var rev = basePnL.rows[p].revenue * revMultiplier;
+                var cogs = basePnL.rows[p].cogs * costMultiplier;
+                var gross = rev + cogs;
+                var selling = basePnL.rows[p].selling * costMultiplier;
+                var admin = basePnL.rows[p].admin * costMultiplier;
+                var ebitda = gross + selling + admin;
+                var da = basePnL.rows[p].da; // амортизация не меняется от операционных событий
+                var ebit = ebitda + da;
+                var interest = basePnL.rows[p].interest;
+                var other = basePnL.rows[p].other;
+                var ebt = ebit + interest + other;
+                var tax = basePnL.rows[p].tax;
+                var profit = ebt + tax;
 
-                // Шаг 1: формулы (кроме lateNodes)
-                var lateNodes = ['EBITDA', 'EBIT', 'EBT', 'TAX', 'INTEREST', 'CFO', 'CFI', 'CFF', 'FCF', 'CASH'];
-                Object.keys(self.nodes).forEach(function (key) {
-                    if (lateNodes.indexOf(key) >= 0) return;
-                    var n = self.nodes[key];
-                    if (n.formula && n.enabled !== false) {
-                        try { n.value = self._evalFormula(n.formula); } catch (e) { }
-                    }
-                });
-
-                // Шаг 2: сброс
-                Object.keys(self.nodes).forEach(function (key) {
-                    var n = self.nodes[key];
-                    if ((n.type === 'INTERMEDIATE' || n.type === 'TARGET') && !n.formula) {
-                        n.value = 0;
-                    }
-                });
-
-                // Шаг 3: рёбра
-                self.edges.forEach(function (edge) {
-                    var fromNode = self.nodes[edge.from];
-                    var toNode = self.nodes[edge.to];
-                    if (!fromNode || !toNode) return;
-                    if (fromNode.enabled === false || toNode.enabled === false) return;
-                    if (fromNode.value === null || fromNode.value === undefined) return;
-                    if (toNode.formula) return;
-                    if (toNode.type !== 'INTERMEDIATE' && toNode.type !== 'TARGET') return;
-                    var coeff = edge.coefficient !== null ? edge.coefficient : 1.0;
-                    var contrib = computeEdge(edge.type, coeff, fromNode.value, edge.threshold, edge.above, edge.below);
-                    toNode.value = (toNode.value || 0) + contrib;
-                });
-
-                // Шаг 4: lateNodes
-                lateNodes.forEach(function (key) {
-                    var n = self.nodes[key];
-                    if (n && n.formula && n.enabled !== false) {
-                        try { n.value = self._evalFormula(n.formula); } catch (e) { }
-                    }
-                });
-
-                var rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
-                var profit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
-                var cfo = graph.nodes['CFO'] ? graph.nodes['CFO'].value : 0;
-                var cfi = graph.nodes['CFI'] ? graph.nodes['CFI'].value : 0;
-                var cff = graph.nodes['CFF'] ? graph.nodes['CFF'].value : 0;
-                runningCash += cfo + cfi + cff;
-
+                // Кэш корректируем пропорционально изменению выручки
+                var cashFlowAdjustment = (rev - basePnL.rows[p].revenue) - (cogs - basePnL.rows[p].cogs) - (selling - basePnL.rows[p].selling) - (admin - basePnL.rows[p].admin);
+                var cash = baseCal.periods[p].endCash + cashFlowAdjustment * (p + 1);
 
                 rows.push({
-                    label: label,
+                    label: basePnL.rows[p].label,
                     revenue: rev,
                     profit: profit,
                     ros: rev > 0 ? (profit / rev * 100) : 0,
-                    cash: runningCash,
+                    cash: cash,
                     isPositive: profit >= 0
                 });
 
                 chartData.revenue.push(rev);
                 chartData.profit.push(profit);
-                chartData.cash.push(runningCash);
-                chartData.baseRevenue.push(baseRevenueMonthly);
+                chartData.cash.push(cash);
+                chartData.baseRevenue.push(basePnL.rows[p].revenue);
             }
 
             // Восстанавливаем модель
-            Object.keys(baseValues).forEach(function (k) {
-                if (graph.nodes[k]) graph.nodes[k].value = baseValues[k];
-            });
+            if (forecastMode === 'drivers') {
+                Object.keys(savedNodes).forEach(function (nodeId) {
+                    if (graph.nodes[nodeId]) {
+                        graph.nodes[nodeId].value = savedNodes[nodeId];
+                    }
+                });
+            }
+            if (forecastMode === 'macro') {
+                Object.keys(forecastMacro).forEach(function (paramId) {
+                    if (graph.nodes[paramId]) {
+                        graph.nodes[paramId].value = forecastMacro[paramId].current;
+                    }
+                });
+            }
             graph.compute();
 
-            forecastData = { rows: rows, chartData: chartData, months: months, startMonth: currentMonth };
+            forecastData = { rows: rows, chartData: chartData, months: MONTHS_NAMES, startMonth: startMonth };
 
             renderForecastTable();
             renderForecastChart();
