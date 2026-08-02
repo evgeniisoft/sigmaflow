@@ -2967,6 +2967,13 @@
                         }
                     });
 
+                    // Принудительный пересчёт формул
+                    Object.keys(graph.nodes).forEach(function (key) {
+                        var n = graph.nodes[key];
+                        if (n.formula && n.enabled !== false) {
+                            try { n.value = graph._evalFormula(n.formula); } catch (e) { }
+                        }
+                    });
                     // Пересчитываем модель с макро-значениями
                     graph.compute();
 
