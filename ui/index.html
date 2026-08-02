@@ -667,6 +667,7 @@
     <script src="template_universal.js"></script>
     <script src="allowed_connections.js"></script>
     <script src="driver_trees.js"></script>
+    <script src="presets.js"></script>
     <script>
         // ============================================================
         // ГЛАВНЫЙ МОДУЛЬ ПРИЛОЖЕНИЯ
@@ -989,24 +990,12 @@
         }
 
         function createModel(industry, taxSystem, companyName) {
-            var yamlText;
-            switch (industry) {
-                case 'production': yamlText = TEMPLATE_UNIVERSAL; break;
-                case 'retail': yamlText = TEMPLATE_UNIVERSAL; break;
-                case 'services': yamlText = TEMPLATE_UNIVERSAL; break;
-                case 'it': yamlText = TEMPLATE_UNIVERSAL; break;
-
-            }
-
-            if (!yamlText) {
-                notify('Ошибка загрузки шаблона', true);
-                return;
-            }
-
+            var yamlText = TEMPLATE_UNIVERSAL;
             var data = parseYAML(yamlText);
             graph = Graph.fromDict(data);
-            graph.name = companyName || graph.name;
+            graph.name = companyName || 'Новая компания';
             graph.industry = industry;
+
             // Отраслевая формула выручки
             if (industry === 'it') {
                 if (graph.nodes['REVENUE']) graph.nodes['REVENUE'].formula = 'MONTHLY_RATE_PER_DEV * DEV_HEADCOUNT * UTILIZATION * 0.01';
@@ -1016,34 +1005,64 @@
                 if (graph.nodes['REVENUE']) graph.nodes['REVENUE'].formula = 'VOLUME * PRICE * SEASON';
             }
 
+            // Применяем пресет, если есть
+            var preset = INDUSTRY_PRESETS[industry];
+            if (preset) {
+                // Заполняем значения узлов из пресета
+                if (preset.nodes) {
+                    Object.keys(preset.nodes).forEach(function (nodeId) {
+                        if (graph.nodes[nodeId]) {
+                            graph.nodes[nodeId].value = preset.nodes[nodeId];
+                        }
+                    });
+                }
 
-            // Налоговый режим
-            if (!graph.company) graph.company = {};
-            graph.company.tax_system = taxSystem;
-            if (taxSystem === 'OSNO') {
-                graph.company.nds_rate = 0.22;
-                graph.company.profit_tax_rate = 0.25;
+                // Настройки компании из пресета
+                if (!graph.company) graph.company = {};
+                if (preset.company) {
+                    Object.keys(preset.company).forEach(function (key) {
+                        graph.company[key] = preset.company[key];
+                    });
+                }
+
+                // Налоговый режим из пресета
+                if (preset.company && preset.company.tax_system) {
+                    graph.company.tax_system = preset.company.tax_system;
+                    graph.company.nds_rate = preset.company.nds_rate || 0;
+                    graph.company.profit_tax_rate = preset.company.profit_tax_rate || 0.25;
+                    graph.company.insurance_rate = preset.company.insurance_rate || 0.30;
+                }
+
+                graph.name = preset.name || graph.name;
             } else {
-                graph.company.nds_rate = 0;
-                graph.company.nds_exempt = true;
-                graph.company.profit_tax_rate = taxSystem === 'USN_INCOME' ? 0.06 : 0.15;
+                // Старое поведение, если пресета нет
+                if (!graph.company) graph.company = {};
+                graph.company.tax_system = taxSystem;
+                if (taxSystem === 'OSNO') {
+                    graph.company.nds_rate = 0.22;
+                    graph.company.profit_tax_rate = 0.25;
+                } else {
+                    graph.company.nds_rate = 0;
+                    graph.company.nds_exempt = true;
+                    graph.company.profit_tax_rate = taxSystem === 'USN_INCOME' ? 0.06 : 0.15;
+                }
+                graph.company.insurance_rate = 0.30;
+                graph.company.season = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+                graph.company.has_property_tax = (industry === 'production' || industry === 'retail');
+                graph.company.property_tax_rate = 0.022;
             }
-            graph.company.insurance_rate = 0.30;
-            graph.company.season = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
-            graph.company.has_property_tax = (industry === 'production' || industry === 'retail');
-            graph.company.property_tax_rate = 0.022;
 
             if (graph.nodes['TAX_RATE']) {
                 graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
             }
 
             graph.compute();
+
             // Принудительный пересчёт REVENUE для IT и услуг
             if (industry === 'it' || industry === 'services') {
                 if (graph.nodes['REVENUE'] && graph.nodes['REVENUE'].formula) {
                     var revValue = graph._evalFormula(graph.nodes['REVENUE'].formula);
                     if (revValue === 0 || isNaN(revValue)) {
-                        // Формула не сработала — ставим вручную
                         if (industry === 'it') {
                             var rate = graph.nodes['MONTHLY_RATE_PER_DEV'] ? graph.nodes['MONTHLY_RATE_PER_DEV'].value : 0;
                             var devs = graph.nodes['DEV_HEADCOUNT'] ? graph.nodes['DEV_HEADCOUNT'].value : 0;
@@ -1063,7 +1082,7 @@
                 credits: [],
                 company: graph.company,
                 history: [],
-                planForecast: null,
+                planForecast: null
             };
             Object.keys(graph.nodes).forEach(function (key) {
                 var n = graph.nodes[key];
@@ -1071,8 +1090,12 @@
                     value: n.value,
                     enabled: n.enabled,
                     min: n.min,
-                    max: n.max
+                    max: n.max,
+                    formula: n.formula
                 };
+            });
+            modelData.edges = graph.edges.map(function (e) {
+                return { from: e.from, to: e.to, coefficient: e.coefficient };
             });
 
             var companies = getAllCompanies();
@@ -1083,20 +1106,36 @@
 
             elProjectName.textContent = graph.name;
             updateStatusBar('Компания создана');
-            notify('Компания "' + graph.name + '" создана. Настройте параметры на вкладке КОМПАНИЯ.');
+            notify('Компания "' + graph.name + '" создана с отраслевыми данными');
 
             renderAll();
             setTimeout(function () { renderSeasonGrid(); }, 300);
-            if (graph.company.salary_mode) document.getElementById('company-salary-mode').value = graph.company.salary_mode;
-            if (graph.company.materials_with_nds !== undefined) document.getElementById('company-materials-nds').value = graph.company.materials_with_nds ? 'true' : 'false';
-            if (graph.company.rent_with_nds !== undefined) document.getElementById('company-rent-nds').value = graph.company.rent_with_nds ? 'true' : 'false';
-            if (graph.company.logistics_with_nds !== undefined) document.getElementById('company-logistics-nds').value = graph.company.logistics_with_nds ? 'true' : 'false';
-            if (graph.company.it_with_nds !== undefined) document.getElementById('company-it-nds').value = graph.company.it_with_nds ? 'true' : 'false';
             window.renderInvestments();
             window.renderCredits();
             renderScenarios();
             refreshCompanyList();
             renderPlanFact();
+
+            // Восстановление интерфейса настроек
+            if (graph.company) {
+                if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
+                if (graph.company.nds_rate !== undefined) setSelectByValue('company-nds-rate', graph.company.nds_rate);
+                if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
+                if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
+                if (graph.company.receivables_days !== undefined) document.getElementById('company-receivables-days').value = graph.company.receivables_days;
+                if (graph.company.prepay_pct !== undefined) document.getElementById('company-prepay-pct').value = graph.company.prepay_pct;
+                if (graph.company.prepay_days !== undefined) document.getElementById('company-prepay-days').value = graph.company.prepay_days;
+                if (graph.company.prepay_share !== undefined) document.getElementById('company-prepay-share').value = graph.company.prepay_share;
+                if (graph.company.fa_start_value !== undefined) document.getElementById('fa-start-value').value = graph.company.fa_start_value;
+                if (graph.company.fa_start_da !== undefined) document.getElementById('fa-start-da').value = graph.company.fa_start_da;
+                if (graph.company.fa_da_rate !== undefined) document.getElementById('fa-da-rate').value = (graph.company.fa_da_rate * 100).toFixed(1);
+                if (graph.company.fa_remaining_months !== undefined) document.getElementById('fa-remaining-months').value = graph.company.fa_remaining_months;
+                if (graph.company.salary_mode) document.getElementById('company-salary-mode').value = graph.company.salary_mode;
+                if (graph.company.materials_with_nds !== undefined) document.getElementById('company-materials-nds').value = graph.company.materials_with_nds ? 'true' : 'false';
+                if (graph.company.rent_with_nds !== undefined) document.getElementById('company-rent-nds').value = graph.company.rent_with_nds ? 'true' : 'false';
+                if (graph.company.logistics_with_nds !== undefined) document.getElementById('company-logistics-nds').value = graph.company.logistics_with_nds ? 'true' : 'false';
+                if (graph.company.it_with_nds !== undefined) document.getElementById('company-it-nds').value = graph.company.it_with_nds ? 'true' : 'false';
+            }
         }
 
         // ============================================================
