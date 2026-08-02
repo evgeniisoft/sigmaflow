@@ -1038,6 +1038,21 @@
             }
 
             graph.compute();
+            // Принудительный пересчёт REVENUE для IT и услуг
+            if (industry === 'it' || industry === 'services') {
+                if (graph.nodes['REVENUE'] && graph.nodes['REVENUE'].formula) {
+                    var revValue = graph._evalFormula(graph.nodes['REVENUE'].formula);
+                    if (revValue === 0 || isNaN(revValue)) {
+                        // Формула не сработала — ставим вручную
+                        if (industry === 'it') {
+                            var rate = graph.nodes['MONTHLY_RATE_PER_DEV'] ? graph.nodes['MONTHLY_RATE_PER_DEV'].value : 0;
+                            var devs = graph.nodes['DEV_HEADCOUNT'] ? graph.nodes['DEV_HEADCOUNT'].value : 0;
+                            var util = graph.nodes['UTILIZATION'] ? graph.nodes['UTILIZATION'].value : 0;
+                            graph.nodes['REVENUE'].value = rate * devs * util * 0.01;
+                        }
+                    }
+                }
+            }
 
             // Сохраняем
             var modelData = {
