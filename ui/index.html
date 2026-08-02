@@ -2951,6 +2951,11 @@
                 var cfi = graph.nodes['CFI'] ? graph.nodes['CFI'].value : 0;
                 var cff = graph.nodes['CFF'] ? graph.nodes['CFF'].value : 0;
                 runningCash += cfo + cfi + cff;
+                // Логирование для консоль
+                console.log('Месяц ' + p + ': REVENUE=' + graph.nodes['REVENUE'].value +
+                    ' NET_PROFIT=' + graph.nodes['NET_PROFIT'].value +
+                    ' UTILIZATION=' + graph.nodes['UTILIZATION'].value +
+                    ' DEV_AVG_SALARY=' + graph.nodes['DEV_AVG_SALARY'].value);
 
                 rows.push({
                     label: label,
