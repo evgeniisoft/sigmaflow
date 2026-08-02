@@ -2892,6 +2892,14 @@
             var chartData = { revenue: [], profit: [], cash: [], baseRevenue: [] };
             var runningCash = graph.nodes['CASH'] ? graph.nodes['CASH'].value : (graph.nodes['CASH_START'] ? graph.nodes['CASH_START'].value : 0);
 
+            console.log('=== ПРОГНОЗ: ' + (forecastMode === 'drivers' ? 'ДРАЙВЕРЫ' : 'МАКРО') + ' ===');
+            console.log('БАЗА: REVENUE=' + formatValue(baseValues['REVENUE']) +
+                ' DEV_AVG_SALARY=' + formatValue(baseValues['DEV_AVG_SALARY']) +
+                ' DEV_HEADCOUNT=' + baseValues['DEV_HEADCOUNT'] +
+                ' DEV_PAYROLL=' + formatValue(baseValues['DEV_PAYROLL']));
+            console.log('СОБЫТИЯ:', JSON.stringify(forecastEvents));
+            console.log('МЕСЯЦ | REVENUE | COGS | DEV_PAYROLL | DEV_AVG_SALARY | NET_PROFIT | CASH');
+            console.log('------|---------|------|-------------|----------------|------------|-----');
             for (var p = 0; p < horizon; p++) {
                 var mo = (currentMonth + p) % 12;
                 var label = months[mo] + ' ' + (currentYear + Math.floor((currentMonth + p) / 12));
@@ -2945,19 +2953,13 @@
                 // Пересчитываем модель
                 graph.compute();
 
-                console.log('p=' + p + ' DEV_PAYROLL=' + graph.nodes['DEV_PAYROLL'].value + ' COGS=' + graph.nodes['COGS'].value + ' NET_PROFIT=' + graph.nodes['NET_PROFIT'].value);
-
                 var rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
                 var profit = graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
                 var cfo = graph.nodes['CFO'] ? graph.nodes['CFO'].value : 0;
                 var cfi = graph.nodes['CFI'] ? graph.nodes['CFI'].value : 0;
                 var cff = graph.nodes['CFF'] ? graph.nodes['CFF'].value : 0;
                 runningCash += cfo + cfi + cff;
-                // Логирование для консоль
-                console.log('Месяц ' + p + ': REVENUE=' + graph.nodes['REVENUE'].value +
-                    ' NET_PROFIT=' + graph.nodes['NET_PROFIT'].value +
-                    ' UTILIZATION=' + graph.nodes['UTILIZATION'].value +
-                    ' DEV_AVG_SALARY=' + graph.nodes['DEV_AVG_SALARY'].value);
+
 
                 rows.push({
                     label: label,
