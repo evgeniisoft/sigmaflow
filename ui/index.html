@@ -1591,11 +1591,29 @@
             if (!graph) return;
 
             var keyMetrics = [
-                { id: 'NET_PROFIT', label: 'Чистая прибыль' },
+                {
+                    id: 'NET_PROFIT', label: 'Чистая прибыль', compute: function () {
+                        var pnl = graph.getPnL(new Date().getMonth(), 1);
+                        if (pnl && pnl.rows[0]) return pnl.rows[0].net;
+                        return graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
+                    }
+                },
                 { id: 'ROS', label: 'Рентабельность (ROS)', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], p = graph.nodes['NET_PROFIT']; return (r && p && r.value) ? (p.value / r.value * 100) : null; } },
-                { id: 'REVENUE', label: 'Выручка' },
+                {
+                    id: 'REVENUE', label: 'Выручка', compute: function () {
+                        var pnl = graph.getPnL(new Date().getMonth(), 1);
+                        if (pnl && pnl.rows[0]) return pnl.rows[0].revenue;
+                        return graph.nodes['REVENUE'] ? graph.nodes['REVENUE'].value : 0;
+                    }
+                },
                 { id: 'EBITDA_MARGIN', label: 'Операц. рентаб.', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], e = graph.nodes['EBITDA']; return (r && e && r.value) ? (e.value / r.value * 100) : null; } },
-                { id: 'EBITDA', label: 'EBITDA' },
+                {
+                    id: 'EBITDA', label: 'EBITDA', compute: function () {
+                        var pnl = graph.getPnL(new Date().getMonth(), 1);
+                        if (pnl && pnl.rows[0]) return pnl.rows[0].ebitda;
+                        return graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0;
+                    }
+                },
                 { id: 'EBIT', label: 'Операционная прибыль' },
                 {
                     id: 'DEBT_EBITDA', label: 'Долг/EBITDA', format: 'num', compute: function () {
@@ -1640,10 +1658,28 @@
 
                 var borderColor = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
 
-                html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
-                html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
-                html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatted + '</div>';
-                html += '</div>';
+                if (m.id === 'REVENUE') {
+                    var isNDSPayer = graph.company && !graph.company.nds_exempt && graph.company.nds_rate > 0;
+                    var ndsRate = graph.company ? (graph.company.nds_rate || 0) : 0;
+                    var revenueWithNDS = val;
+                    var ndsAmount = isNDSPayer ? Math.round(revenueWithNDS * ndsRate / (1 + ndsRate)) : 0;
+                    var revenueWithoutNDS = isNDSPayer ? revenueWithNDS - ndsAmount : revenueWithNDS;
+
+                    html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
+                    html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
+                    if (isNDSPayer) {
+                        html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatValue(revenueWithoutNDS) + '</div>';
+                        html += '<div style="font-size:10px;color:var(--critical);margin-top:2px;">в т.ч. НДС (' + (ndsRate * 100).toFixed(0) + '%): ' + formatValue(ndsAmount) + '</div>';
+                    } else {
+                        html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatValue(revenueWithNDS) + '</div>';
+                    }
+                    html += '</div>';
+                } else {
+                    html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
+                    html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
+                    html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatted + '</div>';
+                    html += '</div>';
+                }
             });
 
             document.getElementById('dashboard-metrics').innerHTML = html;
