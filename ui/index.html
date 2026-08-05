@@ -4216,8 +4216,36 @@
             document.getElementById('btn-load-compare-gs').addEventListener('click', loadComparisonFromGAS);
 
             // Обновить статус при открытии вкладки
-            document.querySelector('[data-panel="planfact"]').addEventListener('click', function () {
+            document.querySelector('[data-panel="planfact"]').addEventListener('click', async function () {
                 updateGASStatus();
+                // Синхронизируем историю из GAS
+                var url = getGASUrl();
+                if (url && graph) {
+                    var result = await gasPost('getHistory');
+                    if (!result.error && result.history && result.history.length > 0) {
+                        // Загружаем в локальную историю, если там нет таких периодов
+                        if (!graph.history) graph.history = [];
+                        var localPeriods = graph.history.map(function (h) { return h.period; });
+                        var newCount = 0;
+                        result.history.forEach(function (h) {
+                            if (localPeriods.indexOf(h.period) === -1) {
+                                graph.history.push({
+                                    period: h.period,
+                                    type: 'historical',
+                                    plan: null,
+                                    fact: h.fact,
+                                    importedAt: new Date().toISOString()
+                                });
+                                newCount++;
+                            }
+                        });
+                        if (newCount > 0) {
+                            saveCurrentModel();
+                            notify('Синхронизировано периодов из Google Sheets: ' + newCount);
+                        }
+                    }
+                }
+                renderPlanFact();
             });
 
 
@@ -4536,6 +4564,14 @@
                     renderCalibrationHistory();
                     renderAll();
                     notify('Применено коэффициентов: ' + appliedCount);
+                    // Предложить сохранить новый план
+                    if (appliedCount > 0 && getGASUrl()) {
+                        setTimeout(function () {
+                            if (confirm('Модель обновлена. Сохранить новый план в Google Sheets?')) {
+                                savePlanToGAS();
+                            }
+                        }, 500);
+                    }
                     // Сохраняем в лог калибровок
                     if (!graph.calibrationLog) graph.calibrationLog = [];
                     graph.calibrationLog.push({
@@ -4589,6 +4625,10 @@
                     notify('Загружено периодов: ' + result.imported);
                     saveCurrentModel();
                     renderPlanFact();
+                    // Автоматически загружаем сравнение из GAS
+                    if (getGASUrl()) {
+                        setTimeout(function () { loadComparisonFromGAS(); }, 500);
+                    }
 
                     // Отправляем факт в GAS
                     var url = getGASUrl();
