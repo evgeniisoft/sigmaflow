@@ -4570,12 +4570,30 @@
                 var file = e.target.files[0];
                 if (!file || !graph) return;
                 var reader = new FileReader();
-                reader.onload = function (ev) {
+                reader.onload = async function (ev) {
                     var result = graph.importFactFromCSV(ev.target.result);
                     if (result.error) { notify(result.error, true); return; }
                     notify('Загружено периодов: ' + result.imported);
-                    renderPlanFact();
                     saveCurrentModel();
+                    renderPlanFact();
+
+                    // Отправляем факт в GAS
+                    var url = getGASUrl();
+                    if (url) {
+                        var periods = [];
+                        (graph.history || []).forEach(function (h) {
+                            if (h.fact && Object.keys(h.fact).length > 0) {
+                                periods.push({ period: h.period, values: h.fact });
+                            }
+                        });
+                        if (periods.length > 0) {
+                            var gasResult = await gasPost('saveFact', { periods: periods });
+                            if (!gasResult.error) {
+                                notify('Данные отправлены в Google Sheets');
+                                updateGASStatus();
+                            }
+                        }
+                    }
                 };
                 reader.readAsText(file, 'UTF-8');
             });
