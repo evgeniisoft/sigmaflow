@@ -1645,7 +1645,7 @@
 
             var html = '';
             keyMetrics.forEach(function (m) {
-                var val = m.compute ? m.compute() : (graph.nodes[m.id] ? graph.nodes[m.id].value : null);
+                var val = m.value !== undefined ? m.value : (graph.nodes[m.id] ? graph.nodes[m.id].value : null);
                 if (val === null || val === undefined) return;
 
                 var color = val >= 0 ? 'var(--ok)' : 'var(--critical)';
