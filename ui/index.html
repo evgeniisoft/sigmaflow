@@ -4094,7 +4094,23 @@
                     html += '<button id="btn-apply-season" style="margin-top:8px;font-size:11px;" onclick="applySARIMASeason(' + JSON.stringify(seasonCoefs) + ')">';
                     html += '📅 ПРИМЕНИТЬ СЕЗОННОСТЬ К НАСТРОЙКАМ КОМПАНИИ</button>';
                 }
+                if (result.seasonal && result.seasonal.length >= 12) {
+                    var seasonalAvg = result.seasonal.slice(-12).reduce(function (a, b) { return a + Math.abs(b); }, 0) / 12;
 
+                    html += '<div style="margin-top:12px;font-weight:600;font-size:11px;">НАЙДЕННАЯ СЕЗОННОСТЬ</div>';
+                    html += '<table style="font-size:10px;margin-top:4px;"><thead><tr>';
+                    for (var m = 0; m < 12; m++) {
+                        html += '<th>' + ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'][m] + '</th>';
+                    }
+                    html += '</tr></thead><tbody><tr>';
+                    for (var m = 0; m < 12; m++) {
+                        var coef = seasonalAvg > 0 ? Math.abs(result.seasonal[result.seasonal.length - 12 + m]) / seasonalAvg : 1;
+                        coef = Math.round(coef * 100) / 100;
+                        var color = coef > 1.1 ? 'var(--ok)' : (coef < 0.9 ? 'var(--critical)' : 'var(--text-primary)');
+                        html += '<td class="value-cell" style="color:' + color + ';">' + coef.toFixed(2) + '</td>';
+                    }
+                    html += '</tr></tbody></table>';
+                }
                 html += '<div style="font-size:10px;color:var(--text-hint);margin-top:8px;">';
                 html += 'Интервал: ' + (result.lowerBound[0] ? formatValue(Math.round(result.lowerBound[0])) : '—') + ' – ' + (result.upperBound[0] ? formatValue(Math.round(result.upperBound[0])) : '—');
                 html += '</div>';
