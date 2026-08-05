@@ -286,10 +286,17 @@
         <div id="panel-planfact" class="panel">
             <div style="padding:16px;overflow-y:auto;flex:1;">
                 <h3 style="margin:0 0 16px 0;">ПЛАН / ФАКТ</h3>
-                <div style="display:flex;gap:12px;margin-bottom:16px;">
-                    <button id="btn-download-template" class="primary">СКАЧАТЬ ШАБЛОН CSV</button>
+                <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+                    <button id="btn-download-minimal" class="primary">СКАЧАТЬ МИНИМАЛЬНЫЙ ШАБЛОН</button>
+                    <button id="btn-download-optimal" class="primary">СКАЧАТЬ ОПТИМАЛЬНЫЙ ШАБЛОН</button>
+                    <button id="btn-download-full" class="primary">СКАЧАТЬ ПОЛНЫЙ ШАБЛОН</button>
                     <input type="file" id="file-fact-import" accept=".csv" style="display:none;">
                     <button id="btn-import-fact" class="primary">ЗАГРУЗИТЬ ФАКТ</button>
+                </div>
+                <div style="font-size:10px;color:var(--text-hint);margin-bottom:16px;">
+                    Минимальный: только выручка и расходы (3 столбца) — для быстрого прогноза.<br>
+                    Оптимальный: 7-10 столбцов — для поиска зависимостей.<br>
+                    Полный: 15+ столбцов — для детальной модели.
                 </div>
                 <div id="planfact-periods" style="margin-bottom:16px;"></div>
                 <div id="planfact-comparison"></div>
@@ -1224,6 +1231,15 @@
                 body.style.display = 'none';
                 header.innerHTML = '▶ ТОЧКА БЕЗУБЫТОЧНОСТИ';
             }
+        }
+
+        function downloadCSV(csv, filename) {
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+            notify('Шаблон скачан: ' + filename);
         }
 
         function renderBreakeven() {
@@ -4091,15 +4107,20 @@
 
                 });
             });
-            document.getElementById('btn-download-template').addEventListener('click', function () {
+            document.getElementById('btn-download-minimal').addEventListener('click', function () {
                 if (!graph) return;
-                var csv = graph.generateCSVTemplate();
-                var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-                var a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = 'sigmaflow_template.csv';
-                a.click();
-                notify('Шаблон скачан');
+                var csv = graph.generateCSVTemplate('minimal');
+                downloadCSV(csv, 'sigmaflow_minimal_template.csv');
+            });
+            document.getElementById('btn-download-optimal').addEventListener('click', function () {
+                if (!graph) return;
+                var csv = graph.generateCSVTemplate('optimal');
+                downloadCSV(csv, 'sigmaflow_optimal_template.csv');
+            });
+            document.getElementById('btn-download-full').addEventListener('click', function () {
+                if (!graph) return;
+                var csv = graph.generateCSVTemplate('full');
+                downloadCSV(csv, 'sigmaflow_full_template.csv');
             });
 
             document.getElementById('btn-import-fact').addEventListener('click', function () {
