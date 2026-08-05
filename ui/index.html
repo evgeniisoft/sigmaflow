@@ -1661,17 +1661,15 @@
                 if (m.id === 'REVENUE') {
                     var isNDSPayer = graph.company && !graph.company.nds_exempt && graph.company.nds_rate > 0;
                     var ndsRate = graph.company ? (graph.company.nds_rate || 0) : 0;
-                    var revenueWithNDS = val;
-                    var ndsAmount = isNDSPayer ? Math.round(revenueWithNDS * ndsRate / (1 + ndsRate)) : 0;
-                    var revenueWithoutNDS = isNDSPayer ? revenueWithNDS - ndsAmount : revenueWithNDS;
+                    var revenueWithoutNDS = val; // из getPnL уже без НДС
+                    var revenueWithNDS = isNDSPayer ? Math.round(revenueWithoutNDS * (1 + ndsRate)) : revenueWithoutNDS;
+                    var ndsAmount = isNDSPayer ? revenueWithNDS - revenueWithoutNDS : 0;
 
                     html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
                     html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
+                    html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatValue(revenueWithoutNDS) + '</div>';
                     if (isNDSPayer) {
-                        html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatValue(revenueWithoutNDS) + '</div>';
                         html += '<div style="font-size:10px;color:var(--critical);margin-top:2px;">в т.ч. НДС (' + (ndsRate * 100).toFixed(0) + '%): ' + formatValue(ndsAmount) + '</div>';
-                    } else {
-                        html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatValue(revenueWithNDS) + '</div>';
                     }
                     html += '</div>';
                 } else {
