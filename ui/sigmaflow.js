@@ -1790,6 +1790,51 @@ function invert2x2(m) {
     return [[m[1][1] / det, -m[0][1] / det], [-m[1][0] / det, m[0][0] / det]];
 }
 
+function invertMatrix(m) {
+    var n = m.length;
+    // Создаём расширенную матрицу [M | I]
+    var aug = [];
+    for (var i = 0; i < n; i++) {
+        aug[i] = [];
+        for (var j = 0; j < n; j++) aug[i][j] = m[i][j];
+        for (var j = 0; j < n; j++) aug[i][n + j] = (i === j ? 1 : 0);
+    }
+
+    // Прямой ход
+    for (var col = 0; col < n; col++) {
+        // Находим максимальный элемент в столбце
+        var maxRow = col;
+        for (var row = col + 1; row < n; row++) {
+            if (Math.abs(aug[row][col]) > Math.abs(aug[maxRow][col])) maxRow = row;
+        }
+        // Меняем строки
+        var temp = aug[col];
+        aug[col] = aug[maxRow];
+        aug[maxRow] = temp;
+
+        if (Math.abs(aug[col][col]) < 1e-12) return null; // вырожденная
+
+        // Нормируем строку
+        var pivot = aug[col][col];
+        for (var j = 0; j < 2 * n; j++) aug[col][j] /= pivot;
+
+        // Обнуляем остальные строки
+        for (var row = 0; row < n; row++) {
+            if (row === col) continue;
+            var factor = aug[row][col];
+            for (var j = 0; j < 2 * n; j++) aug[row][j] -= factor * aug[col][j];
+        }
+    }
+
+    // Извлекаем обратную матрицу
+    var inv = [];
+    for (var i = 0; i < n; i++) {
+        inv[i] = [];
+        for (var j = 0; j < n; j++) inv[i][j] = aug[i][n + j];
+    }
+    return inv;
+}
+
 function linearRegression(X, y) {
     var n = X.length;
     if (n < 3) return null;
@@ -1816,7 +1861,16 @@ function linearRegression(X, y) {
         for (var i = 0; i < n; i++) { var dx = X[i][0] - xMean; num += dx * (y[i] - yMean); den += dx * dx; }
         if (den === 0) return null;
         beta = [yMean - (num / den) * xMean, num / den];
-    } else { return null; }
+    } else {
+        // Общий случай: решаем через обратную матрицу
+        var inv = invertMatrix(XtX);
+        if (!inv) return null;
+        beta = [];
+        for (var i = 0; i < p; i++) {
+            beta[i] = 0;
+            for (var j = 0; j < p; j++) beta[i] += inv[i][j] * Xty[j];
+        }
+    }
 
     // R² и стандартная ошибка
     var yMean = mean(y);
