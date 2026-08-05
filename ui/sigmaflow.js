@@ -2635,27 +2635,65 @@ Graph.prototype.importFactFromCSV = function (csvText) {
     return { imported: imported, history: self.history };
 };
 
-Graph.prototype.generateCSVTemplate = function () {
+Graph.prototype.generateCSVTemplate = function (level) {
     var self = this;
+    level = level || 'optimal';
     var sep = ';';
-    var headers = ['period'];
-    var example = ['2026-07'];
-    var inputIds = [];
 
-    Object.keys(self.nodes).forEach(function (key) {
-        var n = self.nodes[key];
-        if (n.type === 'INPUT' || n.type === 'EXTERNAL' || n.type === 'TARGET' || n.id === 'REVENUE' || n.id === 'COGS' || n.id === 'EBITDA' || n.id === 'NET_PROFIT') {
-            var cleanLabel = (n.label || n.id).replace(/"/g, '');
-            headers.push(n.id + ' (' + cleanLabel + ')');
-            inputIds.push(n.id);
-            // Пример значения: текущее значение узла, если есть
-            var v = n.value !== null && n.value !== undefined ? n.value : 0;
-            if (typeof v === 'number') {
-                example.push(v % 1 === 0 ? v.toString() : v.toFixed(2));
-            } else {
-                example.push('0');
+    var templates = {
+        minimal: {
+            columns: ['REVENUE', 'COGS'],
+            example: function () {
+                return [
+                    (self.nodes['REVENUE'] ? self.nodes['REVENUE'].value : 500000),
+                    (self.nodes['COGS'] ? Math.abs(self.nodes['COGS'].value) : 350000)
+                ];
+            }
+        },
+        optimal: {
+            columns: ['REVENUE', 'NET_PROFIT', 'COGS', 'PRICE', 'VOLUME', 'MARKETING', 'PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'RENT', 'LOANS'],
+            example: function () {
+                return [
+                    self._val('REVENUE'),
+                    self._valSigned('NET_PROFIT'),
+                    self._val('COGS'),
+                    self._val('PRICE'),
+                    self._val('VOLUME'),
+                    self._val('MARKETING'),
+                    self._val('PROD_HEADCOUNT') || self._val('DEV_HEADCOUNT') || self._val('SPECIALIST_HEADCOUNT') || self._val('SALES_HEADCOUNT'),
+                    self._val('PROD_AVG_SALARY') || self._val('DEV_AVG_SALARY') || self._val('SPECIALIST_AVG_SALARY') || self._val('SALES_AVG_SALARY'),
+                    self._val('RENT'),
+                    self._val('LOANS')
+                ];
+            }
+        },
+        full: {
+            columns: ['REVENUE', 'NET_PROFIT', 'EBITDA', 'COGS', 'PRICE', 'VOLUME', 'MARKETING', 'PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY', 'RENT', 'ENERGY_COST', 'LOGISTICS_COST', 'LOANS', 'CASH_START'],
+            example: function () {
+                return [
+                    self._val('REVENUE'), self._valSigned('NET_PROFIT'), self._val('EBITDA'), self._val('COGS'),
+                    self._val('PRICE'), self._val('VOLUME'), self._val('MARKETING'),
+                    self._val('PROD_HEADCOUNT') || self._val('DEV_HEADCOUNT') || 0,
+                    self._val('PROD_AVG_SALARY') || self._val('DEV_AVG_SALARY') || 0,
+                    self._val('ADMIN_HEADCOUNT'), self._val('ADMIN_AVG_SALARY'),
+                    self._val('RENT'), self._val('ENERGY_COST'), self._val('LOGISTICS_COST'),
+                    self._val('LOANS'), self._val('CASH_START')
+                ];
             }
         }
+    };
+
+    var t = templates[level] || templates['optimal'];
+    var headers = ['period'];
+    t.columns.forEach(function (col) {
+        var node = self.nodes[col];
+        var label = node ? (node.label || col) : col;
+        headers.push(col + ' (' + label + ')');
+    });
+
+    var example = ['2025-01'];
+    t.example().forEach(function (v) {
+        example.push(typeof v === 'number' ? Math.round(v) : (v || 0));
     });
 
     return '\uFEFF' + headers.join(sep) + '\n' + example.join(sep) + '\n';
