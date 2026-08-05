@@ -1289,7 +1289,6 @@
 
         function renderBreakeven() {
             if (!graph) return;
-
             var body = document.getElementById('breakeven-body');
             if (!body) return;
 
@@ -1367,7 +1366,9 @@
             totalVariable = 0;
             Object.keys(variableCosts).forEach(function (k) { totalVariable += variableCosts[k]; });
 
-            var revenue = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0;
+            var pnl = graph.getPnL(new Date().getMonth(), 1);
+            var p = pnl.rows[0];
+            var revenue = p.revenue;
             var price = graph.nodes['PRICE'] ? graph.nodes['PRICE'].value : 0;
             var avgCheck = graph.nodes['AVG_CHECK'] ? graph.nodes['AVG_CHECK'].value : 0;
             var unitPrice = price || avgCheck || 1;
@@ -1590,59 +1591,56 @@
         function renderDashboard() {
             if (!graph) return;
 
+            var pnl = graph.getPnL(new Date().getMonth(), 1);
+            var p = pnl.rows[0]; // первый месяц P&L — источник истины
+
             var keyMetrics = [
+                { id: 'NET_PROFIT', label: 'Чистая прибыль', value: p.net },
+                { id: 'ROS', label: 'Рентабельность (ROS)', format: 'pct', value: p.revenue > 0 ? (p.net / p.revenue * 100) : 0 },
+                { id: 'REVENUE', label: 'Выручка', value: p.revenue },
+                { id: 'EBITDA_MARGIN', label: 'Операц. рентаб.', format: 'pct', value: p.revenue > 0 ? (p.ebitda / p.revenue * 100) : 0 },
+                { id: 'EBITDA', label: 'EBITDA', value: p.ebitda },
+                { id: 'EBIT', label: 'Операционная прибыль', value: p.ebit },
                 {
-                    id: 'NET_PROFIT', label: 'Чистая прибыль', compute: function () {
-                        var pnl = graph.getPnL(new Date().getMonth(), 1);
-                        if (pnl && pnl.rows[0]) return pnl.rows[0].net;
-                        return graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0;
-                    }
-                },
-                { id: 'ROS', label: 'Рентабельность (ROS)', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], p = graph.nodes['NET_PROFIT']; return (r && p && r.value) ? (p.value / r.value * 100) : null; } },
-                {
-                    id: 'REVENUE', label: 'Выручка', compute: function () {
-                        var pnl = graph.getPnL(new Date().getMonth(), 1);
-                        if (pnl && pnl.rows[0]) return pnl.rows[0].revenue;
-                        return graph.nodes['REVENUE'] ? graph.nodes['REVENUE'].value : 0;
-                    }
-                },
-                { id: 'EBITDA_MARGIN', label: 'Операц. рентаб.', format: 'pct', compute: function () { var r = graph.nodes['REVENUE'], e = graph.nodes['EBITDA']; return (r && e && r.value) ? (e.value / r.value * 100) : null; } },
-                {
-                    id: 'EBITDA', label: 'EBITDA', compute: function () {
-                        var pnl = graph.getPnL(new Date().getMonth(), 1);
-                        if (pnl && pnl.rows[0]) return pnl.rows[0].ebitda;
-                        return graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0;
-                    }
-                },
-                { id: 'EBIT', label: 'Операционная прибыль' },
-                {
-                    id: 'DEBT_EBITDA', label: 'Долг/EBITDA', format: 'num', compute: function () {
+                    id: 'DEBT_EBITDA', label: 'Долг/EBITDA', format: 'num', value: (function () {
                         var totalDebt = 0;
                         if (graph.credits && graph.credits.length > 0) {
                             graph.credits.forEach(function (cr) { totalDebt += cr.amount || 0; });
                         } else {
                             totalDebt = graph.nodes['LOANS'] ? graph.nodes['LOANS'].value : 0;
                         }
-                        var e = graph.nodes['EBITDA'];
-                        return (e && e.value) ? (totalDebt / e.value) : null;
-                    }
+                        return p.ebitda !== 0 ? (totalDebt / p.ebitda) : 0;
+                    })()
                 },
-                { id: 'FCF', label: 'Денежный поток' },
                 {
-                    id: 'PAYROLL_SHARE', label: 'Доля ФОТ', format: 'pct', compute: function () {
-                        var r = graph.nodes['REVENUE'];
+                    id: 'FCF', label: 'Денежный поток', value: (function () {
+                        var cal = graph.getCashFlowCalendar(new Date().getMonth(), 1);
+                        return cal.periods[0].netFlow;
+                    })()
+                },
+                {
+                    id: 'PAYROLL_SHARE', label: 'Доля ФОТ', format: 'pct', value: (function () {
                         var total = 0;
                         ['DIRECT_LABOR', 'DEV_PAYROLL', 'SPECIALIST_PAYROLL', 'SALES_PAYROLL', 'WAREHOUSE_PAYROLL', 'ADMIN_PAYROLL'].forEach(function (pid) {
-                            var pn = graph.nodes[pid];
-                            if (pn && pn.value) total += Math.abs(pn.value);
+                            if (graph.nodes[pid]) total += Math.abs(graph.nodes[pid].value);
                         });
-                        return (r && r.value) ? (total / r.value * 100) : null;
-                    }
+                        return p.revenue > 0 ? (total / p.revenue * 100) : 0;
+                    })()
                 },
-                { id: 'CASH', label: 'Остаток денег' },
-                { id: 'INTEREST_COVERAGE', label: 'Покрытие проц.', format: 'num', compute: function () { var e = graph.nodes['EBIT'], i = graph.nodes['INTEREST']; return (e && i && i.value) ? (e.value / i.value) : null; } },
-                { id: 'GROSS_PROFIT', label: 'Валовая прибыль' },
-                { id: 'ASSETS', label: 'Активы' }
+                {
+                    id: 'CASH', label: 'Остаток денег', value: (function () {
+                        var cal = graph.getCashFlowCalendar(new Date().getMonth(), 1);
+                        return cal.periods[0].endCash;
+                    })()
+                },
+                { id: 'INTEREST_COVERAGE', label: 'Покрытие проц.', format: 'num', value: p.interest !== 0 ? (p.ebit / Math.abs(p.interest)) : 0 },
+                { id: 'GROSS_PROFIT', label: 'Валовая прибыль', value: p.gross },
+                {
+                    id: 'ASSETS', label: 'Активы', value: (function () {
+                        var cal = graph.getCashFlowCalendar(new Date().getMonth(), 1);
+                        return Math.abs(p.cogs) + cal.periods[0].endCash + (graph.nodes['FIXED_ASSETS'] ? graph.nodes['FIXED_ASSETS'].value : 0);
+                    })()
+                }
             ];
 
             var html = '';
@@ -1955,17 +1953,36 @@
         }
 
         function renderKeyResults() {
-            var keyNodes = ['NET_PROFIT', 'REVENUE', 'EBITDA', 'FCF', 'CASH', 'DEBT_EBITDA'];
+            var pnl = graph.getPnL(new Date().getMonth(), 1);
+            var p = pnl.rows[0];
+            var cal = graph.getCashFlowCalendar(new Date().getMonth(), 1);
+            var c = cal.periods[0];
+
             var resHtml = '';
-            keyNodes.forEach(function (nid) {
-                var n = graph.nodes[nid];
-                if (n && n.value !== null) {
-                    resHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;">';
-                    resHtml += '<span>' + (n.label || n.id) + '</span>';
-                    resHtml += '<span style="font-weight:500;">' + formatValue(n.value) + '</span>';
-                    resHtml += '</div>';
+            [
+                { label: 'Чистая прибыль', value: p.net },
+                { label: 'Выручка', value: p.revenue },
+                { label: 'EBITDA', value: p.ebitda },
+                { label: 'Свободный ден. поток', value: c.netFlow },
+                { label: 'Остаток денег', value: c.endCash },
+                {
+                    label: 'Долг/EBITDA', value: (function () {
+                        var totalDebt = 0;
+                        if (graph.credits && graph.credits.length > 0) {
+                            graph.credits.forEach(function (cr) { totalDebt += cr.amount || 0; });
+                        } else {
+                            totalDebt = graph.nodes['LOANS'] ? graph.nodes['LOANS'].value : 0;
+                        }
+                        return p.ebitda !== 0 ? (totalDebt / p.ebitda) : 0;
+                    })()
                 }
+            ].forEach(function (m) {
+                resHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;">';
+                resHtml += '<span>' + m.label + '</span>';
+                resHtml += '<span style="font-weight:500;">' + formatValue(m.value) + '</span>';
+                resHtml += '</div>';
             });
+
             var keyEl = document.getElementById('key-results');
             if (keyEl) keyEl.innerHTML = resHtml || 'Нажмите ВЫЧИСЛИТЬ';
         }
@@ -4799,18 +4816,21 @@
 
 
                     // ===================== WATERFALL =====================
+                    var pnl = graph.getPnL(new Date().getMonth(), 1);
+                    var p = pnl.rows[0];
+
                     var items = [
-                        { label: 'Выручка', value: graph.nodes['REVENUE'] ? graph.nodes['REVENUE'].value : 0, color: 'var(--ok)' },
-                        { label: 'Себестоимость', value: -(graph.nodes['COGS'] ? Math.abs(graph.nodes['COGS'].value) : 0), color: 'var(--critical)' },
-                        { label: 'Валовая прибыль', value: (graph.nodes['REVENUE'] ? graph.nodes['REVENUE'].value : 0) - (graph.nodes['COGS'] ? Math.abs(graph.nodes['COGS'].value) : 0), isTotal: true },
-                        { label: 'Коммерческие', value: -(graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : 0), color: 'var(--critical)' },
-                        { label: 'Управленческие', value: -(graph.nodes['ADMIN_EXP'] ? Math.abs(graph.nodes['ADMIN_EXP'].value) : 0), color: 'var(--critical)' },
-                        { label: 'EBITDA', value: (graph.nodes['GROSS_PROFIT'] ? graph.nodes['GROSS_PROFIT'].value : 0) - (graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : 0) - (graph.nodes['ADMIN_EXP'] ? Math.abs(graph.nodes['ADMIN_EXP'].value) : 0), isTotal: true },
-                        { label: 'Амортизация', value: -(graph.nodes['DA'] ? Math.abs(graph.nodes['DA'].value) : 0), color: 'var(--critical)' },
-                        { label: 'Проценты', value: -(graph.nodes['INTEREST'] ? Math.abs(graph.nodes['INTEREST'].value) : 0), color: 'var(--critical)' },
-                        { label: 'Прочие', value: (graph.nodes['OTHER_INCOME'] ? graph.nodes['OTHER_INCOME'].value : 0) + (graph.nodes['OTHER_EXP'] ? graph.nodes['OTHER_EXP'].value : 0) + (graph.nodes['PENALTIES'] ? graph.nodes['PENALTIES'].value : 0), color: 'var(--text-hint)' },
-                        { label: 'Налог на прибыль', value: -(graph.nodes['TAX'] ? Math.abs(graph.nodes['TAX'].value) : 0), color: 'var(--critical)' },
-                        { label: 'ЧИСТАЯ ПРИБЫЛЬ', value: (graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0) - (graph.nodes['DA'] ? Math.abs(graph.nodes['DA'].value) : 0) - (graph.nodes['INTEREST'] ? Math.abs(graph.nodes['INTEREST'].value) : 0) + (graph.nodes['OTHER_INCOME'] ? graph.nodes['OTHER_INCOME'].value : 0) - (graph.nodes['OTHER_EXP'] ? Math.abs(graph.nodes['OTHER_EXP'].value) : 0) - (graph.nodes['PENALTIES'] ? Math.abs(graph.nodes['PENALTIES'].value) : 0) - (graph.nodes['TAX'] ? Math.abs(graph.nodes['TAX'].value) : 0), color: np >= 0 ? 'var(--ok)' : 'var(--critical)', isTotal: true },
+                        { label: 'Выручка', value: p.revenue, color: 'var(--ok)' },
+                        { label: 'Себестоимость', value: p.cogs, color: 'var(--critical)' },
+                        { label: 'Валовая прибыль', value: p.gross, color: 'var(--ok)', isTotal: true },
+                        { label: 'Коммерческие', value: p.selling, color: 'var(--critical)' },
+                        { label: 'Управленческие', value: p.admin, color: 'var(--critical)' },
+                        { label: 'EBITDA', value: p.ebitda, color: 'var(--ok)', isTotal: true },
+                        { label: 'Амортизация', value: p.da, color: 'var(--critical)' },
+                        { label: 'Проценты', value: p.interest, color: 'var(--critical)' },
+                        { label: 'Прочие', value: p.other, color: 'var(--text-hint)' },
+                        { label: 'Налог на прибыль', value: p.tax, color: 'var(--critical)' },
+                        { label: 'ЧИСТАЯ ПРИБЫЛЬ', value: p.net, color: p.net >= 0 ? 'var(--ok)' : 'var(--critical)', isTotal: true }
                     ];
 
                     var maxVal = 0;
