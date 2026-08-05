@@ -2017,6 +2017,348 @@ Graph.prototype.calibrate = function () {
     return { results: results, totalOutliers: outliers.length, excludedPeriods: excludedPeriods };
 };
 
+// ============================================================
+// МНОЖЕСТВЕННАЯ РЕГРЕССИЯ С VIF И КРОСС-ВАЛИДАЦИЕЙ
+// ============================================================
+
+Graph.prototype.calibrateAdvanced = function (options) {
+    var self = this;
+    options = options || {};
+
+    if (!self.history || self.history.length < 6) {
+        return { error: 'Недостаточно данных. Нужно минимум 6 периодов.' };
+    }
+
+    // Собираем все периоды с фактическими данными
+    var allData = self.history.filter(function (h) {
+        return h.fact && Object.keys(h.fact).length > 0;
+    });
+
+    if (allData.length < 6) {
+        return { error: 'Недостаточно периодов с фактическими данными. Минимум 6.' };
+    }
+
+    // Исключаем выбросы
+    var outliers = self.detectOutliers();
+    var excludedPeriods = [];
+    outliers.forEach(function (o) {
+        if (excludedPeriods.indexOf(o.period) === -1) {
+            excludedPeriods.push(o.period);
+        }
+    });
+
+    var cleanData = allData.filter(function (h) {
+        return excludedPeriods.indexOf(h.period) === -1;
+    });
+
+    if (cleanData.length < 6) {
+        return { error: 'После исключения выбросов осталось менее 6 периодов.' };
+    }
+
+    // Определяем целевые узлы и их потенциальные факторы
+    var targetModels = [
+        {
+            target: 'VOLUME',
+            label: 'Объём продаж',
+            factors: ['PRICE', 'MARKETING', 'COMPETITION', 'INFLATION', 'CB_RATE', 'CCI']
+        },
+        {
+            target: 'REVENUE',
+            label: 'Выручка',
+            factors: ['VOLUME', 'PRICE', 'MARKETING', 'COMPETITION', 'SEASON']
+        },
+        {
+            target: 'COGS',
+            label: 'Себестоимость',
+            factors: ['VOLUME', 'UNIT_MATERIAL', 'PROD_HEADCOUNT', 'PROD_AVG_SALARY', 'ENERGY_COST', 'LOGISTICS_COST', 'INFLATION', 'FX_RATE']
+        },
+        {
+            target: 'NET_PROFIT',
+            label: 'Чистая прибыль',
+            factors: ['REVENUE', 'COGS', 'MARKETING', 'INTEREST', 'TAX_RATE']
+        },
+        {
+            target: 'EBITDA',
+            label: 'EBITDA',
+            factors: ['REVENUE', 'COGS', 'SELLING_EXP', 'ADMIN_EXP']
+        }
+    ];
+
+    var allResults = [];
+
+    targetModels.forEach(function (model) {
+        // Проверяем, что целевой узел и хотя бы 2 фактора есть в данных
+        var availableFactors = model.factors.filter(function (f) {
+            return self.nodes[f] !== undefined;
+        });
+
+        if (availableFactors.length < 2) return;
+
+        // Собираем данные: y (целевой) и X (факторы)
+        var yData = [];
+        var XData = [];
+        var periods = [];
+
+        cleanData.forEach(function (h) {
+            var y = h.fact[model.target];
+            if (y === undefined || y === null) return;
+
+            var row = [];
+            var allFactorsPresent = true;
+            availableFactors.forEach(function (f) {
+                var val = h.fact[f];
+                if (val === undefined || val === null) {
+                    allFactorsPresent = false;
+                }
+                row.push(val || 0);
+            });
+
+            if (allFactorsPresent) {
+                yData.push(y);
+                XData.push(row);
+                periods.push(h.period);
+            }
+        });
+
+        if (yData.length < 6 || XData.length < 6) return;
+
+        var n = yData.length;
+        var p = availableFactors.length;
+
+        // ==================== ШАГ 1: VIF-АНАЛИЗ ====================
+        var vifResults = calculateVIFMatrix(XData);
+        var includedFactors = [];
+        var excludedFactors = [];
+
+        availableFactors.forEach(function (f, idx) {
+            if (vifResults[idx] < 5) {
+                includedFactors.push({ name: f, index: idx, vif: vifResults[idx] });
+            } else {
+                excludedFactors.push({ name: f, index: idx, vif: vifResults[idx], reason: 'VIF=' + vifResults[idx].toFixed(1) + ' (мультиколлинеарность)' });
+            }
+        });
+
+        // Если после VIF осталось меньше 2 факторов — используем все
+        if (includedFactors.length < 2) {
+            includedFactors = availableFactors.map(function (f, idx) {
+                return { name: f, index: idx, vif: vifResults[idx] };
+            });
+            excludedFactors = [];
+        }
+
+        // ==================== ШАГ 2: МНОЖЕСТВЕННАЯ РЕГРЕССИЯ ====================
+        var X = [];
+        for (var i = 0; i < n; i++) {
+            var row = [1]; // intercept
+            includedFactors.forEach(function (f) {
+                row.push(XData[i][f.index]);
+            });
+            X.push(row);
+        }
+
+        var reg = linearRegression(X, yData);
+        if (!reg) return;
+
+        // ==================== ШАГ 3: КРОСС-ВАЛИДАЦИЯ ====================
+        var folds = Math.min(5, Math.floor(n / 2));
+        if (folds < 2) folds = 2;
+        var foldSize = Math.floor(n / folds);
+        var cvScores = [];
+
+        for (var fold = 0; fold < folds; fold++) {
+            var testStart = fold * foldSize;
+            var testEnd = Math.min(testStart + foldSize, n);
+
+            // Разделяем на train/test
+            var trainX = [];
+            var trainY = [];
+            var testX = [];
+            var testY = [];
+
+            for (var i = 0; i < n; i++) {
+                if (i >= testStart && i < testEnd) {
+                    testX.push(X[i]);
+                    testY.push(yData[i]);
+                } else {
+                    trainX.push(X[i]);
+                    trainY.push(yData[i]);
+                }
+            }
+
+            if (trainX.length < 3 || testX.length === 0) continue;
+
+            var foldReg = linearRegression(trainX, trainY);
+            if (!foldReg) continue;
+
+            // Считаем R² на тестовой выборке
+            var ssRes = 0, ssTot = 0;
+            var testMean = testY.reduce(function (a, b) { return a + b; }, 0) / testY.length;
+
+            for (var i = 0; i < testY.length; i++) {
+                var pred = foldReg.coefficients[0];
+                for (var j = 0; j < includedFactors.length; j++) {
+                    pred += foldReg.coefficients[j + 1] * testX[i][j + 1];
+                }
+                ssRes += (testY[i] - pred) * (testY[i] - pred);
+                ssTot += (testY[i] - testMean) * (testY[i] - testMean);
+            }
+
+            var foldR2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+            cvScores.push(foldR2);
+        }
+
+        var cvScore = cvScores.length > 0 ? cvScores.reduce(function (a, b) { return a + b; }, 0) / cvScores.length : null;
+        var cvStd = cvScores.length > 1 ? Math.sqrt(cvScores.reduce(function (s, v) { return s + (v - cvScore) * (v - cvScore); }, 0) / (cvScores.length - 1)) : null;
+
+        // ==================== ШАГ 4: ИНТЕРПРЕТАЦИЯ ====================
+        var factorResults = [];
+        includedFactors.forEach(function (f, idx) {
+            var coeff = reg.coefficients[idx + 1];
+            var se = reg.se ? reg.se[idx + 1] : null;
+            var pValue = reg.pValues ? reg.pValues[idx + 1] : null;
+            var tStat = reg.tStats ? reg.tStats[idx + 1] : null;
+
+            // Значимость
+            var significance = 'not_significant';
+            if (pValue !== null) {
+                if (pValue < 0.01) significance = 'high';
+                else if (pValue < 0.05) significance = 'medium';
+                else if (pValue < 0.10) significance = 'low';
+            }
+
+            // Направление влияния
+            var direction = coeff > 0 ? 'positive' : (coeff < 0 ? 'negative' : 'neutral');
+
+            // Эластичность (средняя)
+            var yMean = yData.reduce(function (a, b) { return a + b; }, 0) / n;
+            var xMean = XData.reduce(function (a, row) { return a + row[f.index]; }, 0) / n;
+            var elasticity = yMean > 0 ? coeff * (xMean / yMean) : 0;
+
+            // Человеческая интерпретация
+            var interpretation = '';
+            if (significance === 'high' || significance === 'medium') {
+                var directionWord = direction === 'positive' ? 'увеличивает' : 'уменьшает';
+                var strengthWord = Math.abs(elasticity) > 0.5 ? 'сильно' : (Math.abs(elasticity) > 0.2 ? 'умеренно' : 'слабо');
+                interpretation = 'Фактор «' + (self.nodes[f.name] ? self.nodes[f.name].label : f.name) + '» ' + strengthWord + ' ' + directionWord + ' «' + (self.nodes[model.target] ? self.nodes[model.target].label : model.target) + '».';
+            }
+
+            factorResults.push({
+                factor: f.name,
+                coefficient: Math.round(coeff * 10000) / 10000,
+                se: se !== null ? Math.round(se * 10000) / 10000 : null,
+                pValue: pValue !== null ? Math.round(pValue * 1000) / 1000 : null,
+                tStat: tStat !== null ? Math.round(tStat * 100) / 100 : null,
+                significance: significance,
+                direction: direction,
+                elasticity: Math.round(elasticity * 100) / 100,
+                vif: Math.round(f.vif * 10) / 10,
+                interpretation: interpretation
+            });
+        });
+
+        // Сортируем по значимости
+        factorResults.sort(function (a, b) {
+            if (a.significance === b.significance) return Math.abs(b.elasticity) - Math.abs(a.elasticity);
+            var order = { 'high': 0, 'medium': 1, 'low': 2, 'not_significant': 3 };
+            return order[a.significance] - order[b.significance];
+        });
+
+        allResults.push({
+            target: model.target,
+            targetLabel: model.label,
+            dataPoints: n,
+            r2: Math.round(reg.r2 * 100) / 100,
+            adjustedR2: Math.round((1 - (1 - reg.r2) * (n - 1) / (n - includedFactors.length - 1)) * 100) / 100,
+            cvScore: cvScore !== null ? Math.round(cvScore * 100) / 100 : null,
+            cvStd: cvStd !== null ? Math.round(cvStd * 100) / 100 : null,
+            cvFolds: folds,
+            intercept: Math.round(reg.coefficients[0] * 100) / 100,
+            factors: factorResults,
+            excludedFactors: excludedFactors,
+            excludedPeriods: excludedPeriods,
+            outlierCount: outliers.length,
+            modelQuality: reg.r2 > 0.7 ? 'good' : (reg.r2 > 0.5 ? 'moderate' : 'weak'),
+            recommendation: getModelRecommendation(reg.r2, cvScore, n, model.targetLabel)
+        });
+    });
+
+    if (allResults.length === 0) {
+        return { error: 'Не удалось построить ни одной модели. Проверьте данные.' };
+    }
+
+    return {
+        results: allResults,
+        totalPeriods: cleanData.length,
+        totalOutliers: outliers.length,
+        excludedPeriods: excludedPeriods,
+        timestamp: new Date().toISOString()
+    };
+};
+
+// ============================================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ============================================================
+
+// VIF для матрицы данных
+function calculateVIFMatrix(data) {
+    var n = data.length;
+    if (n < 4) return data[0].map(function () { return 0; });
+
+    var p = data[0].length;
+    var vifs = [];
+
+    for (var i = 0; i < p; i++) {
+        var X = [];
+        var y = [];
+        for (var k = 0; k < n; k++) {
+            var row = [1];
+            y.push(data[k][i]);
+            for (var j = 0; j < p; j++) {
+                if (j !== i) row.push(data[k][j]);
+            }
+            X.push(row);
+        }
+
+        var reg = linearRegression(X, y);
+        if (reg && reg.r2 < 1) {
+            vifs.push(1 / (1 - reg.r2));
+        } else {
+            vifs.push(999);
+        }
+    }
+
+    return vifs;
+}
+
+// Человеческая рекомендация по качеству модели
+function getModelRecommendation(r2, cvScore, dataPoints, targetLabel) {
+    var parts = [];
+
+    if (r2 > 0.7) {
+        parts.push('Модель хорошо объясняет ' + targetLabel + ' (R² = ' + (r2 * 100).toFixed(0) + '%).');
+    } else if (r2 > 0.5) {
+        parts.push('Модель удовлетворительно объясняет ' + targetLabel + ' (R² = ' + (r2 * 100).toFixed(0) + '%).');
+    } else {
+        parts.push('Модель слабо объясняет ' + targetLabel + ' (R² = ' + (r2 * 100).toFixed(0) + '%). Возможно, не хватает важных факторов.');
+    }
+
+    if (cvScore !== null) {
+        if (cvScore > 0.6) {
+            parts.push('Прогнозная точность приемлемая (CV = ' + (cvScore * 100).toFixed(0) + '%).');
+        } else if (cvScore > 0.4) {
+            parts.push('Прогнозная точность низкая (CV = ' + (cvScore * 100).toFixed(0) + '%). Рекомендуется больше данных.');
+        } else {
+            parts.push('Модель не пригодна для прогнозирования (CV = ' + (cvScore * 100).toFixed(0) + '%).');
+        }
+    }
+
+    if (dataPoints < 12) {
+        parts.push('Мало данных (' + dataPoints + ' точек). Результаты неустойчивы. Нужно минимум 12 периодов.');
+    }
+
+    return parts.join(' ');
+}
+
 Graph.prototype.detectOutliers = function () {
     var self = this;
     var outliers = [];
