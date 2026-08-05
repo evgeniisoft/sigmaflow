@@ -309,7 +309,7 @@
                 <!-- СРАВНЕНИЕ -->
                 <div style="margin-bottom:16px;">
                     <div style="font-weight:600;font-size:12px;margin-bottom:8px;">СРАВНЕНИЕ ПЛАН / ФАКТ</div>
-                    <div id="planfact-comparison" style="overflow-x:auto;">
+                    <div id="planfact-comparison" style="overflow-x:auto;max-width:100%;">
                         <div style="color:var(--text-hint);padding:12px;">Нажмите «ЗАГРУЗИТЬ СРАВНЕНИЕ»</div>
                     </div>
                 </div>
@@ -4128,7 +4128,7 @@
             // Находим ключевые метрики для отображения
             var keyMetrics = ['REVENUE', 'NET_PROFIT', 'EBITDA', 'COGS'];
 
-            var html = '<table style="font-size:10px;min-width:800px;"><thead><tr>';
+            var html = '<table style="font-size:10px;min-width:900px;width:max-content;"><thead><tr>';
             html += '<th>ПЕРИОД</th>';
             keyMetrics.forEach(function (m) {
                 var node = graph.nodes[m];
