@@ -204,19 +204,6 @@
                 <div id="compute-results" style="flex-shrink:0;"></div>
             </div>
         </div>
-        <!-- ПАНЕЛЬ КАЛИБРОВКА -->
-        <div id="panel-calibrate" class="panel">
-            <div style="padding:16px;overflow-y:auto;flex:1;">
-                <h3 style="margin:0 0 16px 0;">КАЛИБРОВКА МОДЕЛИ</h3>
-                <p style="color:var(--text-hint);font-size:12px;margin-bottom:12px;">Загрузите исторические данные на
-                    вкладке
-                    ПЛАН/ФАКТ, затем запустите калибровку.</p>
-                <button id="btn-run-calibration" class="primary" style="margin-bottom:16px;">ЗАПУСТИТЬ
-                    КАЛИБРОВКУ</button>
-                <div id="calibrate-results"></div>
-                <div id="calibrate-history" style="margin-top:24px;"></div>
-            </div>
-        </div>
         <!-- ПАНЕЛЬ P&L -->
         <div id="panel-pnl" class="panel">
             <div style="padding:16px;overflow:auto;flex:1;display:flex;flex-direction:column;">
@@ -279,6 +266,8 @@
                     ПЛАН/ФАКТ, затем запустите калибровку.</p>
                 <button id="btn-run-calibration" class="primary" style="margin-bottom:16px;">ЗАПУСТИТЬ
                     КАЛИБРОВКУ</button>
+                <button id="btn-run-sarima" class="primary" style="margin-left:8px;">SARIMA-ПРОГНОЗ</button>
+                <div id="sarima-results" style="margin-top:16px;"></div>
                 <div id="calibrate-results"></div>
             </div>
         </div>
@@ -716,6 +705,7 @@
     <!-- СКРИПТЫ -->
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script src="sigmaflow.js"></script>
     <script src="template_universal.js"></script>
     <script src="allowed_connections.js"></script>
@@ -740,6 +730,25 @@
         var elComputeBody = document.getElementById('compute-results-body');
         var elGraphContainer = document.getElementById('graph-container');
         var elNotification = document.getElementById('notification');
+
+        // Инициализация Pyodide 
+        var pyodide = null;
+        var pyodideReady = false;
+
+        async function initPyodide() {
+            if (pyodideReady) return;
+            try {
+                pyodide = await loadPyodide({
+                    indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.0/full/'
+                });
+                await pyodide.loadPackage('statsmodels');
+                pyodideReady = true;
+                console.log('Pyodide + statsmodels загружены');
+            } catch (e) {
+                console.error('Ошибка загрузки Pyodide:', e);
+                notify('Не удалось загрузить модуль прогнозирования', true);
+            }
+        }
 
         // ============================================================
         // ЗАГРУЗКА ДЕМО
@@ -3835,6 +3844,8 @@
         document.addEventListener('DOMContentLoaded', function () {
             initNavigation();
 
+            setTimeout(initPyodide, 2000); // фоновая загрузка через 2 секунды после старта
+            
             // Тема
             var theme = localStorage.getItem('sigmaflow_theme') || 'dark';
             if (theme === 'light') document.body.classList.add('light');
@@ -3908,6 +3919,51 @@
             document.querySelector('[data-panel="calibrate"]').addEventListener('click', function () {
                 setTimeout(renderCalibrationHistory, 100);
             });
+
+            document.getElementById('btn-run-sarima').addEventListener('click', async function () {
+                if (!graph) { notify('Сначала загрузите модель', true); return; }
+                if (!pyodideReady) {
+                    notify('Загружаем модуль прогнозирования...', false);
+                    await initPyodide();
+                    if (!pyodideReady) return;
+                }
+
+                notify('Строим прогноз...');
+                var result = await graph.forecastSARIMA({ target: 'REVENUE', periods: 12 });
+
+                if (result.error) {
+                    notify(result.error, true);
+                    return;
+                }
+
+                var html = '<div style="margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border);">';
+                html += '<div style="font-weight:600;margin-bottom:8px;">SARIMA-ПРОГНОЗ: ' + (graph.nodes['REVENUE'] ? graph.nodes['REVENUE'].label : 'REVENUE') + '</div>';
+                html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:8px;">';
+                html += 'Модель: ARIMA(' + result.params.p + ',' + result.params.d + ',' + result.params.q + ') × (' + result.params.P + ',' + result.params.D + ',' + result.params.Q + ',' + result.params.s + ') | ';
+                html += 'AIC: ' + result.aic.toFixed(1) + ' | Точек: ' + result.dataPoints;
+                html += '</div>';
+
+                // Таблица прогноза
+                html += '<table style="font-size:10px;"><thead><tr><th>МЕСЯЦ</th><th>ПРОГНОЗ</th><th>НИЖНЯЯ</th><th>ВЕРХНЯЯ</th></tr></thead><tbody>';
+                for (var i = 0; i < result.predictions.length; i++) {
+                    html += '<tr>';
+                    html += '<td>+' + (i + 1) + ' мес</td>';
+                    html += '<td class="value-cell">' + formatValue(Math.round(result.predictions[i])) + '</td>';
+                    html += '<td class="value-cell" style="color:var(--text-hint);">' + formatValue(Math.round(result.lowerBound[i])) + '</td>';
+                    html += '<td class="value-cell" style="color:var(--text-hint);">' + formatValue(Math.round(result.upperBound[i])) + '</td>';
+                    html += '</tr>';
+                }
+                html += '</tbody></table>';
+
+                html += '<div style="font-size:10px;color:var(--text-hint);margin-top:8px;">';
+                html += 'Интервал: ' + (result.lowerBound[0] ? formatValue(Math.round(result.lowerBound[0])) : '—') + ' – ' + (result.upperBound[0] ? formatValue(Math.round(result.upperBound[0])) : '—');
+                html += '</div>';
+
+                html += '</div>';
+                document.getElementById('sarima-results').innerHTML = html;
+                notify('Прогноз построен');
+            });
+
 
             document.getElementById('btn-export-excel').addEventListener('click', exportToExcel);
 
