@@ -2426,12 +2426,21 @@
             if (!graph || !graph.company) return;
             if (!confirm('Заменить сезонность в настройках компании на найденную моделью?')) return;
 
-            graph.company.season = coefs;
+            // Фильтруем и нормализуем
+            var clean = coefs.map(function (v) {
+                var num = parseFloat(v);
+                return (isNaN(num) || num === null || num === undefined) ? 1.0 : num;
+            });
+
+            var avg = clean.reduce(function (a, b) { return a + b; }, 0) / clean.length;
+            if (avg === 0) avg = 1;
+            clean = clean.map(function (v) { return Math.max(0.3, Math.min(3.0, v / avg)); });
+
+            graph.company.season = clean;
             saveCurrentModel();
             renderSeasonGrid();
-            notify('Сезонность обновлена: ' + coefs.map(function (c) { return c.toFixed(1); }).join(', '));
+            notify('Сезонность обновлена');
         }
-
 
         function buildPnL() {
             if (!graph) { notify('Сначала загрузите модель', true); return; }
