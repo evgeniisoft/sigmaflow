@@ -1823,7 +1823,17 @@
             panel.style.display = 'block';
 
             // Находим входящие связи
-            var incoming = graph.edges.filter(function (e) { return e.to === nodeId; });
+            var incoming = graph.edges.filter(function (e) {
+                if (e.to !== nodeId) return false;
+                var fromNode = graph.nodes[e.from];
+                if (!fromNode) return false;
+                // Показываем только если узел имеет ненулевое значение или используется в формуле
+                if (fromNode.value !== null && fromNode.value !== 0) return true;
+                // Или если это часть формулы REVENUE
+                var targetNode = graph.nodes[nodeId];
+                if (targetNode && targetNode.formula && targetNode.formula.indexOf(e.from) >= 0) return true;
+                return false;
+            });
             var totalInfluence = 0;
             var factors = [];
 
