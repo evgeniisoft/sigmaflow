@@ -1835,6 +1835,44 @@ function invertMatrix(m) {
     return inv;
 }
 
+function incompleteBeta(a, b, x) {
+    if (x < 0 || x > 1) return 0;
+    if (x === 0 || x === 1) return x;
+    var maxIter = 100, eps = 1e-10;
+    var front = Math.exp(gammaLn(a + b) - gammaLn(a) - gammaLn(b) + a * Math.log(x) + b * Math.log(1 - x));
+    var f = 1, c = 1, d = 1 - (a + b) * x / (a + 1);
+    if (Math.abs(d) < eps) d = eps;
+    d = 1 / d;
+    var h = d;
+    for (var i = 1; i <= maxIter; i++) {
+        var m = Math.floor(i / 2);
+        var num, den;
+        if (i % 2 === 0) {
+            num = m * (b - m) * x / ((a + 2 * m - 1) * (a + 2 * m));
+            d = 1 + num * d;
+            c = 1 + num / c;
+        } else {
+            num = -(a + m) * (a + b + m) * x / ((a + 2 * m) * (a + 2 * m + 1));
+            d = 1 + num * d;
+            c = 1 + num / c;
+        }
+        if (Math.abs(d) < eps) d = eps;
+        if (Math.abs(c) < eps) c = eps;
+        d = 1 / d;
+        h *= d * c;
+    }
+    return front * h / a;
+}
+
+function gammaLn(x) {
+    var coef = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+    var y = x, tmp = x + 5.5;
+    tmp -= (x + 0.5) * Math.log(tmp);
+    var ser = 1.000000000190015;
+    for (var j = 0; j < 6; j++) ser += coef[j] / ++y;
+    return -tmp + Math.log(2.5066282746310005 * ser / x);
+}
+
 function linearRegression(X, y) {
     var n = X.length;
     if (n < 3) return null;
@@ -1905,7 +1943,11 @@ function linearRegression(X, y) {
         var t = se[j] > 0 ? Math.abs(beta[j]) / se[j] : 0;
         tStats.push(t);
         // Аппроксимация p-value через нормальное распределение
-        var pVal = t > 0 ? 2 * (1 - normCDF(t, n - p)) : 1;
+        // t-распределение Стьюдента (аппроксимация)
+        var df = n - p;
+        if (df < 1) df = 1;
+        var x = df / (df + t * t);
+        var pVal = incompleteBeta(0.5 * df, 0.5, x);
         pValues.push(Math.min(pVal, 1));
     }
 
