@@ -298,6 +298,9 @@
                     Оптимальный: 7-10 столбцов — для поиска зависимостей.<br>
                     Полный: 15+ столбцов — для детальной модели.
                 </div>
+                <button id="btn-clear-history"
+                    style="font-size:11px;color:var(--critical);border-color:var(--critical);">ОЧИСТИТЬ
+                    ИСТОРИЮ</button>
                 <div id="planfact-periods" style="margin-bottom:16px;"></div>
                 <div id="planfact-comparison"></div>
                 <div id="planfact-analysis" style="margin-top:16px;"></div>
@@ -3889,6 +3892,18 @@
                 renderAll();
                 notify('Изменения применены');
             });
+            // Очистить историю загрузки исторических данных для калибровки
+            document.getElementById('btn-clear-history').addEventListener('click', function () {
+                if (!graph || !graph.history || graph.history.length === 0) {
+                    notify('Нет данных для удаления', true);
+                    return;
+                }
+                if (!confirm('Удалить все загруженные периоды (' + graph.history.length + ' шт.)?')) return;
+                graph.history = [];
+                saveCurrentModel();
+                renderPlanFact();
+                notify('История очищена');
+            });
 
             document.getElementById('btn-export-excel').addEventListener('click', exportToExcel);
 
@@ -4044,6 +4059,26 @@
                     saveCurrentModel();
                     renderAll();
                     notify('Применено коэффициентов: ' + appliedCount);
+                    // Сохраняем в лог калибровок
+                    if (!graph.calibrationLog) graph.calibrationLog = [];
+                    graph.calibrationLog.push({
+                        date: new Date().toISOString(),
+                        periods: calResult.totalPeriods,
+                        outliers: calResult.totalOutliers,
+                        appliedCount: appliedCount,
+                        models: calResult.results.map(function (m) {
+                            return {
+                                target: m.target,
+                                r2: m.r2,
+                                cvScore: m.cvScore,
+                                factors: m.factors.filter(function (f, fIdx) {
+                                    var cb = document.querySelector('.calibrate-check[data-model="' + calResult.results.indexOf(m) + '"][data-factor="' + fIdx + '"]');
+                                    return cb && cb.checked;
+                                }).map(function (f) { return { factor: f.factor, coefficient: f.coefficient }; })
+                            };
+                        })
+                    });
+                    saveCurrentModel();
                 });
 
                 document.getElementById('calibrate-results').innerHTML = html;
@@ -4069,10 +4104,13 @@
                 document.getElementById('btn-apply-calibration').addEventListener('click', function () {
                     document.querySelectorAll('.calibrate-check').forEach(function (cb) {
                         if (cb.checked) {
-                            var r = window._calibrationResults[parseInt(cb.dataset.idx)];
+                            var modelIdx = parseInt(cb.dataset.model);
+                            var factorIdx = parseInt(cb.dataset.factor);
+                            var model = calResult.results[modelIdx];
+                            var factor = model.factors[factorIdx];
                             graph.edges.forEach(function (edge) {
-                                if (edge.from === r.from && edge.to === r.to) {
-                                    edge.coefficient = r.newCoefficient;
+                                if (edge.from === factor.factor && edge.to === model.target) {
+                                    edge.coefficient = factor.coefficient;
                                 }
                             });
                         }
