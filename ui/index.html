@@ -3905,6 +3905,10 @@
                 notify('История очищена');
             });
 
+            document.querySelector('[data-panel="calibrate"]').addEventListener('click', function () {
+                setTimeout(renderCalibrationHistory, 100);
+            });
+
             document.getElementById('btn-export-excel').addEventListener('click', exportToExcel);
 
             document.getElementById('btn-save').addEventListener('click', saveProject);
@@ -4048,6 +4052,7 @@
                 histHtml += '</div>';
 
                 document.getElementById('calibrate-results').innerHTML += histHtml;
+                renderCalibrationHistory();
 
                 // Сохраняем результаты для применения
                 window._calibrationResults = calResult;
@@ -4077,6 +4082,7 @@
 
                     graph.compute();
                     saveCurrentModel();
+                    renderCalibrationHistory();
                     renderAll();
                     notify('Применено коэффициентов: ' + appliedCount);
                     // Сохраняем в лог калибровок
@@ -5658,20 +5664,45 @@
             });
             document.getElementById('live-comparison-body').innerHTML = compHtml;
         }
+
+        function renderCalibrationHistory() {
+            var container = document.getElementById('calibrate-history');
+            if (!container) return;
+            if (!graph || !graph.calibrationLog || graph.calibrationLog.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-hint);font-size:12px;">Калибровка ещё не проводилась.</div>';
+                return;
+            }
+            var html = '<table style="font-size:11px;"><thead><tr><th>#</th><th>ДАТА</th><th>ПЕРИОДОВ</th><th>КОЭФФ.</th><th></th></tr></thead><tbody>';
+            graph.calibrationLog.forEach(function (log, idx) {
+                html += '<tr>';
+                html += '<td>' + (idx + 1) + '</td>';
+                html += '<td>' + new Date(log.date).toLocaleString('ru-RU') + '</td>';
+                html += '<td class="value-cell">' + (log.periods || '—') + '</td>';
+                html += '<td class="value-cell">' + (log.appliedCount || 0) + '</td>';
+                html += '<td><button onclick="rollbackCalibration(' + idx + ')" style="font-size:10px;padding:2px 6px;">ОТКАЛИТЬ</button></td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
         window.rollbackCalibration = function (idx) {
             if (!graph || !graph.calibrationLog || idx >= graph.calibrationLog.length) return;
-            var snapshot = graph.calibrationLog[idx];
-            if (!snapshot.edges || !snapshot.edges.length) {
+            var log = graph.calibrationLog[idx];
+            if (!log.models || log.models.length === 0) {
                 notify('Невозможно откатить: нет сохранённых данных.', true);
                 return;
             }
-            if (!confirm('Откатить калибровку #' + (idx + 1) + ' от ' + new Date(snapshot.date).toLocaleString('ru-RU') + '?')) return;
+            if (!confirm('Откатить калибровку #' + (idx + 1) + ' от ' + new Date(log.date).toLocaleString('ru-RU') + '?')) return;
 
-            snapshot.edges.forEach(function (savedEdge) {
-                graph.edges.forEach(function (edge) {
-                    if (edge.from === savedEdge.from && edge.to === savedEdge.to) {
-                        edge.coefficient = savedEdge.coefficient;
-                    }
+            log.models.forEach(function (model) {
+                model.factors.forEach(function (f) {
+                    graph.edges.forEach(function (edge) {
+                        if (edge.from === f.factor && edge.to === model.target) {
+                            // Возвращаем коэффициент к 0 или удаляем ребро
+                            edge.coefficient = 0;
+                        }
+                    });
                 });
             });
 
@@ -5679,6 +5710,7 @@
             graph.compute();
             saveCurrentModel();
             renderAll();
+            renderCalibrationHistory();
             notify('Модель откачена к версии #' + (idx + 1));
         };
 
