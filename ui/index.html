@@ -4080,70 +4080,7 @@
                     });
                     saveCurrentModel();
                 });
-
-                document.getElementById('calibrate-results').innerHTML = html;
-                window._calibrationResults = results;
-                // История калибровок
-                var histHtml = '<h4 style="margin:0 0 8px 0;">ИСТОРИЯ КАЛИБРОВКИ</h4>';
-                if (!graph.calibrationLog || graph.calibrationLog.length === 0) {
-                    histHtml += '<div style="color:var(--text-hint);">Калибровка ещё не проводилась.</div>';
-                } else {
-                    histHtml += '<table><thead><tr><th>#</th><th>ДАТА</th><th>СВЯЗЕЙ</th><th></th></tr></thead><tbody>';
-                    graph.calibrationLog.forEach(function (log, idx) {
-                        histHtml += '<tr>';
-                        histHtml += '<td>' + (idx + 1) + '</td>';
-                        histHtml += '<td>' + new Date(log.date).toLocaleString('ru-RU') + '</td>';
-                        histHtml += '<td>' + (log.appliedCount || 0) + '</td>';
-                        histHtml += '<td><button onclick="rollbackCalibration(' + idx + ')" style="font-size:10px;padding:2px 6px;">ОТКАЛИТЬ</button></td>';
-                        histHtml += '</tr>';
-                    });
-                    histHtml += '</tbody></table>';
-                }
-                document.getElementById('calibrate-history').innerHTML = histHtml;
-
-                document.getElementById('btn-apply-calibration').addEventListener('click', function () {
-                    document.querySelectorAll('.calibrate-check').forEach(function (cb) {
-                        if (cb.checked) {
-                            var modelIdx = parseInt(cb.dataset.model);
-                            var factorIdx = parseInt(cb.dataset.factor);
-                            var model = calResult.results[modelIdx];
-                            var factor = model.factors[factorIdx];
-                            graph.edges.forEach(function (edge) {
-                                if (edge.from === factor.factor && edge.to === model.target) {
-                                    edge.coefficient = factor.coefficient;
-                                }
-                            });
-                        }
-                    });
-                    graph.compute();
-                    saveCurrentModel();
-                    renderAll();
-                    if (!graph.calibrationLog) graph.calibrationLog = [];
-                    if (window._calibrationSnapshot) {
-                        window._calibrationSnapshot.applied = window._calibrationResults.filter(function (r, idx) {
-                            var cb = document.querySelector('.calibrate-check[data-idx="' + idx + '"]');
-                            return cb && cb.checked;
-                        });
-                        window._calibrationSnapshot.appliedCount = window._calibrationSnapshot.applied.length;
-                        graph.calibrationLog.push(window._calibrationSnapshot);
-                        window._calibrationSnapshot = null;
-                    }
-                    notify('Калибровка применена');
-                    // Обновить историю на экране
-                    var histHtml = '<h4 style="margin:0 0 8px 0;">ИСТОРИЯ КАЛИБРОВКИ</h4>';
-                    histHtml += '<table><thead><tr><th>#</th><th>ДАТА</th><th>СВЯЗЕЙ</th><th></th></tr></thead><tbody>';
-                    graph.calibrationLog.forEach(function (log, idx) {
-                        histHtml += '<tr>';
-                        histHtml += '<td>' + (idx + 1) + '</td>';
-                        histHtml += '<td>' + new Date(log.date).toLocaleString('ru-RU') + '</td>';
-                        histHtml += '<td>' + (log.appliedCount || 0) + '</td>';
-                        histHtml += '<td><button onclick="rollbackCalibration(' + idx + ')" style="font-size:10px;padding:2px 6px;">ОТКАЛИТЬ</button></td>';
-                        histHtml += '</tr>';
-                    });
-                    histHtml += '</tbody></table>';
-                    document.getElementById('calibrate-history').innerHTML = histHtml;
-
-                });
+                              
             });
             document.getElementById('btn-download-minimal').addEventListener('click', function () {
                 if (!graph) return;
