@@ -2104,23 +2104,38 @@ Graph.prototype.calibrateAdvanced = function (options) {
             if (y === undefined || y === null) return;
 
             var row = [];
-            var allFactorsPresent = true;
+            var presentFactors = [];
+            var row = [];
             availableFactors.forEach(function (f) {
                 var val = h.fact[f];
-                if (val === undefined || val === null) {
-                    allFactorsPresent = false;
+                if (val !== undefined && val !== null) {
+                    presentFactors.push(f);
+                    row.push(val);
                 }
-                row.push(val || 0);
             });
 
-            if (allFactorsPresent) {
+            // Нужен хотя бы 1 фактор
+            if (presentFactors.length >= 1) {
                 yData.push(y);
                 XData.push(row);
                 periods.push(h.period);
+                // Сохраняем, какие факторы реально доступны для этой модели
+                if (!model._availableFactors) model._availableFactors = {};
+                presentFactors.forEach(function (f) {
+                    model._availableFactors[f] = true;
+                });
             }
         });
 
         if (yData.length < 6 || XData.length < 6) return;
+
+        // Оставляем только факторы, которые есть в данных
+        var realFactors = model._availableFactors ? Object.keys(model._availableFactors) : availableFactors;
+        if (realFactors.length < 1) return;
+        availableFactors = realFactors.filter(function (f) {
+            return self.nodes[f] !== undefined;
+        });
+        if (availableFactors.length < 1) return;
 
         var n = yData.length;
         var p = availableFactors.length;
