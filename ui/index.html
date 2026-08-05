@@ -4040,9 +4040,8 @@
 
             notify('Сохраняем план в Google Sheets...');
 
-            var months = ['08', '09', '10', '11', '12', '01', '02', '03', '04', '05', '06', '07'];
-            var years = ['2026', '2026', '2026', '2026', '2026', '2027', '2027', '2027', '2027', '2027', '2027', '2027'];
             var startMonth = new Date().getMonth();
+            var pnl = graph.getPnL(startMonth, 12);
 
             var periods = [];
             for (var p = 0; p < 12; p++) {
@@ -4050,20 +4049,31 @@
                 var yr = 2026 + Math.floor((startMonth + p) / 12);
                 var period = yr + '-' + String(mo + 1).padStart(2, '0');
 
+                // Сохраняем ВСЕ узлы модели
                 var values = {};
-                // Сохраняем все INPUT и ключевые узлы
                 Object.keys(graph.nodes).forEach(function (key) {
                     var n = graph.nodes[key];
-                    if ((n.type === 'INPUT' || n.type === 'EXTERNAL' || n.type === 'TARGET') && n.value !== null && n.value !== undefined) {
+                    if (n.value !== null && n.value !== undefined && n.type !== 'EXTERNAL') {
+                        // Пропускаем внешние факторы — они не часть плана компании
                         values[key] = n.value;
                     }
                 });
-                // Добавляем ключевые INTERMEDIATE
-                ['REVENUE', 'NET_PROFIT', 'EBITDA', 'COGS', 'GROSS_PROFIT', 'EBIT', 'EBT', 'FCF', 'CASH'].forEach(function (key) {
-                    if (graph.nodes[key] && graph.nodes[key].value !== null) {
-                        values[key] = graph.nodes[key].value;
-                    }
-                });
+
+                // Перезаписываем ключевые метрики из P&L (учитывают сезонность)
+                if (pnl && pnl.rows[p]) {
+                    values['REVENUE'] = Math.round(pnl.rows[p].revenue);
+                    values['NET_PROFIT'] = Math.round(pnl.rows[p].net);
+                    values['EBITDA'] = Math.round(pnl.rows[p].ebitda);
+                    values['COGS'] = Math.round(pnl.rows[p].cogs);
+                    values['GROSS_PROFIT'] = Math.round(pnl.rows[p].gross);
+                    values['SELLING_EXP'] = Math.round(pnl.rows[p].selling);
+                    values['ADMIN_EXP'] = Math.round(pnl.rows[p].admin);
+                    values['EBIT'] = Math.round(pnl.rows[p].ebit);
+                    values['EBT'] = Math.round(pnl.rows[p].ebt);
+                    values['TAX'] = Math.round(pnl.rows[p].tax);
+                    values['DA'] = Math.round(pnl.rows[p].da);
+                    values['INTEREST'] = Math.round(pnl.rows[p].interest);
+                }
 
                 periods.push({ period: period, values: values });
             }
