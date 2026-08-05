@@ -5674,7 +5674,7 @@
             }
             var html = '<table style="font-size:11px;"><thead><tr><th>#</th><th>ДАТА</th><th>ПЕРИОДОВ</th><th>КОЭФФ.</th><th></th></tr></thead><tbody>';
             graph.calibrationLog.forEach(function (log, idx) {
-                html += '<tr>';
+                html += '<tr style="cursor:pointer;" onclick="toggleCalibrationDetail(' + idx + ')">';
                 html += '<td>' + (idx + 1) + '</td>';
                 html += '<td>' + new Date(log.date).toLocaleString('ru-RU') + '</td>';
                 html += '<td class="value-cell">' + (log.periods || '—') + '</td>';
@@ -5714,7 +5714,35 @@
             notify('Модель откачена к версии #' + (idx + 1));
         };
 
+        window.toggleCalibrationDetail = function (idx) {
+            var existing = document.getElementById('cal-detail-' + idx);
+            if (existing) { existing.remove(); return; }
 
+            var log = graph.calibrationLog[idx];
+            if (!log || !log.models) return;
+
+            var detailHtml = '<tr id="cal-detail-' + idx + '"><td colspan="5" style="padding:8px;background:var(--bg-input);">';
+            detailHtml += '<div style="font-size:11px;font-weight:600;margin-bottom:6px;">Калибровка #' + (idx + 1) + ' — ' + new Date(log.date).toLocaleString('ru-RU') + '</div>';
+            detailHtml += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">Периодов: ' + (log.periods || '—') + ' | Выбросов: ' + (log.outliers || '—') + ' | Применено коэффициентов: ' + (log.appliedCount || 0) + '</div>';
+
+            log.models.forEach(function (model) {
+                if (!model.factors || model.factors.length === 0) return;
+                detailHtml += '<div style="margin-top:6px;font-size:10px;font-weight:600;">' + (graph.nodes[model.target] ? graph.nodes[model.target].label : model.target) + ' — R² = ' + (model.r2 ? model.r2.toFixed(2) : '—') + '</div>';
+                detailHtml += '<table style="font-size:10px;margin-top:2px;"><thead><tr><th>ФАКТОР</th><th>КОЭФФИЦИЕНТ</th></tr></thead><tbody>';
+                model.factors.forEach(function (f) {
+                    detailHtml += '<tr>';
+                    detailHtml += '<td>' + (graph.nodes[f.factor] ? graph.nodes[f.factor].label : f.factor) + '</td>';
+                    detailHtml += '<td class="value-cell">' + f.coefficient.toFixed(4) + '</td>';
+                    detailHtml += '</tr>';
+                });
+                detailHtml += '</tbody></table>';
+            });
+
+            detailHtml += '</td></tr>';
+
+            var row = document.querySelector('#calibrate-history tr[onclick*="toggleCalibrationDetail(' + idx + ')"]');
+            if (row) row.insertAdjacentHTML('afterend', detailHtml);
+        };
 
         window.addEdge = function (from, to, coeff) {
             if (!from || !to || isNaN(coeff)) return;
