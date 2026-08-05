@@ -4161,8 +4161,11 @@
 
                     var deltaColor = delta === null ? 'var(--text-hint)' : (delta >= 0 ? 'var(--ok)' : 'var(--critical)');
 
-                    html += '<td class="value-cell">' + (planVal !== null ? formatValue(Math.round(planVal)) : '—') + '</td>';
-                    html += '<td class="value-cell">' + (factVal !== null ? formatValue(Math.round(factVal)) : '—') + '</td>';
+                    var isCost = (m === 'COGS' || m === 'SELLING_EXP' || m === 'ADMIN_EXP' || m === 'DA' || m === 'INTEREST' || m === 'TAX');
+                    var planShow = planVal !== null ? (isCost ? Math.abs(Math.round(planVal)) : Math.round(planVal)) : null;
+                    var factShow = factVal !== null ? (isCost ? Math.abs(Math.round(factVal)) : Math.round(factVal)) : null;
+                    html += '<td class="value-cell">' + (planShow !== null ? formatValue(planShow) : '—') + '</td>';
+                    html += '<td class="value-cell">' + (factShow !== null ? formatValue(factShow) : '—') + '</td>';
                     html += '<td class="value-cell" style="color:' + deltaColor + ';">' + (delta !== null ? (delta >= 0 ? '+' : '') + formatValue(Math.round(delta)) : '—') + '</td>';
                     html += '<td class="value-cell" style="color:' + deltaColor + ';">' + (deltaPct !== null ? (deltaPct >= 0 ? '+' : '') + deltaPct.toFixed(1) + '%' : '—') + '</td>';
                 });
