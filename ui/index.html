@@ -277,24 +277,48 @@
         <div id="panel-planfact" class="panel">
             <div style="padding:16px;overflow-y:auto;flex:1;">
                 <h3 style="margin:0 0 16px 0;">ПЛАН / ФАКТ</h3>
-                <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-                    <button id="btn-download-minimal" class="primary">СКАЧАТЬ МИНИМАЛЬНЫЙ ШАБЛОН</button>
-                    <button id="btn-download-optimal" class="primary">СКАЧАТЬ ОПТИМАЛЬНЫЙ ШАБЛОН</button>
-                    <button id="btn-download-full" class="primary">СКАЧАТЬ ПОЛНЫЙ ШАБЛОН</button>
-                    <input type="file" id="file-fact-import" accept=".csv" style="display:none;">
-                    <button id="btn-import-fact" class="primary">ЗАГРУЗИТЬ ФАКТ</button>
+
+                <!-- GOOGLE SHEETS -->
+                <div style="margin-bottom:16px;padding:12px;background:var(--bg-input);border:1px solid var(--border);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-weight:600;font-size:12px;">GOOGLE SHEETS</span>
+                        <span id="gas-status" style="font-size:10px;">● Проверка...</span>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button id="btn-save-plan-gs" class="primary" style="flex:1;">СОХРАНИТЬ ПЛАН</button>
+                        <button id="btn-load-compare-gs" class="primary" style="flex:1;">ЗАГРУЗИТЬ СРАВНЕНИЕ</button>
+                    </div>
                 </div>
-                <div style="font-size:10px;color:var(--text-hint);margin-bottom:16px;">
-                    Минимальный: только выручка и расходы (3 столбца) — для быстрого прогноза.<br>
-                    Оптимальный: 7-10 столбцов — для поиска зависимостей.<br>
-                    Полный: 15+ столбцов — для детальной модели.
+
+                <!-- ЗАГРУЗКА CSV -->
+                <div style="margin-bottom:16px;">
+                    <div style="font-weight:600;font-size:12px;margin-bottom:8px;">ЗАГРУЗКА ФАКТА</div>
+                    <div style="display:flex;gap:8px;margin-bottom:4px;">
+                        <button id="btn-download-minimal">МИН. ШАБЛОН</button>
+                        <button id="btn-download-optimal">ОПТ. ШАБЛОН</button>
+                        <button id="btn-download-full">ПОЛНЫЙ ШАБЛОН</button>
+                        <input type="file" id="file-fact-import" accept=".csv" style="display:none;">
+                        <button id="btn-import-fact" class="primary" style="margin-left:auto;">ЗАГРУЗИТЬ CSV</button>
+                    </div>
+                    <div style="font-size:10px;color:var(--text-hint);">
+                        Минимальный: только выручка и расходы (3 столбца) — для быстрого прогноза. | Оптимальный: 7-10
+                        столбцов — для поиска зависимостей. | Полный: 15+ столбцов — для детальной модели.
+                    </div>
                 </div>
-                <button id="btn-clear-history"
-                    style="font-size:11px;color:var(--critical);border-color:var(--critical);">ОЧИСТИТЬ
-                    ИСТОРИЮ</button>
-                <div id="planfact-periods" style="margin-bottom:16px;"></div>
-                <div id="planfact-comparison"></div>
-                <div id="planfact-analysis" style="margin-top:16px;"></div>
+
+                <!-- СРАВНЕНИЕ -->
+                <div style="margin-bottom:16px;">
+                    <div style="font-weight:600;font-size:12px;margin-bottom:8px;">СРАВНЕНИЕ ПЛАН / ФАКТ</div>
+                    <div id="planfact-comparison" style="overflow-x:auto;">
+                        <div style="color:var(--text-hint);padding:12px;">Нажмите «ЗАГРУЗИТЬ СРАВНЕНИЕ»</div>
+                    </div>
+                </div>
+
+                <!-- ОЧИСТКА -->
+                <div>
+                    <button id="btn-clear-history" style="color:var(--critical);border-color:var(--critical);">ОЧИСТИТЬ
+                        ИСТОРИЮ</button>
+                </div>
             </div>
         </div>
         <!-- ПАНЕЛЬ СЦЕНАРИИ -->
@@ -421,8 +445,8 @@
                                 id="company-prepay-share" value="0" min="0" max="100" style="width:100%;"></div>
                         <div class="form-group">
                             <label>GOOGLE SHEETS URL (GAS веб-приложение)</label>
-                            <input type="text" id="company-gas-url"
-                                placeholder="https://script.google.com/macros/s/AKfycbxOptPwB_vogtjczjz5fgzu8FiquD7F3clOxU3APpT95fW1Ly8rXg6xSjcJu5FjBruNYg/exec" style="width:100%;">
+                            <input type="text" id="company-gas-url" placeholder="введите URL базы данных"
+                                style="width:100%;">
                         </div>
                         <div style="font-size:11px;color:var(--text-hint);margin-top:12px;">СЕЗОННОСТЬ (коэффициенты по
                             месяцам)</div>
@@ -942,6 +966,7 @@
                     if (graph.company.fa_da_rate !== undefined) document.getElementById('fa-da-rate').value = (graph.company.fa_da_rate * 100).toFixed(1);
                     if (graph.company.fa_remaining_months !== undefined) document.getElementById('fa-remaining-months').value = graph.company.fa_remaining_months;
                     renderSeasonGrid();
+                    if (graph.company.gas_url) document.getElementById('company-gas-url').value = graph.company.gas_url;
                     if (graph.company.salary_mode) document.getElementById('company-salary-mode').value = graph.company.salary_mode;
                     if (graph.company.materials_with_nds !== undefined) document.getElementById('company-materials-nds').value = graph.company.materials_with_nds ? 'true' : 'false';
                     if (graph.company.rent_with_nds !== undefined) document.getElementById('company-rent-nds').value = graph.company.rent_with_nds ? 'true' : 'false';
@@ -1187,6 +1212,7 @@
             window.renderInvestments();
             window.renderCredits();
             renderScenarios();
+            graph.company.gas_url = document.getElementById('company-gas-url').value;
             refreshCompanyList();
             renderPlanFact();
 
@@ -3976,6 +4002,182 @@
             XLSX.writeFile(wb, fileName);
             notify('Отчёт экспортирован в Excel');
         }
+
+        // ============================================================
+        // GOOGLE SHEETS ИНТЕГРАЦИЯ
+        // ============================================================
+
+        function getGASUrl() {
+            if (graph && graph.company && graph.company.gas_url) {
+                return graph.company.gas_url;
+            }
+            return localStorage.getItem('sigmaflow_gas_url') || '';
+        }
+
+        async function gasPost(action, data) {
+            var url = getGASUrl();
+            if (!url) return { error: 'GAS URL не настроен' };
+
+            data = data || {};
+            data.action = action;
+            data.companyId = getCurrentCompanyId();
+
+            try {
+                var response = await fetch(url, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                return await response.json();
+            } catch (e) {
+                return { error: 'Сервер Google недоступен: ' + e.message };
+            }
+        }
+
+        async function savePlanToGAS() {
+            if (!graph) { notify('Сначала загрузите модель', true); return; }
+            var url = getGASUrl();
+            if (!url) { notify('Настройте Google Sheets URL в НАСТРОЙКАХ', true); return; }
+
+            notify('Сохраняем план в Google Sheets...');
+
+            var months = ['08', '09', '10', '11', '12', '01', '02', '03', '04', '05', '06', '07'];
+            var years = ['2026', '2026', '2026', '2026', '2026', '2027', '2027', '2027', '2027', '2027', '2027', '2027'];
+            var startMonth = new Date().getMonth();
+
+            var periods = [];
+            for (var p = 0; p < 12; p++) {
+                var mo = (startMonth + p) % 12;
+                var yr = 2026 + Math.floor((startMonth + p) / 12);
+                var period = yr + '-' + String(mo + 1).padStart(2, '0');
+
+                var values = {};
+                // Сохраняем все INPUT и ключевые узлы
+                Object.keys(graph.nodes).forEach(function (key) {
+                    var n = graph.nodes[key];
+                    if ((n.type === 'INPUT' || n.type === 'EXTERNAL' || n.type === 'TARGET') && n.value !== null && n.value !== undefined) {
+                        values[key] = n.value;
+                    }
+                });
+                // Добавляем ключевые INTERMEDIATE
+                ['REVENUE', 'NET_PROFIT', 'EBITDA', 'COGS', 'GROSS_PROFIT', 'EBIT', 'EBT', 'FCF', 'CASH'].forEach(function (key) {
+                    if (graph.nodes[key] && graph.nodes[key].value !== null) {
+                        values[key] = graph.nodes[key].value;
+                    }
+                });
+
+                periods.push({ period: period, values: values });
+            }
+
+            var result = await gasPost('savePlan', { periods: periods });
+            if (result.error) { notify('Ошибка: ' + result.error, true); return; }
+            notify('План сохранён: ' + result.periods + ' периодов');
+            updateGASStatus();
+        }
+
+        async function loadComparisonFromGAS() {
+            if (!graph) { notify('Сначала загрузите модель', true); return; }
+            var url = getGASUrl();
+            if (!url) { notify('Настройте Google Sheets URL в НАСТРОЙКАХ', true); return; }
+
+            notify('Загружаем сравнение...');
+            var result = await gasPost('getComparison');
+
+            if (result.error) { notify('Ошибка: ' + result.error, true); return; }
+            if (!result.periods || result.periods.length === 0) {
+                document.getElementById('planfact-comparison').innerHTML = '<div style="color:var(--text-hint);padding:12px;">Нет данных для сравнения. Сохраните план и загрузите факт.</div>';
+                notify('Нет данных');
+                return;
+            }
+
+            renderPlanFactComparison(result);
+            notify('Загружено: ' + result.periods.length + ' периодов');
+        }
+
+        async function updateGASStatus() {
+            var statusEl = document.getElementById('gas-status');
+            if (!statusEl) return;
+
+            var url = getGASUrl();
+            if (!url) {
+                statusEl.innerHTML = '<span style="color:var(--critical);">● Не настроено</span>';
+                return;
+            }
+
+            var result = await gasPost('getStatus');
+            if (result.error || !result.connected) {
+                statusEl.innerHTML = '<span style="color:var(--critical);">● Нет соединения</span>';
+                return;
+            }
+
+            statusEl.innerHTML = '<span style="color:var(--ok);">● Подключено</span> (' + result.planCount + ' планов, ' + result.factCount + ' фактов)';
+        }
+
+        function renderPlanFactComparison(data) {
+            if (!data || !data.periods) return;
+
+            // Находим ключевые метрики для отображения
+            var keyMetrics = ['REVENUE', 'NET_PROFIT', 'EBITDA', 'COGS'];
+
+            var html = '<table style="font-size:10px;min-width:800px;"><thead><tr>';
+            html += '<th>ПЕРИОД</th>';
+            keyMetrics.forEach(function (m) {
+                var node = graph.nodes[m];
+                html += '<th>' + (node ? node.label : m) + ' ПЛАН</th>';
+                html += '<th>' + (node ? node.label : m) + ' ФАКТ</th>';
+                html += '<th>Δ</th><th>Δ%</th>';
+            });
+            html += '<th>СТАТУС</th>';
+            html += '</tr></thead><tbody>';
+
+            var criticals = [];
+
+            data.periods.forEach(function (p) {
+                html += '<tr>';
+                html += '<td>' + p.period + '</td>';
+
+                var hasFact = false;
+                var hasCritical = false;
+
+                keyMetrics.forEach(function (m) {
+                    var met = p.metrics.find(function (x) { return x.metric === m; });
+                    var planVal = met ? met.plan : null;
+                    var factVal = met ? met.fact : null;
+                    var delta = met ? met.delta : null;
+                    var deltaPct = met ? met.deltaPct : null;
+                    var critical = met ? met.critical : false;
+
+                    if (factVal !== null) hasFact = true;
+                    if (critical) { hasCritical = true; criticals.push({ period: p.period, metric: m, plan: planVal, fact: factVal, deltaPct: deltaPct }); }
+
+                    var deltaColor = delta === null ? 'var(--text-hint)' : (delta >= 0 ? 'var(--ok)' : 'var(--critical)');
+
+                    html += '<td class="value-cell">' + (planVal !== null ? formatValue(Math.round(planVal)) : '—') + '</td>';
+                    html += '<td class="value-cell">' + (factVal !== null ? formatValue(Math.round(factVal)) : '—') + '</td>';
+                    html += '<td class="value-cell" style="color:' + deltaColor + ';">' + (delta !== null ? (delta >= 0 ? '+' : '') + formatValue(Math.round(delta)) : '—') + '</td>';
+                    html += '<td class="value-cell" style="color:' + deltaColor + ';">' + (deltaPct !== null ? (deltaPct >= 0 ? '+' : '') + deltaPct.toFixed(1) + '%' : '—') + '</td>';
+                });
+
+                var status = !hasFact ? '○ план' : (hasCritical ? '⚠' : '✓');
+                var statusColor = !hasFact ? 'var(--text-hint)' : (hasCritical ? 'var(--critical)' : 'var(--ok)');
+                html += '<td style="color:' + statusColor + ';">' + status + '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+
+            if (criticals.length > 0) {
+                html += '<div style="margin-top:8px;padding:8px;border:1px solid var(--critical);background:rgba(212,75,60,0.1);font-size:10px;">';
+                html += '<div style="color:var(--critical);font-weight:600;margin-bottom:4px;">⚠ КРИТИЧЕСКИЕ ОТКЛОНЕНИЯ (>10%):</div>';
+                criticals.forEach(function (c) {
+                    var node = graph.nodes[c.metric];
+                    html += '<div>• ' + c.period + ': ' + (node ? node.label : c.metric) + ' — отклонение ' + (c.deltaPct >= 0 ? '+' : '') + c.deltaPct.toFixed(1) + '% (план: ' + formatValue(Math.round(c.plan)) + ', факт: ' + formatValue(Math.round(c.fact)) + ')</div>';
+                });
+                html += '</div>';
+            }
+
+            document.getElementById('planfact-comparison').innerHTML = html;
+        }
+
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
         // ============================================================
@@ -3995,6 +4197,16 @@
                 localStorage.setItem('sigmaflow_theme', isLight ? 'light' : 'dark');
                 this.textContent = isLight ? '🌙' : '☀️';
             });
+
+
+            document.getElementById('btn-save-plan-gs').addEventListener('click', savePlanToGAS);
+            document.getElementById('btn-load-compare-gs').addEventListener('click', loadComparisonFromGAS);
+
+            // Обновить статус при открытии вкладки
+            document.querySelector('[data-panel="planfact"]').addEventListener('click', function () {
+                updateGASStatus();
+            });
+
 
             // Изменение значений в Данных:
             document.getElementById('btn-apply-table').addEventListener('click', function () {
@@ -4691,6 +4903,7 @@
                 graph.company.nds_rate = parseFloat(document.getElementById('company-nds-rate').value);
                 graph.company.profit_tax_rate = parseFloat(document.getElementById('company-profit-tax-rate').value);
                 graph.company.insurance_rate = parseFloat(document.getElementById('company-insurance-rate').value);
+                graph.company.gas_url = document.getElementById('company-gas-url').value;
                 graph.company.receivables_days = parseInt(document.getElementById('company-receivables-days').value) || 30;
                 graph.company.salary_mode = document.getElementById('company-salary-mode').value;
                 graph.company.materials_with_nds = document.getElementById('company-materials-nds').value === 'true';
@@ -5085,6 +5298,7 @@
                         if (graph.company.prepay_days !== undefined) document.getElementById('company-prepay-days').value = graph.company.prepay_days;
                         if (graph.company.prepay_share !== undefined) document.getElementById('company-prepay-share').value = graph.company.prepay_share;
                         renderSeasonGrid();
+                        if (graph.company.gas_url) document.getElementById('company-gas-url').value = graph.company.gas_url;
                         if (graph.company.salary_mode) document.getElementById('company-salary-mode').value = graph.company.salary_mode;
                         if (graph.company.materials_with_nds !== undefined) document.getElementById('company-materials-nds').value = graph.company.materials_with_nds ? 'true' : 'false';
                         if (graph.company.rent_with_nds !== undefined) document.getElementById('company-rent-nds').value = graph.company.rent_with_nds ? 'true' : 'false';
