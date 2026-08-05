@@ -2635,6 +2635,133 @@ Graph.prototype.importFactFromCSV = function (csvText) {
     return { imported: imported, history: self.history };
 };
 
+Graph.prototype.forecastSARIMA = async function (options) {
+    var self = this;
+    options = options || {};
+
+    if (!pyodideReady) {
+        return { error: 'Модуль прогнозирования не загружен. Попробуйте позже.' };
+    }
+
+    var targetId = options.target || 'REVENUE';
+    var periods = options.periods || 12;
+    var confidenceLevel = options.confidence || 0.80;
+
+    // Собираем исторический ряд
+    if (!self.history || self.history.length < 6) {
+        return { error: 'Недостаточно данных. Нужно минимум 6 периодов.' };
+    }
+
+    var yData = [];
+    var dates = [];
+    self.history.forEach(function (h) {
+        if (h.fact && h.fact[targetId] !== undefined && h.fact[targetId] !== null) {
+            yData.push(h.fact[targetId]);
+            dates.push(h.period);
+        }
+    });
+
+    if (yData.length < 6) {
+        return { error: 'Недостаточно данных для ' + targetId + '. Нужно минимум 6 периодов.' };
+    }
+
+    try {
+        var pythonCode = `
+import numpy as np
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+import json
+
+y = np.array(${JSON.stringify(yData)})
+n = len(y)
+
+# Авто-подбор параметров через AIC
+best_aic = np.inf
+best_order = (1, 1, 1)
+best_seasonal = (1, 1, 1, 12)
+
+# Сетка для перебора
+orders = [(0,1,0), (0,1,1), (1,1,0), (1,1,1), (2,1,0), (2,1,1), (1,1,2)]
+seasonals = [(0,1,1,12), (1,1,0,12), (1,1,1,12), (2,1,1,12)]
+
+for order in orders:
+    for seasonal in seasonals:
+        try:
+            model = SARIMAX(y, order=order, seasonal_order=seasonal, enforce_stationarity=False, enforce_invertibility=False)
+            fitted = model.fit(disp=False, maxiter=50)
+            if fitted.aic < best_aic:
+                best_aic = fitted.aic
+                best_order = order
+                best_seasonal = seasonal
+        except:
+            pass
+
+# Финальная модель с лучшими параметрами
+model = SARIMAX(y, order=best_order, seasonal_order=best_seasonal, enforce_stationarity=False, enforce_invertibility=False)
+fitted = model.fit(disp=False, maxiter=100)
+
+# Прогноз
+forecast = fitted.get_forecast(steps=${periods})
+predictions = forecast.predicted_mean.tolist()
+ci = forecast.conf_int(alpha=${1 - confidenceLevel})
+lower = ci[:, 0].tolist()
+upper = ci[:, 1].tolist()
+
+# Декомпозиция
+trend = fitted.fittedvalues.tolist()
+residuals = (y - fitted.fittedvalues).tolist()
+
+# Сезонная компонента (если есть)
+seasonal_component = []
+if best_seasonal[3] > 0:
+    try:
+        decomp = fitted.seasonal
+        if decomp is not None:
+            seasonal_component = decomp.tolist()
+    except:
+        seasonal_component = [0] * n
+
+result = {
+    'predictions': predictions,
+    'lowerBound': lower,
+    'upperBound': upper,
+    'aic': float(best_aic),
+    'params': {
+        'p': best_order[0], 'd': best_order[1], 'q': best_order[2],
+        'P': best_seasonal[0], 'D': best_seasonal[1], 'Q': best_seasonal[2], 's': best_seasonal[3]
+    },
+    'trend': trend,
+    'residuals': residuals,
+    'seasonal': seasonal_component,
+    'dataPoints': n,
+    'target': '${targetId}',
+    'dates': ${JSON.stringify(dates)}
+}
+json.dumps(result)
+`;
+
+        var resultJson = await pyodide.runPythonAsync(pythonCode);
+        var result = JSON.parse(resultJson);
+
+        // Преобразуем Python-списки в JS-массивы
+        return {
+            predictions: result.predictions,
+            lowerBound: result.lowerBound,
+            upperBound: result.upperBound,
+            aic: result.aic,
+            params: result.params,
+            trend: result.trend,
+            residuals: result.residuals,
+            seasonal: result.seasonal,
+            dataPoints: result.dataPoints,
+            target: result.target,
+            dates: result.dates
+        };
+    } catch (e) {
+        console.error('SARIMA error:', e);
+        return { error: 'Ошибка прогнозирования: ' + e.message };
+    }
+};
+
 Graph.prototype.generateCSVTemplate = function (level) {
     var self = this;
     level = level || 'optimal';
