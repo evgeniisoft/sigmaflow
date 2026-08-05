@@ -1673,6 +1673,11 @@
                         html += '</div>';
                     }
                     html += '</div>';
+                } else {
+                    html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
+                    html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
+                    html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatted + '</div>';
+                    html += '</div>';
                 }
             });
 
