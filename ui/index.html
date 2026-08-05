@@ -4028,6 +4028,26 @@
                 html += '<button id="btn-apply-calibration" class="primary" style="margin-top:8px;">ПРИМЕНИТЬ ВЫБРАННЫЕ</button>';
 
                 document.getElementById('calibrate-results').innerHTML = html;
+                // История калибровок
+                var histHtml = '<div style="margin-top:24px;"><h4 style="margin:0 0 8px 0;">ИСТОРИЯ КАЛИБРОВКИ</h4>';
+                if (!graph.calibrationLog || graph.calibrationLog.length === 0) {
+                    histHtml += '<div style="color:var(--text-hint);font-size:12px;">Калибровка ещё не проводилась.</div>';
+                } else {
+                    histHtml += '<table style="font-size:11px;"><thead><tr><th>#</th><th>ДАТА</th><th>ПЕРИОДОВ</th><th>КОЭФФ.</th><th></th></tr></thead><tbody>';
+                    graph.calibrationLog.forEach(function (log, idx) {
+                        histHtml += '<tr>';
+                        histHtml += '<td>' + (idx + 1) + '</td>';
+                        histHtml += '<td>' + new Date(log.date).toLocaleString('ru-RU') + '</td>';
+                        histHtml += '<td class="value-cell">' + (log.periods || '—') + '</td>';
+                        histHtml += '<td class="value-cell">' + (log.appliedCount || 0) + '</td>';
+                        histHtml += '<td><button onclick="rollbackCalibration(' + idx + ')" style="font-size:10px;padding:2px 6px;">ОТКАЛИТЬ</button></td>';
+                        histHtml += '</tr>';
+                    });
+                    histHtml += '</tbody></table>';
+                }
+                histHtml += '</div>';
+
+                document.getElementById('calibrate-results').innerHTML += histHtml;
 
                 // Сохраняем результаты для применения
                 window._calibrationResults = calResult;
@@ -4080,7 +4100,7 @@
                     });
                     saveCurrentModel();
                 });
-                              
+
             });
             document.getElementById('btn-download-minimal').addEventListener('click', function () {
                 if (!graph) return;
