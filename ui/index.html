@@ -1659,21 +1659,19 @@
                 if (m.id === 'REVENUE') {
                     var isNDSPayer = graph.company && !graph.company.nds_exempt && graph.company.nds_rate > 0;
                     var ndsRate = graph.company ? (graph.company.nds_rate || 0) : 0;
-                    var revenueWithoutNDS = val; // из getPnL уже без НДС
-                    var revenueWithNDS = isNDSPayer ? Math.round(revenueWithoutNDS * (1 + ndsRate)) : revenueWithoutNDS;
-                    var ndsAmount = isNDSPayer ? revenueWithNDS - revenueWithoutNDS : 0;
+                    var revenueWithoutNDS = val;
+                    var ndsAmount = isNDSPayer ? Math.round(revenueWithoutNDS * ndsRate) : 0;
+                    var revenueWithNDS = isNDSPayer ? revenueWithoutNDS + ndsAmount : revenueWithoutNDS;
 
                     html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
-                    html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
+                    html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + ' (без НДС)</div>';
                     html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatValue(revenueWithoutNDS) + '</div>';
                     if (isNDSPayer) {
-                        html += '<div style="font-size:10px;color:var(--critical);margin-top:2px;">в т.ч. НДС (' + (ndsRate * 100).toFixed(0) + '%): ' + formatValue(ndsAmount) + '</div>';
+                        html += '<div style="font-size:10px;color:var(--critical);margin-top:2px;">НДС к уплате (' + (ndsRate * 100).toFixed(0) + '%): ' + formatValue(ndsAmount) + '</div>';
+                        html += '<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;font-size:11px;color:var(--text-heading);">';
+                        html += 'Итого с НДС: <span style="font-weight:600;">' + formatValue(revenueWithNDS) + '</span>';
+                        html += '</div>';
                     }
-                    html += '</div>';
-                } else {
-                    html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
-                    html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
-                    html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatted + '</div>';
                     html += '</div>';
                 }
             });
