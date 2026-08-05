@@ -3924,55 +3924,111 @@
                 var calResult = graph.calibrateAdvanced();
                 if (calResult.error) { notify(calResult.error, true); return; }
 
-                var results = [];
-                calResult.results.forEach(function (model) {
-                    model.factors.forEach(function (f) {
-                        results.push({
-                            from: f.factor,
-                            to: model.target,
-                            oldCoefficient: 0,
-                            newCoefficient: f.coefficient,
-                            r2: model.r2,
-                            dataPoints: model.dataPoints,
-                            se: f.se,
-                            pValue: f.pValue,
-                            signOk: true,
-                            actualSign: f.direction,
-                            stable: f.significance === 'high' || f.significance === 'medium',
-                            interpretation: f.interpretation,
-                            vif: f.vif,
-                            elasticity: f.elasticity
-                        });
+                // Сохраняем снапшот
+                window._calibrationSnapshot = {
+                    date: new Date().toISOString(),
+                    models: calResult.results
+                };
+
+                var html = '';
+
+                // Сводка
+                html += '<div style="margin-bottom:16px;padding:12px;background:var(--bg-primary);border:1px solid var(--border);font-size:11px;">';
+                html += '<div style="font-weight:600;margin-bottom:6px;">РЕЗУЛЬТАТЫ КАЛИБРОВКИ</div>';
+                html += '<div>Периодов: ' + calResult.totalPeriods + ' | Выбросов исключено: ' + calResult.totalOutliers + '</div>';
+                html += '<div>Построено моделей: ' + calResult.results.length + '</div>';
+                html += '</div>';
+
+                // Для каждой модели — своя таблица
+                calResult.results.forEach(function (model, modelIdx) {
+                    var qualityColor = model.modelQuality === 'good' ? 'var(--ok)' : (model.modelQuality === 'moderate' ? 'var(--warning)' : 'var(--critical)');
+                    var qualityLabel = model.modelQuality === 'good' ? 'Хорошая' : (model.modelQuality === 'moderate' ? 'Удовлетворительная' : 'Слабая');
+
+                    html += '<div style="margin-bottom:20px;border:1px solid var(--border);">';
+                    html += '<div style="padding:8px 12px;background:var(--bg-panel);display:flex;justify-content:space-between;align-items:center;">';
+                    html += '<span style="font-weight:600;font-size:12px;">' + model.targetLabel + ' (' + model.target + ')</span>';
+                    html += '<span style="font-size:10px;color:' + qualityColor + ';">' + qualityLabel + ' модель | R² = ' + model.r2.toFixed(2) + ' | CV = ' + (model.cvScore !== null ? model.cvScore.toFixed(2) : '—') + '</span>';
+                    html += '</div>';
+
+                    // Таблица факторов
+                    html += '<table style="font-size:10px;"><thead><tr>';
+                    html += '<th>ФАКТОР</th><th>КОЭФФ.</th><th>ЭЛАСТ.</th><th>p-VALUE</th><th>VIF</th><th>ЗНАЧИМОСТЬ</th><th>ПРИМЕНИТЬ</th>';
+                    html += '</tr></thead><tbody>';
+
+                    model.factors.forEach(function (f, fIdx) {
+                        var signColor = f.significance === 'high' ? 'var(--ok)' : (f.significance === 'medium' ? 'var(--warning)' : 'var(--text-hint)');
+                        var signLabel = f.significance === 'high' ? '✓ Высокая' : (f.significance === 'medium' ? '~ Средняя' : (f.significance === 'low' ? '? Низкая' : '✗ Нет'));
+                        var dirSymbol = f.direction === 'positive' ? '↑' : (f.direction === 'negative' ? '↓' : '→');
+                        var dirColor = f.direction === 'positive' ? 'var(--ok)' : (f.direction === 'negative' ? 'var(--critical)' : 'var(--text-hint)');
+
+                        html += '<tr>';
+                        html += '<td>' + (graph.nodes[f.factor] ? graph.nodes[f.factor].label : f.factor) + ' <span style="color:' + dirColor + ';">' + dirSymbol + '</span></td>';
+                        html += '<td class="value-cell">' + f.coefficient.toFixed(4) + '</td>';
+                        html += '<td class="value-cell">' + (f.elasticity !== null ? f.elasticity.toFixed(2) : '—') + '</td>';
+                        html += '<td class="value-cell" style="color:' + (f.pValue !== null && f.pValue < 0.05 ? 'var(--ok)' : 'var(--text-hint)') + ';">' + (f.pValue !== null ? f.pValue.toFixed(3) : '—') + '</td>';
+                        html += '<td class="value-cell" style="color:' + (f.vif < 5 ? 'var(--ok)' : (f.vif < 10 ? 'var(--warning)' : 'var(--critical)')) + ';">' + f.vif.toFixed(1) + '</td>';
+                        html += '<td style="color:' + signColor + ';">' + signLabel + '</td>';
+                        html += '<td><input type="checkbox" class="calibrate-check" data-model="' + modelIdx + '" data-factor="' + fIdx + '" ' + (f.significance === 'high' || f.significance === 'medium' ? 'checked' : '') + '></td>';
+                        html += '</tr>';
                     });
+
+                    html += '</tbody></table>';
+
+                    // Интерпретация
+                    html += '<div style="padding:8px 12px;font-size:10px;color:var(--text-hint);border-top:1px solid var(--border);">';
+                    model.factors.filter(function (f) { return f.interpretation; }).forEach(function (f) {
+                        html += '<div>▸ ' + f.interpretation + '</div>';
+                    });
+                    if (model.excludedFactors && model.excludedFactors.length > 0) {
+                        html += '<div style="margin-top:4px;color:var(--warning);">';
+                        html += '✗ Исключены (мультиколлинеарность): ' + model.excludedFactors.map(function (f) { return f.name + ' (VIF=' + f.vif.toFixed(1) + ')'; }).join(', ') + '</div>';
+                    }
+                    html += '</div>';
+
+                    // Рекомендация
+                    html += '<div style="padding:8px 12px;font-size:10px;color:var(--text-heading);background:var(--bg-primary);border-top:1px solid var(--border);">';
+                    html += '📋 ' + model.recommendation;
+                    html += '</div>';
+
+                    html += '</div>';
                 });
 
-                // Выбросы
-                if (calResult.totalOutliers > 0) {
-                    notify('Найдено ' + calResult.totalOutliers + ' выбросов. Они исключены из калибровки.');
-                }
+                // Кнопка применить
+                html += '<button id="btn-apply-calibration" class="primary" style="margin-top:8px;">ПРИМЕНИТЬ ВЫБРАННЫЕ</button>';
 
-                var html = '<table><thead><tr><th>СВЯЗЬ</th><th>БЫЛО</th><th>СТАЛО</th><th>R²</th><th>SE</th><th>p-value</th><th>ТОЧЕК</th><th>ПРИМЕНИТЬ</th></tr></thead><tbody>';
-                results.forEach(function (r, idx) {
-                    var rowColor = '';
-                    if (!r.signOk) rowColor = 'style="background:rgba(212,75,60,0.1);"';
-                    else if (r.r2 < 0.5) rowColor = 'style="background:rgba(212,168,67,0.1);"';
-                    var coeffColor = r.r2 >= 0.5 ? 'var(--ok)' : 'var(--warning)';
-                    if (!r.signOk) coeffColor = 'var(--critical)';
-                    var signWarn = !r.signOk ? ' ⚠' : '';
+                document.getElementById('calibrate-results').innerHTML = html;
 
-                    html += '<tr ' + rowColor + '>';
-                    html += '<td>' + r.from + ' → ' + r.to + signWarn + '</td>';
-                    html += '<td class="value-cell">' + (r.oldCoefficient || 0).toFixed(2) + '</td>';
-                    html += '<td class="value-cell" style="color:' + coeffColor + ';">' + r.newCoefficient.toFixed(4) + '</td>';
-                    html += '<td class="value-cell">' + r.r2.toFixed(2) + '</td>';
-                    html += '<td class="value-cell">' + (r.se !== null ? r.se.toFixed(4) : '—') + '</td>';
-                    html += '<td class="value-cell" style="color:' + (r.pValue !== null && r.pValue < 0.05 ? 'var(--ok)' : 'var(--warning)') + ';">' + (r.pValue !== null ? r.pValue.toFixed(3) : '—') + '</td>';
-                    html += '<td class="value-cell">' + r.dataPoints + '</td>';
-                    html += '<td><input type="checkbox" class="calibrate-check" data-idx="' + idx + '" ' + (r.r2 >= 0.5 && r.signOk ? 'checked' : '') + '></td>';
-                    html += '<td style="color:' + (r.stable ? 'var(--ok)' : 'var(--warning)') + ';">' + (r.stable ? '✓' : '!') + '</td>';
-                    html += '</tr>';
+                // Сохраняем результаты для применения
+                window._calibrationResults = calResult;
+
+                document.getElementById('btn-apply-calibration').addEventListener('click', function () {
+                    var appliedCount = 0;
+                    document.querySelectorAll('.calibrate-check').forEach(function (cb) {
+                        if (cb.checked) {
+                            var modelIdx = parseInt(cb.dataset.model);
+                            var factorIdx = parseInt(cb.dataset.factor);
+                            var model = calResult.results[modelIdx];
+                            var factor = model.factors[factorIdx];
+
+                            // Ищем или создаём ребро
+                            var edge = graph.edges.filter(function (e) {
+                                return e.from === factor.factor && e.to === model.target;
+                            })[0];
+
+                            if (edge) {
+                                edge.coefficient = factor.coefficient;
+                            } else {
+                                graph.edges.push(new Edge(factor.factor, model.target, 'LIN', factor.coefficient, 0));
+                            }
+                            appliedCount++;
+                        }
+                    });
+
+                    graph.compute();
+                    saveCurrentModel();
+                    renderAll();
+                    notify('Применено коэффициентов: ' + appliedCount);
                 });
-                html += '</tbody></table><button id="btn-apply-calibration" class="primary" style="margin-top:8px;">ПРИМЕНИТЬ ВЫБРАННЫЕ</button>';
 
                 document.getElementById('calibrate-results').innerHTML = html;
                 window._calibrationResults = results;
