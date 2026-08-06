@@ -1335,7 +1335,8 @@
             Object.keys(fixedCosts).forEach(function (k) { totalFixed += fixedCosts[k]; });
             var pnl = graph.getPnL(new Date().getMonth(), 1);
             var p = pnl.rows[0];
-            var revenue = p.revenue;
+            // Выручка для точки безубыточности — из модели, без сезонности
+            var revenue = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : p.revenue;
 
             // Переменные расходы = COGS + Коммерческие + Управленческие − Постоянная часть
             var totalCosts = Math.abs(p.cogs) + Math.abs(p.selling) + Math.abs(p.admin);
