@@ -1343,14 +1343,13 @@
             if (totalVariable < 0) totalVariable = 0;
 
            
+            var currentUnits = graph.nodes['VOLUME'] ? Math.round(graph.nodes['VOLUME'].value) :
+                (graph.nodes['CLIENTS'] ? Math.round(graph.nodes['CLIENTS'].value) :
+                    (graph.nodes['DEV_HEADCOUNT'] ? Math.round(graph.nodes['DEV_HEADCOUNT'].value) : 0));
+
             var price = graph.nodes['PRICE'] ? graph.nodes['PRICE'].value : 0;
             var avgCheck = graph.nodes['AVG_CHECK'] ? graph.nodes['AVG_CHECK'].value : 0;
             var unitPrice = price || avgCheck || 1;
-
-            var marginality = revenue > 0 ? (revenue - totalVariable) / revenue * 100 : 0;
-            var breakevenRevenue = marginality > 0 ? totalFixed / (marginality / 100) : -1;
-            var breakevenUnits = unitPrice > 0 ? Math.ceil(breakevenRevenue / unitPrice) : 0;
-            var currentUnits = unitPrice > 0 ? Math.round(revenue / unitPrice) : 0;
             var safetyMargin = revenue > 0 ? (revenue - breakevenRevenue) / revenue * 100 : 0;
 
             // Индикатор запаса прочности
