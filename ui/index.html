@@ -4127,6 +4127,18 @@
             var result = await gasPost('savePlan', { periods: periods });
             if (result.error) { notify('Ошибка: ' + result.error, true); return; }
             notify('План сохранён: ' + result.periods + ' периодов');
+            // Проверяем, какие периоды не обновились из-за наличия факта
+            var factPeriods = [];
+            if (graph.history) {
+                graph.history.forEach(function (h) {
+                    if (h.fact && Object.keys(h.fact).length > 0) {
+                        factPeriods.push(h.period);
+                    }
+                });
+            }
+            if (factPeriods.length > 0) {
+                notify('Периоды с фактом не обновлены: ' + factPeriods.join(', '));
+            }
             updateGASStatus();
         }
 
