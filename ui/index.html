@@ -1329,46 +1329,23 @@
                 fixedCosts['Миним. ФОТ'] = minProdHeadcount * (salesAvgSalary + warehouseAvgSalary) / 2;
             }
 
-            // Переменные расходы — зависят от объёма
-            var variableCosts = {
-                'Материалы': graph.nodes['MATERIAL_COST'] ? Math.abs(graph.nodes['MATERIAL_COST'].value) : 0,
-                'ФОТ произв.': graph.nodes['DIRECT_LABOR'] ? Math.abs(graph.nodes['DIRECT_LABOR'].value) : 0,
-                'ФОТ разработчиков': graph.nodes['DEV_PAYROLL'] ? Math.abs(graph.nodes['DEV_PAYROLL'].value) : 0,
-                'ФОТ специалистов': graph.nodes['SPECIALIST_PAYROLL'] ? Math.abs(graph.nodes['SPECIALIST_PAYROLL'].value) : 0,
-                'ФОТ продавцов': graph.nodes['SALES_PAYROLL'] ? Math.abs(graph.nodes['SALES_PAYROLL'].value) : 0,
-                'ФОТ склада': graph.nodes['WAREHOUSE_PAYROLL'] ? Math.abs(graph.nodes['WAREHOUSE_PAYROLL'].value) : 0,
-                'Энергия': graph.nodes['ENERGY_COST'] ? Math.abs(graph.nodes['ENERGY_COST'].value) : 0,
-                'Логистика': graph.nodes['LOGISTICS_COST'] ? Math.abs(graph.nodes['LOGISTICS_COST'].value) : 0,
-                'Маркетинг': graph.nodes['MARKETING'] ? Math.abs(graph.nodes['MARKETING'].value) : 0,
-                'Аутсорсинг': graph.nodes['OUTSOURCE_COST'] ? Math.abs(graph.nodes['OUTSOURCE_COST'].value) : 0
-            };
+
 
             var totalFixed = 0;
             Object.keys(fixedCosts).forEach(function (k) { totalFixed += fixedCosts[k]; });
+            var pnl = graph.getPnL(new Date().getMonth(), 1);
+            var p = pnl.rows[0];
+            var revenue = p.revenue;
+
+            // Переменные расходы = COGS + Коммерческие + Управленческие − Постоянная часть
+            var totalCosts = Math.abs(p.cogs) + Math.abs(p.selling) + Math.abs(p.admin);
+            var totalVariable = totalCosts - totalFixed;
+            if (totalVariable < 0) totalVariable = 0;
 
             var totalVariable = 0;
             Object.keys(variableCosts).forEach(function (k) { totalVariable += variableCosts[k]; });
 
-            // Для IT и Услуг — ФОТ основной (постоянный), а не переменный
-            if (graph.industry === 'it') {
-                fixedCosts['ФОТ разработчиков'] = variableCosts['ФОТ разработчиков'] || 0;
-                delete variableCosts['ФОТ разработчиков'];
-                fixedCosts['Миним. ФОТ'] = 0;
-            }
-            if (graph.industry === 'services') {
-                fixedCosts['ФОТ специалистов'] = variableCosts['ФОТ специалистов'] || 0;
-                delete variableCosts['ФОТ специалистов'];
-                fixedCosts['Миним. ФОТ'] = 0;
-            }
-            // Пересчитываем итоги после переноса
-            totalFixed = 0;
-            Object.keys(fixedCosts).forEach(function (k) { totalFixed += fixedCosts[k]; });
-            totalVariable = 0;
-            Object.keys(variableCosts).forEach(function (k) { totalVariable += variableCosts[k]; });
 
-            var pnl = graph.getPnL(new Date().getMonth(), 1);
-            var p = pnl.rows[0];
-            var revenue = p.revenue;
             var price = graph.nodes['PRICE'] ? graph.nodes['PRICE'].value : 0;
             var avgCheck = graph.nodes['AVG_CHECK'] ? graph.nodes['AVG_CHECK'].value : 0;
             var unitPrice = price || avgCheck || 1;
@@ -1416,14 +1393,18 @@
             // Переменные
             html += '<div style="flex:1;padding:8px;background:var(--bg-primary);border:1px solid var(--border);">';
             html += '<div style="font-size:10px;color:var(--text-hint);letter-spacing:1px;margin-bottom:6px;">ПЕРЕМЕННЫЕ РАСХОДЫ</div>';
-            Object.keys(variableCosts).forEach(function (k) {
-                if (variableCosts[k] > 0) {
-                    html += '<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0;">';
-                    html += '<span>' + k + '</span>';
-                    html += '<span>' + formatValue(variableCosts[k]) + '</span>';
-                    html += '</div>';
-                }
-            });
+            html += '<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0;">';
+            html += '<span>Себестоимость (перем.)</span>';
+            html += '<span>' + formatValue(Math.abs(p.cogs)) + '</span>';
+            html += '</div>';
+            html += '<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0;">';
+            html += '<span>Коммерческие (перем.)</span>';
+            html += '<span>' + formatValue(Math.abs(p.selling)) + '</span>';
+            html += '</div>';
+            html += '<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0;">';
+            html += '<span>Управленческие (перем.)</span>';
+            html += '<span>' + formatValue(Math.abs(p.admin)) + '</span>';
+            html += '</div>';
             html += '<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;">';
             html += '<span>ИТОГО</span><span>' + formatValue(totalVariable) + '</span>';
             html += '</div></div>';
