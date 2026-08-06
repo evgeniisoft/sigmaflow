@@ -2124,51 +2124,31 @@
 
         function saveProject() {
             if (!graph) { notify('Нечего сохранять', true); return; }
+            saveCurrentModel();
 
-            var fullData = {
-                project: graph.name,
+            var companyId = getCurrentCompanyId();
+
+            var fullExport = {
+                version: 3,
+                exportedAt: new Date().toISOString(),
+                companyId: companyId,
                 company: graph.company || {},
-                investments: graph.investments || [],
+                nodes: graph.toDict().nodes,
+                edges: graph.toDict().edges,
                 credits: graph.credits || [],
-                scenarios: graph.scenarios || [],
-                model: graph.toDict()
+                investments: graph.investments || [],
+                history: graph.history || [],
+                calibrationLog: graph.calibrationLog || [],
+                scenarios: graph.scenarios || []
             };
 
-            var yamlText = 'project: "' + graph.name + '"\n\n';
-            yamlText += '# Настройки компании\n';
-            yamlText += 'company:\n';
-            yamlText += '  tax_system: ' + (graph.company ? graph.company.tax_system || 'OSNO' : 'OSNO') + '\n';
-            yamlText += '  nds_rate: ' + (graph.company ? graph.company.nds_rate || 0.22 : 0.22) + '\n';
-            yamlText += '  profit_tax_rate: ' + (graph.company ? graph.company.profit_tax_rate || 0.25 : 0.25) + '\n';
-            yamlText += '  insurance_rate: ' + (graph.company ? graph.company.insurance_rate || 0.30 : 0.30) + '\n';
-            yamlText += '  receivables_days: ' + (graph.company ? graph.company.receivables_days || 30 : 30) + '\n';
-            yamlText += '  prepay_pct: ' + (graph.company ? graph.company.prepay_pct || 0 : 0) + '\n';
-            yamlText += '  prepay_days: ' + (graph.company ? graph.company.prepay_days || 0 : 0) + '\n';
-            yamlText += '  prepay_share: ' + (graph.company ? graph.company.prepay_share || 0 : 0) + '\n';
-            yamlText += '  season: [' + (graph.company && graph.company.season ? graph.company.season.join(', ') : '1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1') + ']\n\n';
-            yamlText += toYAML(graph);
+            // Сохраняем данные прогноза из localStorage
+            var forecastData = localStorage.getItem('sigmaflow_forecast_' + companyId);
+            if (forecastData) {
+                try { fullExport.forecastState = JSON.parse(forecastData); } catch (e) { }
+            }
 
-            yamlText += '\n# Инвестиции\n';
-            yamlText += 'investments:\n';
-            (graph.investments || []).forEach(function (inv) {
-                yamlText += '  - name: "' + inv.name + '"\n';
-                yamlText += '    cost: ' + inv.cost + '\n';
-                yamlText += '    start: ' + (inv.start || 0) + '\n';
-                yamlText += '    schedule: [' + (inv.schedule || []).join(', ') + ']\n';
-            });
-
-            yamlText += '\n# Кредиты\n';
-            yamlText += 'credits:\n';
-            (graph.credits || []).forEach(function (cr) {
-                yamlText += '  - name: "' + cr.name + '"\n';
-                yamlText += '    amount: ' + cr.amount + '\n';
-                yamlText += '    rate: ' + cr.rate + '\n';
-                yamlText += '    term: ' + cr.term + '\n';
-                yamlText += '    monthly_payment: ' + cr.monthlyPayment + '\n';
-            });
-
-            yamlText += '\n# Модель\n';
-            yamlText += toYAML(graph);
+            var yamlText = toYAMLFull(fullExport);
 
             var blob = new Blob([yamlText], { type: 'text/yaml;charset=utf-8' });
             var url = URL.createObjectURL(blob);
@@ -6036,44 +6016,93 @@
                 reader.onload = function (ev) {
                     try {
                         var yamlText = ev.target.result;
-                        var data = parseYAML(yamlText);
+                        var data = parseYAMLFull(yamlText);
 
-                        // Создаём новую модель из YAML
-                        graph = Graph.fromDict(data);
+                        // Создаём модель из данных
+                        graph = Graph.fromDict({ project: { name: data.company.name || 'Импортированная' }, nodes: data.nodes, edges: data.edges });
+
+                        // Восстанавливаем настройки
+                        graph.company = data.company || {};
+                        graph.credits = data.credits || [];
+                        graph.investments = data.investments || [];
+                        graph.history = data.history || [];
+                        graph.calibrationLog = data.calibrationLog || [];
+                        graph.scenarios = data.scenarios || [];
+                        graph.industry = data.company.industry || 'production';
+                        graph.name = data.company.name || graph.name;
+
                         graph.compute();
 
-                        // Сохраняем как новую компанию
+                        // Сохраняем компанию
                         var companies = getAllCompanies();
-                        var companyId = 'company_' + Date.now();
+                        var companyId = data.companyId || ('company_' + Date.now());
+
                         var modelData = {
-                            name: graph.name || 'Импортированная',
-                            industry: 'production',
+                            name: graph.name,
+                            industry: graph.industry,
                             nodes: {},
-                            investments: [],
-                            credits: [],
-                            company: {},
-                            history: [],
+                            investments: graph.investments,
+                            credits: graph.credits,
+                            company: graph.company,
+                            history: graph.history,
+                            calibrationLog: graph.calibrationLog,
                             planForecast: null,
-                            calibrationLog: [],
                             edges: graph.edges.map(function (e) { return { from: e.from, to: e.to, coefficient: e.coefficient }; })
                         };
+
                         Object.keys(graph.nodes).forEach(function (key) {
                             var n = graph.nodes[key];
-                            modelData.nodes[key] = { value: n.value, enabled: n.enabled, min: n.min, max: n.max };
+                            modelData.nodes[key] = {
+                                value: n.value,
+                                enabled: n.enabled,
+                                min: n.min,
+                                max: n.max,
+                                formula: n.formula
+                            };
                         });
 
                         companies[companyId] = modelData;
                         saveAllCompanies(companies);
                         setCurrentCompanyId(companyId);
 
+                        // Восстановить прогноз
+                        if (data.forecastState) {
+                            localStorage.setItem('sigmaflow_forecast_' + companyId, JSON.stringify(data.forecastState));
+                        }
+
                         elProjectName.textContent = graph.name;
                         updateStatusBar('Модель импортирована');
-                        notify('Модель успешно загружена из YAML');
+                        notify('Компания загружена из YAML');
                         renderAll();
                         window.renderInvestments();
                         window.renderCredits();
                         window.renderScenarios();
                         refreshCompanyList();
+                        renderPlanFact();
+
+                        // Восстановить интерфейс настроек
+                        if (graph.company) {
+                            if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
+                            if (graph.company.nds_rate !== undefined) setSelectByValue('company-nds-rate', graph.company.nds_rate);
+                            if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
+                            if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
+                            if (graph.company.receivables_days !== undefined) document.getElementById('company-receivables-days').value = graph.company.receivables_days;
+                            if (graph.company.gas_url) document.getElementById('company-gas-url').value = graph.company.gas_url;
+                            if (graph.company.salary_mode) document.getElementById('company-salary-mode').value = graph.company.salary_mode;
+                            if (graph.company.prepay_pct !== undefined) document.getElementById('company-prepay-pct').value = graph.company.prepay_pct;
+                            if (graph.company.prepay_days !== undefined) document.getElementById('company-prepay-days').value = graph.company.prepay_days;
+                            if (graph.company.prepay_share !== undefined) document.getElementById('company-prepay-share').value = graph.company.prepay_share;
+                            if (graph.company.fa_start_value !== undefined) document.getElementById('fa-start-value').value = graph.company.fa_start_value;
+                            if (graph.company.fa_start_da !== undefined) document.getElementById('fa-start-da').value = graph.company.fa_start_da;
+                            if (graph.company.fa_da_rate !== undefined) document.getElementById('fa-da-rate').value = (graph.company.fa_da_rate * 100).toFixed(1);
+                            if (graph.company.fa_remaining_months !== undefined) document.getElementById('fa-remaining-months').value = graph.company.fa_remaining_months;
+                            if (graph.company.materials_with_nds !== undefined) document.getElementById('company-materials-nds').value = graph.company.materials_with_nds ? 'true' : 'false';
+                            if (graph.company.rent_with_nds !== undefined) document.getElementById('company-rent-nds').value = graph.company.rent_with_nds ? 'true' : 'false';
+                            if (graph.company.logistics_with_nds !== undefined) document.getElementById('company-logistics-nds').value = graph.company.logistics_with_nds ? 'true' : 'false';
+                            if (graph.company.it_with_nds !== undefined) document.getElementById('company-it-nds').value = graph.company.it_with_nds ? 'true' : 'false';
+                            renderSeasonGrid();
+                        }
+
                     } catch (err) {
                         notify('Ошибка импорта: ' + err.message, true);
                         console.error(err);
