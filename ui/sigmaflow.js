@@ -3076,6 +3076,94 @@ function parseYAML(text) {
     return result;
 }
 
+function parseYAMLFull(text) {
+    var result = {
+        version: 3,
+        company: {},
+        nodes: [],
+        edges: [],
+        credits: [],
+        investments: [],
+        history: [],
+        calibrationLog: [],
+        scenarios: [],
+        forecastState: null,
+        companyId: null
+    };
+
+    // Парсим базовые поля из комментариев и простых строк
+    var lines = text.split('\n');
+    var currentSection = null;
+    var jsonBuffer = '';
+
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+
+        // Извлекаем ID компании из комментария
+        if (line.indexOf('# ID компании:') >= 0) {
+            result.companyId = line.split(':')[1].trim();
+        }
+
+        // Определяем секции
+        if (line.indexOf('company:') === 0) { currentSection = 'company'; continue; }
+        if (line.indexOf('nodes:') === 0) { currentSection = 'nodes'; continue; }
+        if (line.indexOf('edges:') === 0) { currentSection = 'edges'; continue; }
+        if (line.indexOf('credits:') === 0) { currentSection = 'credits'; continue; }
+        if (line.indexOf('investments:') === 0) { currentSection = 'investments'; continue; }
+        if (line.indexOf('history:') === 0) { currentSection = 'history'; continue; }
+        if (line.indexOf('calibrationLog:') === 0) { currentSection = 'calibrationLog'; continue; }
+        if (line.indexOf('scenarios:') === 0) { currentSection = 'scenarios'; continue; }
+        if (line.indexOf('forecastState:') === 0) { currentSection = 'forecastState'; continue; }
+    }
+
+    // Используем стандартный парсер для nodes и edges
+    var standardData = parseYAML(text);
+    result.nodes = standardData.nodes || [];
+    result.edges = standardData.edges || [];
+
+    // Извлекаем JSON-секции
+    var jsonSections = ['history', 'calibrationLog', 'scenarios', 'forecastState', 'credits', 'investments'];
+    jsonSections.forEach(function (section) {
+        var regex = new RegExp(section + ':\\s*(.+)');
+        var match = text.match(regex);
+        if (match) {
+            try {
+                result[section] = JSON.parse(match[1]);
+            } catch (e) {
+                // Если не JSON — оставляем пустым
+            }
+        }
+    });
+
+    // Парсим company из ключ-значение
+    // (упрощённо — только простые типы)
+    if (text.indexOf('company:') >= 0) {
+        var companyMatch = text.match(/company:([\s\S]*?)(?=\n\w+:|$)/);
+        if (companyMatch) {
+            var companyLines = companyMatch[1].split('\n');
+            companyLines.forEach(function (cl) {
+                var kv = cl.split(':');
+                if (kv.length >= 2) {
+                    var key = kv[0].trim();
+                    var val = kv.slice(1).join(':').trim().replace(/"/g, '');
+                    var num = parseFloat(val);
+                    if (!isNaN(num) && val !== 'true' && val !== 'false') {
+                        result.company[key] = num;
+                    } else if (val === 'true') {
+                        result.company[key] = true;
+                    } else if (val === 'false') {
+                        result.company[key] = false;
+                    } else {
+                        result.company[key] = val;
+                    }
+                }
+            });
+        }
+    }
+
+    return result;
+}
+
 function toYAML(graph) {
     var dict = graph.toDict();
     var y = 'project:\n  name: "' + dict.project.name + '"\n  version: 2\n\nnodes:\n';
@@ -3103,6 +3191,88 @@ function toYAML(graph) {
             y += '  - node: ' + c.node + '\n    operator: "' + c.operator + '"\n    value: ' + c.value + '\n';
         });
     }
+    return y;
+}
+
+function toYAMLFull(data) {
+    var y = '# SIGMAFLOW — Полный экспорт компании\n';
+    y += '# Версия: ' + data.version + '\n';
+    y += '# Экспортирован: ' + data.exportedAt + '\n';
+    y += '# ID компании: ' + data.companyId + '\n\n';
+
+    // Компания
+    y += 'company:\n';
+    if (data.company) {
+        Object.keys(data.company).forEach(function (key) {
+            var val = data.company[key];
+            if (val === null || val === undefined) return;
+            if (typeof val === 'object') {
+                y += '  ' + key + ': ' + JSON.stringify(val) + '\n';
+            } else if (typeof val === 'boolean') {
+                y += '  ' + key + ': ' + val + '\n';
+            } else if (typeof val === 'string') {
+                y += '  ' + key + ': "' + val + '"\n';
+            } else {
+                y += '  ' + key + ': ' + val + '\n';
+            }
+        });
+    }
+
+    // Узлы и рёбра — через стандартный toYAML
+    var graphDict = { project: { name: data.company.name || '', version: 2 }, nodes: data.nodes, edges: data.edges };
+    y += '\n' + toYAML({ toDict: function () { return graphDict; } });
+
+    // Кредиты
+    if (data.credits && data.credits.length > 0) {
+        y += '\ncredits:\n';
+        data.credits.forEach(function (cr) {
+            y += '  - name: "' + (cr.name || '') + '"\n';
+            y += '    bank: "' + (cr.bank || '') + '"\n';
+            y += '    amount: ' + (cr.amount || 0) + '\n';
+            y += '    rate: ' + (cr.rate || 0) + '\n';
+            y += '    term: ' + (cr.term || 12) + '\n';
+            y += '    monthlyPayment: ' + (cr.monthlyPayment || 0) + '\n';
+            y += '    startMonth: ' + (cr.startMonth || 0) + '\n';
+            y += '    repaymentType: "' + (cr.repaymentType || 'annuity') + '"\n';
+            if (cr.covenants && cr.covenants.length > 0) {
+                y += '    covenants: ' + JSON.stringify(cr.covenants) + '\n';
+            }
+        });
+    }
+
+    // Инвестиции
+    if (data.investments && data.investments.length > 0) {
+        y += '\ninvestments:\n';
+        data.investments.forEach(function (inv) {
+            y += '  - name: "' + (inv.name || '') + '"\n';
+            y += '    cost: ' + (inv.cost || 0) + '\n';
+            y += '    start: ' + (inv.start || 0) + '\n';
+            y += '    commissioning: ' + (inv.commissioning !== undefined ? inv.commissioning : 0) + '\n';
+            y += '    schedule: ' + JSON.stringify(inv.schedule || []) + '\n';
+            y += '    status: "' + (inv.status || 'planned') + '"\n';
+        });
+    }
+
+    // История
+    if (data.history && data.history.length > 0) {
+        y += '\nhistory: ' + JSON.stringify(data.history) + '\n';
+    }
+
+    // Лог калибровок
+    if (data.calibrationLog && data.calibrationLog.length > 0) {
+        y += '\ncalibrationLog: ' + JSON.stringify(data.calibrationLog) + '\n';
+    }
+
+    // Сценарии
+    if (data.scenarios && data.scenarios.length > 0) {
+        y += '\nscenarios: ' + JSON.stringify(data.scenarios) + '\n';
+    }
+
+    // Состояние прогноза
+    if (data.forecastState) {
+        y += '\nforecastState: ' + JSON.stringify(data.forecastState) + '\n';
+    }
+
     return y;
 }
 
