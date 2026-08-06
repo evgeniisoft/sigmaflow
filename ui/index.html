@@ -4596,6 +4596,38 @@
                 '<div>● Худший сценарий (P10): ' + formatValue(Math.round(mcResults.p10)) + '</div>' +
                 '<div>● Лучший сценарий (P90): ' + formatValue(Math.round(mcResults.p90)) + '</div>' +
                 '<div>● Риск кассового разрыва: ' + mcResults.cashGapProbability.toFixed(1) + '%</div>';
+
+            // Кнопка сохранить как сценарий
+            var summaryEl = document.getElementById('forecast-summary');
+            if (summaryEl) {
+                summaryEl.innerHTML += '<button id="btn-save-mc-scenario" class="primary" style="margin-top:8px;width:100%;">СОХРАНИТЬ КАК СЦЕНАРИЙ</button>';
+                document.getElementById('btn-save-mc-scenario').addEventListener('click', function () {
+                    if (!graph || !mcResults) return;
+                    if (!graph.scenarios) graph.scenarios = [];
+
+                    var scenario = {
+                        name: 'Монте-Карло ' + new Date().toLocaleDateString(),
+                        desc: mcResults.iterations + ' итер. P50=' + formatValue(Math.round(mcResults.p50)) +
+                            ', риск убытка=' + mcResults.lossProbability.toFixed(1) + '%',
+                        shocks: [{ node: 'NET_PROFIT', value: Math.round(mcResults.p50) }],
+                        mcResults: {
+                            p10: Math.round(mcResults.p10),
+                            p50: Math.round(mcResults.p50),
+                            p90: Math.round(mcResults.p90),
+                            mean: Math.round(mcResults.mean),
+                            lossProbability: mcResults.lossProbability,
+                            cashGapProbability: mcResults.cashGapProbability,
+                            recommendedReserve: Math.round(mcResults.recommendedReserve),
+                            iterations: mcResults.iterations
+                        }
+                    };
+
+                    graph.scenarios.push(scenario);
+                    saveScenarios();
+                    renderScenarios();
+                    notify('Сценарий сохранён: ' + scenario.name);
+                });
+            }
         }
 
         // Обработчик кнопки МОНТЕ-КАРЛО
@@ -5855,6 +5887,7 @@
                 }
             }
 
+            
             window.renderScenarios = function () {
                 loadScenarios();
                 if (!graph || !graph.scenarios) { graph.scenarios = []; }
@@ -6049,6 +6082,9 @@
                     });
                 }
             }
+
+
+
 
             // Загружаем сценарии при старте
             loadScenarios();
