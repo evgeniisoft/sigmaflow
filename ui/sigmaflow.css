@@ -528,3 +528,54 @@ table td.value-cell {
     border-color: var(--critical);
     cursor: pointer;
 }
+
+/* Адаптивность для ноутбуков */
+#panel-strategy > div:first-child {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+#panel-data {
+    overflow-x: auto;
+}
+
+#panel-data table {
+    min-width: 100%;
+}
+
+#forecast-table table,
+#planfact-comparison table {
+    min-width: 100%;
+}
+
+#panel-pnl table,
+#panel-calendar table {
+    min-width: 100%;
+}
+
+#dashboard-metrics {
+    grid-template-columns: repeat(3, 1fr) !important;
+}
+
+#forecast-chart,
+#sarima-chart,
+#driver-tree-graph,
+#editor-graph-container,
+#graph-container {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.panel {
+    overflow-x: auto;
+}
+
+/* Таблицы с горизонтальным скроллом */
+#pnl-table,
+#calendar-table,
+#data-table,
+#planfact-comparison table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
