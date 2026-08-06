@@ -29,7 +29,7 @@
 
     <!-- НАВИГАЦИЯ -->
     <nav>
-        <button class="nav-btn active" data-panel="strategy">СТРАТЕГИЯ</button>
+        <button class="nav-btn active" data-panel="strategy">ДАШБОРД</button>
         <button class="nav-btn" data-panel="data">ДАННЫЕ</button>
         <button class="nav-btn" data-panel="calendar">КАЛЕНДАРЬ ДДС</button>
         <button class="nav-btn" data-panel="pnl">P&L</button>
@@ -727,7 +727,7 @@
 
     <!-- СТРОКА СОСТОЯНИЯ -->
     <footer id="status-bar">
-        SigmaFlow v2.0 | Узлов: 0 | Связей: 0 | Готов
+        SigmaFlow v2.6 | Узлов: 0 | Связей: 0 | Готов
     </footer>
 
     <!-- УВЕДОМЛЕНИЕ -->
@@ -2082,7 +2082,7 @@
             var nodesCount = graph ? Object.keys(graph.nodes).length : 0;
             var edgesCount = graph ? graph.edges.length : 0;
             elStatusBar.textContent =
-                'SigmaFlow v2.0 | Узлов: ' + nodesCount +
+                'SigmaFlow v2.6 | Узлов: ' + nodesCount +
                 ' | Связей: ' + edgesCount +
                 ' | ' + (msg || 'Готов');
         }
