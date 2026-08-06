@@ -1343,6 +1343,10 @@
             if (totalVariable < 0) totalVariable = 0;
 
            
+            var marginality = revenue > 0 ? (revenue - totalVariable) / revenue * 100 : 0;
+            var breakevenRevenue = marginality > 0 ? totalFixed / (marginality / 100) : -1;
+            var breakevenUnits = unitPrice > 0 && breakevenRevenue > 0 ? Math.ceil(breakevenRevenue / unitPrice) : 0;
+            
             var currentUnits = graph.nodes['VOLUME'] ? Math.round(graph.nodes['VOLUME'].value) :
                 (graph.nodes['CLIENTS'] ? Math.round(graph.nodes['CLIENTS'].value) :
                     (graph.nodes['DEV_HEADCOUNT'] ? Math.round(graph.nodes['DEV_HEADCOUNT'].value) : 0));
