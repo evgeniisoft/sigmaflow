@@ -1342,10 +1342,7 @@
             var totalVariable = totalCosts - totalFixed;
             if (totalVariable < 0) totalVariable = 0;
 
-            var totalVariable = 0;
-            Object.keys(variableCosts).forEach(function (k) { totalVariable += variableCosts[k]; });
-
-
+           
             var price = graph.nodes['PRICE'] ? graph.nodes['PRICE'].value : 0;
             var avgCheck = graph.nodes['AVG_CHECK'] ? graph.nodes['AVG_CHECK'].value : 0;
             var unitPrice = price || avgCheck || 1;
