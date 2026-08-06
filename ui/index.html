@@ -1333,6 +1333,10 @@
 
             var totalFixed = 0;
             Object.keys(fixedCosts).forEach(function (k) { totalFixed += fixedCosts[k]; });
+            // Добавляем ФОТ в постоянные
+            ['DIRECT_LABOR', 'DEV_PAYROLL', 'SPECIALIST_PAYROLL', 'SALES_PAYROLL', 'WAREHOUSE_PAYROLL'].forEach(function (id) {
+                if (graph.nodes[id]) totalFixed += Math.abs(graph.nodes[id].value);
+            });
             var pnl = graph.getPnL(new Date().getMonth(), 1);
             var p = pnl.rows[0];
             // Выручка для точки безубыточности — из модели, без сезонности
@@ -1340,7 +1344,7 @@
 
             // Переменные расходы — из модели
             var totalVariable = 0;
-            ['MATERIAL_COST', 'DIRECT_LABOR', 'DEV_PAYROLL', 'SPECIALIST_PAYROLL', 'SALES_PAYROLL', 'WAREHOUSE_PAYROLL', 'ENERGY_COST', 'LOGISTICS_COST', 'MARKETING', 'OUTSOURCE_COST'].forEach(function (id) {
+            ['MATERIAL_COST', 'ENERGY_COST', 'LOGISTICS_COST', 'MARKETING', 'OUTSOURCE_COST'].forEach(function (id) {
                 if (graph.nodes[id]) totalVariable += Math.abs(graph.nodes[id].value);
             });
 
