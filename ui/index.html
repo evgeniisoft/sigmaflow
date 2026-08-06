@@ -691,6 +691,7 @@
                 <div style="display:flex;gap:0;margin-bottom:16px;flex-shrink:0;">
                     <button id="btn-mode-drivers" class="forecast-mode-btn active" style="flex:1;">● ДРАЙВЕРЫ</button>
                     <button id="btn-mode-macro" class="forecast-mode-btn" style="flex:1;">○ МАКРО</button>
+                    <button id="btn-mode-montecarlo" class="forecast-mode-btn" style="flex:1;">○ МОНТЕ-КАРЛО</button>
                 </div>
 
                 <div style="display:flex;gap:16px;flex:1;min-height:0;">
@@ -4248,6 +4249,368 @@
 
             document.getElementById('planfact-comparison').innerHTML = html;
         }
+
+
+        // ============================================================
+        // МОНТЕ-КАРЛО СИМУЛЯЦИЯ
+        // ============================================================
+
+        var mcParams = [];        // выбранные параметры с распределениями
+        var mcIterations = 10000;
+        var mcResults = null;
+        var mcRunning = false;
+
+        // Генераторы случайных чисел
+        function randomNormal(mean, std) {
+            var u1 = Math.random(), u2 = Math.random();
+            var z = Math.sqrt(-2 * Math.log(Math.max(u1, 0.0001))) * Math.cos(2 * Math.PI * u2);
+            return mean + z * std;
+        }
+
+        function randomTriangular(min, mode, max) {
+            var u = Math.random();
+            var fc = (mode - min) / (max - min);
+            if (u < fc) return min + Math.sqrt(u * (max - min) * (mode - min));
+            else return max - Math.sqrt((1 - u) * (max - min) * (max - mode));
+        }
+
+        function randomUniform(min, max) {
+            return min + Math.random() * (max - min);
+        }
+
+        function randomLogNormal(mean, std) {
+            var mu = Math.log(mean * mean / Math.sqrt(mean * mean + std * std));
+            var sigma = Math.sqrt(Math.log(1 + std * std / (mean * mean)));
+            return Math.exp(randomNormal(mu, sigma));
+        }
+
+        // Настройка параметров по умолчанию
+        function getDefaultMCParams() {
+            if (!graph) return [];
+
+            var defaults = {
+                production: [
+                    { id: 'PRICE', label: 'Цена', dist: 'normal', p1: 0, p2: 0.1, current: 0 },
+                    { id: 'VOLUME', label: 'Объём продаж', dist: 'normal', p1: 0, p2: 0.2, current: 0 },
+                    { id: 'UNIT_MATERIAL', label: 'Цена сырья', dist: 'triangular', p1: -0.25, p2: 0, p3: 0.25, current: 0 }
+                ],
+                it: [
+                    { id: 'MONTHLY_RATE_PER_DEV', label: 'Ставка за разраб.', dist: 'normal', p1: 0, p2: 0.15, current: 0 },
+                    { id: 'UTILIZATION', label: 'Утилизация', dist: 'normal', p1: 0, p2: 10, current: 0 }
+                ],
+                services: [
+                    { id: 'HOURLY_RATE', label: 'Ставка часа', dist: 'normal', p1: 0, p2: 0.1, current: 0 },
+                    { id: 'HOURS_SOLD', label: 'Оплаченные часы', dist: 'normal', p1: 0, p2: 0.2, current: 0 },
+                    { id: 'CLIENTS', label: 'Клиенты', dist: 'normal', p1: 0, p2: 0.15, current: 0 }
+                ],
+                retail: [
+                    { id: 'PRICE', label: 'Цена', dist: 'normal', p1: 0, p2: 0.1, current: 0 },
+                    { id: 'VOLUME', label: 'Объём продаж', dist: 'normal', p1: 0, p2: 0.25, current: 0 },
+                    { id: 'UNIT_PURCHASE', label: 'Закупочная цена', dist: 'triangular', p1: -0.2, p2: 0, p3: 0.2, current: 0 }
+                ]
+            };
+
+            var industry = graph.industry || 'production';
+            var params = defaults[industry] || defaults['production'];
+
+            params.forEach(function (p) {
+                var node = graph.nodes[p.id];
+                p.current = node ? node.value : 0;
+                p.enabled = true;
+            });
+
+            return params;
+        }
+
+        // Отрисовка панели параметров
+        function renderMonteCarlo() {
+            var container = document.getElementById('forecast-left');
+            if (!container) return;
+
+            if (mcParams.length === 0) {
+                mcParams = getDefaultMCParams();
+            }
+
+            var html = '<div style="margin-bottom:12px;font-weight:600;font-size:11px;">ПАРАМЕТРЫ НЕОПРЕДЕЛЁННОСТИ</div>';
+
+            mcParams.forEach(function (p, idx) {
+                html += '<div class="mc-param-row">';
+                html += '<input type="checkbox" ' + (p.enabled ? 'checked' : '') + ' onchange="mcParams[' + idx + '].enabled = this.checked" style="width:16px;">';
+                html += '<span style="flex:1;">' + p.label + '</span>';
+                html += '<select onchange="mcParams[' + idx + '].dist = this.value; renderMonteCarlo()" style="width:80px;">';
+                html += '<option value="normal" ' + (p.dist === 'normal' ? 'selected' : '') + '>Норм.</option>';
+                html += '<option value="triangular" ' + (p.dist === 'triangular' ? 'selected' : '') + '>Треуг.</option>';
+                html += '<option value="uniform" ' + (p.dist === 'uniform' ? 'selected' : '') + '>Равн.</option>';
+                html += '<option value="lognormal" ' + (p.dist === 'lognormal' ? 'selected' : '') + '>Логн.</option>';
+                html += '</select>';
+
+                if (p.dist === 'normal') {
+                    html += '<span>μ:</span><input type="number" value="' + (p.p1 || 0) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p1 = parseFloat(this.value)">';
+                    html += '<span>σ:</span><input type="number" value="' + (p.p2 || 0.1) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p2 = parseFloat(this.value)">';
+                } else if (p.dist === 'triangular') {
+                    html += '<span>min:</span><input type="number" value="' + (p.p1 || -0.25) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p1 = parseFloat(this.value)">';
+                    html += '<span>mode:</span><input type="number" value="' + (p.p2 || 0) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p2 = parseFloat(this.value)">';
+                    html += '<span>max:</span><input type="number" value="' + (p.p3 || 0.25) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p3 = parseFloat(this.value)">';
+                } else {
+                    html += '<span>min:</span><input type="number" value="' + (p.p1 || -0.2) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p1 = parseFloat(this.value)">';
+                    html += '<span>max:</span><input type="number" value="' + (p.p2 || 0.2) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p2 = parseFloat(this.value)">';
+                }
+
+                html += '<span style="color:var(--text-hint);">(' + formatValue(p.current) + ')</span>';
+                html += '</div>';
+            });
+
+            html += '<div style="margin-top:12px;">';
+            html += '<span>Итераций: </span>';
+            html += '<input type="number" id="mc-iterations" value="' + mcIterations + '" min="100" max="100000" step="1000" style="width:80px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;">';
+            html += '</div>';
+
+            html += '<button id="btn-run-mc" class="primary" style="width:100%;margin-top:8px;">▶ ЗАПУСТИТЬ СИМУЛЯЦИЮ</button>';
+            html += '<div id="mc-progress" style="display:none;margin-top:8px;">';
+            html += '<div style="font-size:10px;color:var(--text-hint);" id="mc-progress-text">0 / ' + mcIterations + '</div>';
+            html += '<div class="mc-progress-bar"><div class="mc-progress-fill" id="mc-progress-fill" style="width:0%;"></div></div>';
+            html += '</div>';
+
+            container.innerHTML = html;
+
+            document.getElementById('btn-run-mc').addEventListener('click', runMonteCarlo);
+        }
+
+        // Запуск симуляции
+        async function runMonteCarlo() {
+            if (!graph || mcRunning) return;
+
+            mcIterations = parseInt(document.getElementById('mc-iterations').value) || 10000;
+            var enabledParams = mcParams.filter(function (p) { return p.enabled; });
+
+            if (enabledParams.length === 0) {
+                notify('Выберите хотя бы один параметр', true);
+                return;
+            }
+
+            mcRunning = true;
+            document.getElementById('btn-run-mc').disabled = true;
+            document.getElementById('mc-progress').style.display = 'block';
+
+            // Сохраняем базовые значения
+            var baseValues = {};
+            Object.keys(graph.nodes).forEach(function (k) { baseValues[k] = graph.nodes[k].value; });
+
+            var results = {
+                netProfit: [],
+                revenue: [],
+                cash: [],
+                ebitda: []
+            };
+
+            var batchSize = 100;
+            var processed = 0;
+
+            function runBatch() {
+                var batchEnd = Math.min(processed + batchSize, mcIterations);
+
+                for (var i = processed; i < batchEnd; i++) {
+                    // Генерируем случайные значения параметров
+                    enabledParams.forEach(function (p) {
+                        var node = graph.nodes[p.id];
+                        if (!node) return;
+                        var baseVal = baseValues[p.id] || 0;
+                        var randomVal = baseVal;
+
+                        if (p.dist === 'normal') {
+                            randomVal = randomNormal(baseVal * (1 + p.p1), Math.abs(baseVal * p.p2));
+                        } else if (p.dist === 'triangular') {
+                            randomVal = randomTriangular(baseVal * (1 + p.p1), baseVal * (1 + p.p2), baseVal * (1 + (p.p3 || 0.25)));
+                        } else if (p.dist === 'uniform') {
+                            randomVal = randomUniform(baseVal * (1 + p.p1), baseVal * (1 + p.p2));
+                        } else if (p.dist === 'lognormal') {
+                            randomVal = randomLogNormal(Math.abs(baseVal), Math.abs(baseVal * p.p2));
+                        }
+
+                        if (node.min !== null && randomVal < node.min) randomVal = node.min;
+                        if (node.max !== null && randomVal > node.max) randomVal = node.max;
+                        node.value = randomVal;
+                    });
+
+                    // Пересчитываем модель
+                    graph.compute();
+
+                    results.netProfit.push(graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0);
+                    results.revenue.push(graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0);
+                    results.cash.push(graph.nodes['CASH'] ? graph.nodes['CASH'].value : 0);
+                    results.ebitda.push(graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0);
+                }
+
+                processed = batchEnd;
+
+                // Прогресс
+                var pct = Math.round(processed / mcIterations * 100);
+                document.getElementById('mc-progress-fill').style.width = pct + '%';
+                document.getElementById('mc-progress-text').textContent = processed + ' / ' + mcIterations;
+
+                if (processed < mcIterations) {
+                    setTimeout(runBatch, 10); // асинхронно, не блокируем интерфейс
+                } else {
+                    finishSimulation(results, baseValues);
+                }
+            }
+
+            runBatch();
+        }
+
+        // Завершение симуляции
+        function finishSimulation(results, baseValues) {
+            // Восстанавливаем модель
+            Object.keys(baseValues).forEach(function (k) {
+                if (graph.nodes[k]) graph.nodes[k].value = baseValues[k];
+            });
+            graph.compute();
+
+            mcRunning = false;
+            document.getElementById('btn-run-mc').disabled = false;
+            document.getElementById('mc-progress').style.display = 'none';
+
+            // Сортируем для расчёта перцентилей
+            var sorted = results.netProfit.slice().sort(function (a, b) { return a - b; });
+            var n = sorted.length;
+
+            mcResults = {
+                mean: sorted.reduce(function (s, v) { return s + v; }, 0) / n,
+                std: Math.sqrt(sorted.reduce(function (s, v) { return s + Math.pow(v - (sorted.reduce(function (s2, v2) { return s2 + v2; }, 0) / n), 2); }, 0) / n),
+                p10: sorted[Math.floor(n * 0.1)],
+                p50: sorted[Math.floor(n * 0.5)],
+                p90: sorted[Math.floor(n * 0.9)],
+                min: sorted[0],
+                max: sorted[n - 1],
+                lossProbability: (sorted.filter(function (v) { return v < 0; }).length / n * 100),
+                cashGapProbability: (results.cash.filter(function (v) { return v < 0; }).length / n * 100),
+                expectedShortfall: sorted.filter(function (v) { return v < 0; }).reduce(function (s, v) { return s + v; }, 0) / Math.max(1, sorted.filter(function (v) { return v < 0; }).length),
+                netProfit: results.netProfit,
+                revenue: results.revenue,
+                cash: results.cash,
+                ebitda: results.ebitda,
+                iterations: n
+            };
+
+            mcResults.recommendedReserve = Math.abs(mcResults.p10) * 1.2;
+
+            renderMCResults();
+            saveForecast();
+            notify('Симуляция завершена: ' + n + ' итераций');
+        }
+
+        // Отрисовка результатов
+        function renderMCResults() {
+            if (!mcResults) return;
+
+            // Гистограмма
+            var chartEl = document.getElementById('forecast-chart');
+            var legendEl = document.getElementById('forecast-chart-legend');
+            chartEl.innerHTML = '';
+            legendEl.innerHTML = '';
+
+            var width = chartEl.clientWidth;
+            var height = 300;
+            if (width === 0) return;
+
+            var margin = { top: 20, right: 20, bottom: 40, left: 60 };
+            var w = width - margin.left - margin.right;
+            var h = height - margin.top - margin.bottom;
+
+            var svg = d3.select('#forecast-chart').append('svg')
+                .attr('width', width).attr('height', height);
+
+            var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+            // Строим гистограмму
+            var data = mcResults.netProfit;
+            var bins = 30;
+            var min = mcResults.min, max = mcResults.max;
+            var binWidth = (max - min) / bins;
+
+            var histogram = [];
+            for (var i = 0; i < bins; i++) {
+                histogram.push({ x: min + i * binWidth, count: 0 });
+            }
+            data.forEach(function (v) {
+                var idx = Math.min(bins - 1, Math.floor((v - min) / binWidth));
+                histogram[idx].count++;
+            });
+
+            var maxCount = Math.max.apply(null, histogram.map(function (b) { return b.count; }));
+
+            var xScale = d3.scaleLinear().domain([min, max]).range([0, w]);
+            var yScale = d3.scaleLinear().domain([0, maxCount]).range([h, 0]);
+
+            // Столбцы
+            g.selectAll('rect').data(histogram).enter().append('rect')
+                .attr('x', function (d) { return xScale(d.x); })
+                .attr('y', function (d) { return yScale(d.count); })
+                .attr('width', w / bins - 1)
+                .attr('height', function (d) { return h - yScale(d.count); })
+                .attr('fill', function (d) { return d.x < 0 ? 'rgba(212,75,60,0.6)' : 'rgba(75,140,90,0.6)'; })
+                .attr('stroke', 'none');
+
+            // Линии P10, P50, P90
+            [{ v: mcResults.p10, label: 'P10', color: '#d44b3c' },
+            { v: mcResults.p50, label: 'P50', color: '#d4a843' },
+            { v: mcResults.p90, label: 'P90', color: '#4b8c5a' }].forEach(function (line) {
+                g.append('line')
+                    .attr('x1', xScale(line.v)).attr('x2', xScale(line.v))
+                    .attr('y1', 0).attr('y2', h)
+                    .attr('stroke', line.color).attr('stroke-width', 1.5).attr('stroke-dasharray', '4 2');
+                g.append('text')
+                    .attr('x', xScale(line.v) + 2).attr('y', 12)
+                    .attr('fill', line.color).attr('font-size', '9px').text(line.label + ': ' + formatValue(Math.round(line.v)));
+            });
+
+            // Ось X
+            var xAxis = d3.axisBottom(xScale).ticks(8).tickFormat(function (d) { return formatValue(d); });
+            g.append('g').attr('transform', 'translate(0,' + h + ')').call(xAxis).attr('font-size', '9px').attr('color', '#6A7080');
+
+            // Легенда
+            legendEl.innerHTML = '<span>█ Убыток</span><span style="margin-left:12px;">█ Прибыль</span>' +
+                '<span style="margin-left:12px;color:#d44b3c;">--- P10</span>' +
+                '<span style="margin-left:12px;color:#d4a843;">--- P50</span>' +
+                '<span style="margin-left:12px;color:#4b8c5a;">--- P90</span>';
+
+            // Таблица метрик
+            var tableHtml = '<table style="font-size:10px;margin-top:12px;min-width:100%;">';
+            tableHtml += '<tr><td>Средняя прибыль:</td><td class="value-cell">' + formatValue(Math.round(mcResults.mean)) + '</td>';
+            tableHtml += '<td>Стд. откл.:</td><td class="value-cell">' + formatValue(Math.round(mcResults.std)) + '</td></tr>';
+            tableHtml += '<tr><td>Медиана (P50):</td><td class="value-cell">' + formatValue(Math.round(mcResults.p50)) + '</td>';
+            tableHtml += '<td>P10 (худший):</td><td class="value-cell" style="color:var(--critical);">' + formatValue(Math.round(mcResults.p10)) + '</td></tr>';
+            tableHtml += '<tr><td>P90 (лучший):</td><td class="value-cell" style="color:var(--ok);">' + formatValue(Math.round(mcResults.p90)) + '</td>';
+            tableHtml += '<td></td><td></td></tr>';
+            tableHtml += '<tr><td colspan="4" style="padding-top:8px;font-weight:600;">РИСКИ</td></tr>';
+            tableHtml += '<tr><td>Вероятность убытка:</td><td class="value-cell" style="color:' + (mcResults.lossProbability > 20 ? 'var(--critical)' : 'var(--ok)') + ';">' + mcResults.lossProbability.toFixed(1) + '%</td>';
+            tableHtml += '<td>Кассовый разрыв:</td><td class="value-cell">' + mcResults.cashGapProbability.toFixed(1) + '%</td></tr>';
+            tableHtml += '<tr><td colspan="4" style="padding-top:8px;font-weight:600;">РЕКОМЕНДАЦИЯ</td></tr>';
+            tableHtml += '<tr><td colspan="4">Рекомендуемый резерв: <span style="font-weight:600;">' + formatValue(Math.round(mcResults.recommendedReserve)) + '</span> (покрывает P10)</td></tr>';
+            tableHtml += '</table>';
+
+            document.getElementById('forecast-table').innerHTML = tableHtml;
+            document.getElementById('forecast-summary').innerHTML =
+                '<div style="font-weight:600;margin-bottom:4px;">КЛЮЧЕВЫЕ ВЫВОДЫ</div>' +
+                '<div>● С вероятностью ' + (100 - mcResults.lossProbability).toFixed(0) + '% компания прибыльна</div>' +
+                '<div>● Худший сценарий (P10): ' + formatValue(Math.round(mcResults.p10)) + '</div>' +
+                '<div>● Лучший сценарий (P90): ' + formatValue(Math.round(mcResults.p90)) + '</div>' +
+                '<div>● Риск кассового разрыва: ' + mcResults.cashGapProbability.toFixed(1) + '%</div>';
+        }
+
+        // Обработчик кнопки МОНТЕ-КАРЛО
+        document.getElementById('btn-mode-montecarlo').addEventListener('click', function () {
+            forecastMode = 'montecarlo';
+            document.getElementById('btn-mode-drivers').classList.remove('active');
+            document.getElementById('btn-mode-macro').classList.remove('active');
+            this.classList.add('active');
+            mcResults = null;
+            document.getElementById('forecast-table').innerHTML = '';
+            document.getElementById('forecast-chart').innerHTML = '';
+            document.getElementById('forecast-chart-legend').innerHTML = '';
+            document.getElementById('forecast-summary').innerHTML = '';
+            renderMonteCarlo();
+        });
 
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
