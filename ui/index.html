@@ -1344,7 +1344,7 @@
                 if (graph.nodes[id]) totalVariable += Math.abs(graph.nodes[id].value);
             });
 
-           
+
             var price = graph.nodes['PRICE'] ? graph.nodes['PRICE'].value : 0;
             var avgCheck = graph.nodes['AVG_CHECK'] ? graph.nodes['AVG_CHECK'].value : 0;
             var unitPrice = price || avgCheck || 1;
@@ -1395,18 +1395,15 @@
             // Переменные
             html += '<div style="flex:1;padding:8px;background:var(--bg-primary);border:1px solid var(--border);">';
             html += '<div style="font-size:10px;color:var(--text-hint);letter-spacing:1px;margin-bottom:6px;">ПЕРЕМЕННЫЕ РАСХОДЫ</div>';
-            html += '<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0;">';
-            html += '<span>Себестоимость (перем.)</span>';
-            html += '<span>' + formatValue(Math.abs(p.cogs)) + '</span>';
-            html += '</div>';
-            html += '<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0;">';
-            html += '<span>Коммерческие (перем.)</span>';
-            html += '<span>' + formatValue(Math.abs(p.selling)) + '</span>';
-            html += '</div>';
-            html += '<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0;">';
-            html += '<span>Управленческие (перем.)</span>';
-            html += '<span>' + formatValue(Math.abs(p.admin)) + '</span>';
-            html += '</div>';
+            ['MATERIAL_COST', 'DIRECT_LABOR', 'DEV_PAYROLL', 'SPECIALIST_PAYROLL', 'SALES_PAYROLL', 'WAREHOUSE_PAYROLL', 'ENERGY_COST', 'LOGISTICS_COST', 'MARKETING', 'OUTSOURCE_COST'].forEach(function (id) {
+                var val = graph.nodes[id] ? Math.abs(graph.nodes[id].value) : 0;
+                if (val > 0) {
+                    html += '<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0;">';
+                    html += '<span>' + (graph.nodes[id] ? graph.nodes[id].label : id) + '</span>';
+                    html += '<span>' + formatValue(val) + '</span>';
+                    html += '</div>';
+                }
+            });
             html += '<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;">';
             html += '<span>ИТОГО</span><span>' + formatValue(totalVariable) + '</span>';
             html += '</div></div>';
