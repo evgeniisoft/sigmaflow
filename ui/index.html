@@ -1338,10 +1338,11 @@
             // Выручка для точки безубыточности — из модели, без сезонности
             var revenue = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : p.revenue;
 
-            // Переменные расходы = COGS + Коммерческие + Управленческие − Постоянная часть
-            var totalCosts = Math.abs(p.cogs) + Math.abs(p.selling) + Math.abs(p.admin);
-            var totalVariable = totalCosts - totalFixed;
-            if (totalVariable < 0) totalVariable = 0;
+            // Переменные расходы — из модели
+            var totalVariable = 0;
+            ['MATERIAL_COST', 'DIRECT_LABOR', 'DEV_PAYROLL', 'SPECIALIST_PAYROLL', 'SALES_PAYROLL', 'WAREHOUSE_PAYROLL', 'ENERGY_COST', 'LOGISTICS_COST', 'MARKETING', 'OUTSOURCE_COST'].forEach(function (id) {
+                if (graph.nodes[id]) totalVariable += Math.abs(graph.nodes[id].value);
+            });
 
            
             var price = graph.nodes['PRICE'] ? graph.nodes['PRICE'].value : 0;
