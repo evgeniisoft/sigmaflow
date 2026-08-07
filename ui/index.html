@@ -3214,7 +3214,8 @@
             // Сохраняем базовое значение ключевого драйвера для сезонности
             var seasonalParam = (graph.industry === 'production' || graph.industry === 'retail') ? 'VOLUME' :
                 (graph.industry === 'it') ? 'UTILIZATION' :
-                    (graph.industry === 'services') ? 'CLIENTS' : null;
+                    (graph.industry === 'services') ? 'CLIENTS' :
+                        (graph.industry === 'logistics') ? 'KM_PER_MONTH' : null;
             var baseSeasonalValue = seasonalParam && graph.nodes[seasonalParam] ? graph.nodes[seasonalParam].value : 1;
 
             var rows = [];
@@ -3262,7 +3263,8 @@
                         var seasonCoef = graph.company.season[(startMonth + p) % 12] || 1;
                         var seasonalParam = (graph.industry === 'production' || graph.industry === 'retail') ? 'VOLUME' :
                             (graph.industry === 'it') ? 'UTILIZATION' :
-                                (graph.industry === 'services') ? 'CLIENTS' : null;
+                                (graph.industry === 'services') ? 'CLIENTS' :
+                                    (graph.industry === 'logistics') ? 'KM_PER_MONTH' : null;
                         if (seasonalParam && graph.nodes[seasonalParam] && baseSeasonalValue) {
                             graph.nodes[seasonalParam].value = baseSeasonalValue * seasonCoef;
                         }
