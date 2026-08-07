@@ -3318,7 +3318,18 @@
 
                 // === РЕЗУЛЬТАТЫ ===
 
-                var hasChanges = (forecastMode === 'drivers' && forecastEvents.length > 0) || forecastMode === 'macro';
+                var macroHasChanges = false;
+                if (forecastMode === 'macro') {
+                    Object.keys(forecastMacro).forEach(function (key) {
+                        var m = forecastMacro[key];
+                        if (m && m.quarters) {
+                            for (var q = 0; q < 4; q++) {
+                                if (Math.abs(m.quarters[q] - m.current) > 0.001) macroHasChanges = true;
+                            }
+                        }
+                    });
+                }
+                var hasChanges = (forecastMode === 'drivers' && forecastEvents.length > 0) || macroHasChanges;
 
                 if (hasChanges) {
                     // Считаем коэффициент отклонения от базы
@@ -3332,7 +3343,7 @@
                     var baseSell = Math.abs(basePnL.rows[0].selling);
                     var baseAdm = Math.abs(basePnL.rows[0].admin);
 
-                    
+
 
                     var rev = basePnL.rows[p].revenue * revMult;
                     var cogs = basePnL.rows[p].cogs * costMult;
