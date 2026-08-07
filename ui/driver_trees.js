@@ -1470,6 +1470,12 @@ var DRIVER_TREES = {
                 min: 50000, max: 200000, step: 5000,
                 unit: '₽/мес'
             },
+            'LOGISTICS_PAYROLL': {
+                label: 'ФОТ логистов',
+                type: 'computed',
+                children: ['LOGISTICS_HEADCOUNT', 'LOGISTICS_AVG_SALARY'],
+                formula: 'LOGISTICS_HEADCOUNT * LOGISTICS_AVG_SALARY'
+            },
             'CLAIMS_RESERVE': {
                 label: 'Претензии',
                 type: 'driver',
