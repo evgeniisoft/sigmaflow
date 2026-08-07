@@ -3206,6 +3206,8 @@
                                 graph.nodes[evt.param].value = evt.value;
                             } else if (evt.type === 'delta') {
                                 graph.nodes[evt.param].value = savedNodes[evt.param] + evt.value;
+                            } else if (evt.type === 'delta_percent') {
+                                graph.nodes[evt.param].value = savedNodes[evt.param] * (1 + evt.value / 100);
                             }
                         }
                     });
@@ -3621,13 +3623,28 @@
 
                 if (type === 'set') {
                     if (unit === 'percent') {
-                        value = currentVal * (1 + rawNum / 100);
+                        value = currentVal * (1 + rawNum / 100);  // 10% → currentVal × 1.1
                     } else {
                         value = rawNum;
                     }
                 } else {
+                    // delta
                     if (unit === 'percent') {
-                        value = currentVal * (1 + rawNum / 100);
+                        // Сохраняем процент, применим позже
+                        value = rawNum;
+                        // Но помечаем что это проценты
+                        forecastEvents.push({
+                            param: param,
+                            type: 'delta_percent',
+                            value: rawNum,
+                            month: month,
+                            monthLabel: getMonthLabel(month)
+                        });
+                        forecastEvents.sort(function (a, b) { return a.month - b.month; });
+                        document.getElementById('forecast-event-form').style.display = 'none';
+                        renderForecastDrivers();
+                        buildForecast();
+                        return;
                     } else {
                         value = currentVal + rawNum;
                     }
