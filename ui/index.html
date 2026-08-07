@@ -4659,6 +4659,12 @@
             renderMonteCarlo();
         });
 
+        function saveScenarios() {
+            if (graph && graph.scenarios) {
+                localStorage.setItem('sigmaflow_scenarios_' + getCurrentCompanyId(), JSON.stringify(graph.scenarios));
+            }
+        }
+
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
         // ============================================================
@@ -5889,17 +5895,6 @@
             if (!graph) graph = {};
             if (!graph.scenarios) graph.scenarios = [];
 
-            function saveScenarios() {
-                if (graph && graph.scenarios) {
-                    localStorage.setItem('sigmaflow_scenarios_' + getCurrentCompanyId(), JSON.stringify(graph.scenarios));
-                }
-            }
-
-            function saveScenarios() {
-                if (graph && graph.scenarios) {
-                    localStorage.setItem('sigmaflow_scenarios_' + getCurrentCompanyId(), JSON.stringify(graph.scenarios));
-                }
-            }
 
             function loadScenarios() {
                 var saved = localStorage.getItem('sigmaflow_scenarios_' + getCurrentCompanyId());
