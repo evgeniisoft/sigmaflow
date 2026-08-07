@@ -1252,6 +1252,12 @@ var DRIVER_TREES = {
                 min: 25, max: 50, step: 1,
                 unit: 'л/100км'
             },
+            'FUEL_COST': {
+                label: 'Топливо',
+                type: 'computed',
+                children: ['KM_PER_MONTH', 'FUEL_PRICE', 'FUEL_CONSUMPTION'],
+                formula: 'KM_PER_MONTH * FUEL_PRICE * FUEL_CONSUMPTION / 100'
+            },
             'DRIVERS_HEADCOUNT': {
                 label: 'Водители',
                 type: 'driver',
