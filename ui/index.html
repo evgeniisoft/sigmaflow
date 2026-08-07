@@ -1058,6 +1058,7 @@
                         <option value="production">Производство</option>
                         <option value="retail">Торговля (розница / опт)</option>
                         <option value="services">Услуги / Сервис</option>
+                        <option value="logistics">Логистика (перевозки / экспедирование)</option>
                         <option value="it">IT / Разработка ПО</option>
                     </select>
                 </div>
@@ -1082,29 +1083,42 @@
                 var taxSystem = document.getElementById('wizard-tax-system').value;
                 var companyName = document.getElementById('wizard-name').value.trim() || 'Новая компания';
 
-                createModel(industry, taxSystem, companyName);
+                var logisticsType = 'carrier';
+                if (industry === 'logistics') {
+                    logisticsType = prompt('Тип логистической компании:\n1 — Свой автопарк (перевозчик)\n2 — Экспедитор (без автопарка)', '1');
+                    logisticsType = (logisticsType === '2') ? 'expeditor' : 'carrier';
+                }
+
+                createModel(industry, taxSystem, companyName, logisticsType);
                 wizard.remove();
             });
         }
 
-        function createModel(industry, taxSystem, companyName) {
+        function createModel(industry, taxSystem, companyName, logisticsType) {
             var yamlText = TEMPLATE_UNIVERSAL;
             var data = parseYAML(yamlText);
             graph = Graph.fromDict(data);
             graph.name = companyName || 'Новая компания';
             graph.industry = industry;
+            graph.logisticsType = logisticsType || 'carrier';
 
             // Отраслевая формула выручки
             if (industry === 'it') {
                 if (graph.nodes['REVENUE']) graph.nodes['REVENUE'].formula = 'MONTHLY_RATE_PER_DEV * DEV_HEADCOUNT * UTILIZATION * 0.01';
             } else if (industry === 'services') {
                 if (graph.nodes['REVENUE']) graph.nodes['REVENUE'].formula = 'HOURLY_RATE * HOURS_SOLD + AVG_CHECK * CLIENTS';
+            } else if (industry === 'logistics') {
+                if (graph.nodes['REVENUE']) graph.nodes['REVENUE'].formula = 'RATE_PER_KM * KM_PER_MONTH';
             } else {
                 if (graph.nodes['REVENUE']) graph.nodes['REVENUE'].formula = 'VOLUME * PRICE * SEASON';
             }
 
             // Применяем пресет, если есть
-            var preset = INDUSTRY_PRESETS[industry];
+            var presetKey = industry;
+            if (industry === 'logistics') {
+                presetKey = (graph.logisticsType === 'expeditor') ? 'logistics_expeditor' : 'logistics_carrier';
+            }
+            var preset = INDUSTRY_PRESETS[presetKey];
             if (preset) {
                 // Заполняем значения узлов из пресета
                 if (preset.nodes) {
