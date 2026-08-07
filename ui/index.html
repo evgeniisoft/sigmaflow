@@ -3335,6 +3335,13 @@
                             try { n.value = graph._evalFormula(n.formula); } catch (e) { }
                         }
                     });
+                    // Применяем сезонность после макро-формул
+                    if (forecastUseSeason && graph.company && graph.company.season) {
+                        var seasonCoefMacro = graph.company.season[(startMonth + p) % 12] || 1;
+                        if (seasonalParam && graph.nodes[seasonalParam]) {
+                            graph.nodes[seasonalParam].value = (graph.nodes[seasonalParam].value || baseSeasonalValue) * seasonCoefMacro;
+                        }
+                    }
                     graph.compute();
 
                     // Результаты из модели
