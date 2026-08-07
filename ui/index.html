@@ -3177,6 +3177,11 @@
                     }
                 });
             }
+            // Сохраняем базовое значение ключевого драйвера для сезонности
+            var seasonalParam = (graph.industry === 'production' || graph.industry === 'retail') ? 'VOLUME' :
+                (graph.industry === 'it') ? 'UTILIZATION' :
+                    (graph.industry === 'services') ? 'CLIENTS' : null;
+            var baseSeasonalValue = seasonalParam && graph.nodes[seasonalParam] ? graph.nodes[seasonalParam].value : 1;
 
             var rows = [];
             var chartData = { revenue: [], profit: [], cash: [], baseRevenue: [] };
@@ -3224,8 +3229,8 @@
                         var seasonalParam = (graph.industry === 'production' || graph.industry === 'retail') ? 'VOLUME' :
                             (graph.industry === 'it') ? 'UTILIZATION' :
                                 (graph.industry === 'services') ? 'CLIENTS' : null;
-                        if (seasonalParam && graph.nodes[seasonalParam] && savedNodes[seasonalParam]) {
-                            graph.nodes[seasonalParam].value = savedNodes[seasonalParam] * seasonCoef;
+                        if (seasonalParam && graph.nodes[seasonalParam] && baseSeasonalValue) {
+                            graph.nodes[seasonalParam].value = baseSeasonalValue * seasonCoef;
                         }
                     }
 
