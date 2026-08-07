@@ -1426,13 +1426,16 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
                     });
                 }
             } else if (nodeConfig.children) {
-                result.value = 0;
+                var childSum = 0;
                 nodeConfig.children.forEach(function (childId) {
                     var childResult = computeNode(childId, path.concat(nodeId));
                     result.children.push(childResult);
                     var sign = (nodeConfig.signs && nodeConfig.signs[childId]) ? nodeConfig.signs[childId] : 1;
-                    result.value += sign * Math.abs(childResult.value);
+                    childSum += sign * Math.abs(childResult.value);
                 });
+                if (!result._fromPnL) {
+                    result.value = childSum;
+                }
             }
         }
 
