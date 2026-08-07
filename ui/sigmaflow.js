@@ -1304,8 +1304,7 @@ Graph.prototype.getMarginalEffects = function () {
     Object.keys(saved).forEach(function (k) { self.nodes[k].value = saved[k]; });
     self.compute();
 
-    effects.sort(function (a, b) { return Math.abs(b.profitDelta) - Math.abs(a.profitDelta); });
-    return effects;
+
     // Приоритет отраслевых узлов — поднимаем в топ
     var priorityNodes = {
         production: ['VOLUME', 'PRICE', 'PROD_HEADCOUNT', 'UNIT_MATERIAL'],
@@ -1322,7 +1321,6 @@ Graph.prototype.getMarginalEffects = function () {
     }
     var priority = priorityNodes[industryKey] || [];
 
-    // Поднимаем приоритетные узлы в начало
     effects.sort(function (a, b) {
         var aIdx = priority.indexOf(a.node);
         var bIdx = priority.indexOf(b.node);
@@ -1331,6 +1329,9 @@ Graph.prototype.getMarginalEffects = function () {
         if (bIdx >= 0) return 1;
         return Math.abs(b.profitDelta) - Math.abs(a.profitDelta);
     });
+
+    return effects;
+    
 };
 
 // ============================================================
