@@ -1366,6 +1366,13 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
         'INTEREST': Math.abs(p.interest),
         'TAX': Math.abs(p.tax)
     };
+    // Специфичные отраслевые показатели
+    if (self.industry === 'logistics') {
+        if (self.nodes['MARGIN']?.value !== undefined) {
+            pnlValues['MARGIN'] = self.nodes['MARGIN'].value;
+        }
+    }
+    
 
     // Рекурсивно вычисляем значения узлов дерева
     function computeNode(nodeId, path) {
