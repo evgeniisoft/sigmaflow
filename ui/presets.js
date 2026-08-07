@@ -207,6 +207,7 @@ var INDUSTRY_PRESETS= {
                 TOLL_ROADS_PCT: 15,
                 TOLL_ROADS_COST: 30000,
                 TIRES_COST: 45000,
+                AVG_KM_PER_TRUCK: 10000,
                 MAINTENANCE_COST: 60000,
                 INSURANCE_COST: 120000,
                 DRIVERS_HEADCOUNT: 18,
