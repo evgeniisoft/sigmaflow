@@ -3528,7 +3528,28 @@
             html += '<div>● Годовая прибыль: ' + formatValue(totalProfit) + '</div>';
             html += '<div>● Рост выручки: ' + (revGrowth >= 0 ? '+' : '') + revGrowth.toFixed(1) + '%</div>';
 
-            document.getElementById('forecast-summary').innerHTML = html;
+            var summaryEl = document.getElementById('forecast-summary');
+            summaryEl.innerHTML = html;
+
+            // Кнопка сохранить как сценарий (для драйверов и макро)
+            if (forecastMode === 'drivers' || forecastMode === 'macro') {
+                summaryEl.innerHTML += '<button id="btn-save-forecast-scenario" class="primary" style="margin-top:8px;width:100%;">СОХРАНИТЬ КАК СЦЕНАРИЙ</button>';
+                document.getElementById('btn-save-forecast-scenario').addEventListener('click', function () {
+                    if (!graph) return;
+                    if (!graph.scenarios) graph.scenarios = [];
+
+                    var scenario = {
+                        name: 'Прогноз ' + (forecastMode === 'drivers' ? '(драйверы)' : '(макро)') + ' ' + new Date().toLocaleDateString(),
+                        desc: '12 мес.',
+                        shocks: []
+                    };
+
+                    graph.scenarios.push(scenario);
+                    saveScenarios();
+                    renderScenarios();
+                    notify('Сценарий сохранён: ' + scenario.name);
+                });
+            }
         }
 
         function renderForecastDrivers() {
