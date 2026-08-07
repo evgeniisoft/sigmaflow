@@ -2979,7 +2979,11 @@
             newValue = parseFloat(newValue);
             if (isNaN(newValue)) return;
 
-            var treeConfig = DRIVER_TREES[graph.industry];
+            var industryKey = graph.industry;
+            if (graph.industry === 'logistics') {
+                industryKey = graph.nodes['CARRIER_COST']?.value > 0 ? 'logistics_expeditor' : 'logistics_carrier';
+            }
+            var treeConfig = DRIVER_TREES[industryKey];
             if (!treeConfig) return;
 
             var driverConfig = treeConfig.nodes[driverId];
@@ -3061,7 +3065,11 @@
             renderDashboard();
 
             // Перестраиваем дерево
-            var treeConfig = DRIVER_TREES[graph.industry];
+            var industryKey = graph.industry;
+            if (graph.industry === 'logistics') {
+                industryKey = graph.nodes['CARRIER_COST']?.value > 0 ? 'logistics_expeditor' : 'logistics_carrier';
+            }
+            var treeConfig = DRIVER_TREES[industryKey];
             if (treeConfig) {
                 driverTreeData = graph.computeDriverTree(treeConfig);
                 renderDriverTreeGraph();
