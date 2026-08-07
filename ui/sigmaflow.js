@@ -1388,6 +1388,7 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
         // Ключевые узлы — из P&L (значение правильное, дети считаются как обычно)
         if (pnlValues[nodeId] !== undefined) {
             result.value = pnlValues[nodeId];
+            result._fromPnL = true;
         }
 
         // Если это драйвер — берём значение из модели
@@ -1413,7 +1414,10 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
         // Если computed или result — суммируем детей
         if (nodeConfig.type === 'computed' || nodeConfig.type === 'result') {
             if (nodeConfig.formula) {
-                result.value = evaluateFormula(nodeConfig.formula, nodeConfig.children || []);
+                // Не перезаписываем значение из P&L
+                if (!result._fromPnL) {
+                    result.value = evaluateFormula(nodeConfig.formula, nodeConfig.children || []);
+                }
                 // Всё равно рекурсивно обходим детей для отрисовки
                 if (nodeConfig.children) {
                     nodeConfig.children.forEach(function (childId) {
