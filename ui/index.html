@@ -3145,6 +3145,25 @@
 
             // Получаем базовый P&L (уже считает правильно с сезонностью и налогами)
             var basePnL = graph.getPnL(startMonth, horizon);
+            // Применяем сезонность если включено
+            if (forecastUseSeason && graph.company && graph.company.season) {
+                var season = graph.company.season;
+                for (var p = 0; p < horizon; p++) {
+                    var mo = (startMonth + p) % 12;
+                    var coef = season[mo] || 1;
+                    basePnL.rows[p].revenue *= coef;
+                    basePnL.rows[p].cogs *= coef;
+                    basePnL.rows[p].selling *= coef;
+                    basePnL.rows[p].admin *= coef;
+                    // Пересчитываем производные
+                    basePnL.rows[p].gross = basePnL.rows[p].revenue + basePnL.rows[p].cogs;
+                    basePnL.rows[p].ebitda = basePnL.rows[p].gross + basePnL.rows[p].selling + basePnL.rows[p].admin;
+                    basePnL.rows[p].ebit = basePnL.rows[p].ebitda + basePnL.rows[p].da;
+                    basePnL.rows[p].ebt = basePnL.rows[p].ebit + basePnL.rows[p].interest + basePnL.rows[p].other;
+                    basePnL.rows[p].net = basePnL.rows[p].ebt + basePnL.rows[p].tax;
+                }
+            }
+
 
             // Получаем базовый Календарь (для кэша)
             var baseCal = graph.getCashFlowCalendar(startMonth, horizon);
@@ -3613,6 +3632,9 @@
             html += '<button id="btn-cancel-event" style="width:100%;margin-top:4px;">ОТМЕНА</button>';
             html += '</div>';
 
+            html += '<div style="margin-top:12px;font-size:11px;">';
+            html += '<label><input type="checkbox" id="fc-use-season" ' + (forecastUseSeason ? 'checked' : '') + ' onchange="toggleForecastSeason(this.checked)"> Учитывать сезонность</label>';
+            html += '</div>';
             container.innerHTML = html;
 
             document.getElementById('btn-add-event').addEventListener('click', function () {
@@ -3754,6 +3776,9 @@
 
             html += '</tbody></table>';
             html += '<button id="btn-apply-macro" class="primary" style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>';
+            html += '<div style="margin-top:12px;font-size:11px;">';
+            html += '<label><input type="checkbox" id="fc-use-season" ' + (forecastUseSeason ? 'checked' : '') + ' onchange="toggleForecastSeason(this.checked)"> Учитывать сезонность</label>';
+            html += '</div>';
             container.innerHTML = html;
 
             document.getElementById('btn-apply-macro').addEventListener('click', function () {
@@ -4370,6 +4395,12 @@
             document.getElementById('planfact-comparison').innerHTML = html;
         }
 
+        var forecastUseSeason = false;
+
+        function toggleForecastSeason(checked) {
+            forecastUseSeason = checked;
+            buildForecast();
+        }
 
         // ============================================================
         // МОНТЕ-КАРЛО СИМУЛЯЦИЯ
@@ -7042,7 +7073,7 @@
                     ((sc.baseValues && sc.baseValues[shock.node] !== undefined) ? sc.baseValues[shock.node] : 0);
                 var newVal = shock.type === 'delta' ? oldVal + shock.value :
                     shock.type === 'delta_percent' ? oldVal * (1 + shock.value / 100) :
-                    shock.value;
+                        shock.value;
                 var delta = newVal - oldVal;
                 var color = delta >= 0 ? 'var(--ok)' : 'var(--critical)';
 
