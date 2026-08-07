@@ -1193,6 +1193,9 @@ Graph.prototype.getPnL = function (startMonth, horizon) {
             revenue = revenue / (1 + ndsRateForPnL);
         }
         var cogs = -(baseCOGS * seasonCoef);
+        if (isNDSPayer) {
+            cogs = cogs / (1 + ndsRateForPnL);
+        }
         var gross = revenue + cogs;
         var selling = -(baseSelling * seasonCoef);
         var admin = -(baseAdmin * 0.7 + baseAdmin * 0.3 * seasonCoef); // 70% постоянные, 30% переменные
