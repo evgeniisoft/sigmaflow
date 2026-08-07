@@ -1343,12 +1343,29 @@ Graph.prototype.getMarginalEffects = function () {
 Graph.prototype.computeDriverTree = function (treeConfig) {
     var self = this;
     var tree = treeConfig;
-    var snapshots = {}; // базовые значения до изменений
+    var snapshots = {};
 
-    // Сохраняем снапшот всех узлов модели
     Object.keys(self.nodes).forEach(function (key) {
         snapshots[key] = self.nodes[key].value;
     });
+
+    // Единый источник — P&L первый месяц
+    var pnl = self.getPnL(new Date().getMonth(), 1);
+    var p = pnl.rows[0];
+    var pnlValues = {
+        'REVENUE': p.revenue,
+        'NET_PROFIT': p.net,
+        'EBITDA': p.ebitda,
+        'EBIT': p.ebit,
+        'EBT': p.ebt,
+        'GROSS_PROFIT': p.gross,
+        'COGS': Math.abs(p.cogs),
+        'SELLING_EXP': Math.abs(p.selling),
+        'ADMIN_EXP': Math.abs(p.admin),
+        'DA': Math.abs(p.da),
+        'INTEREST': Math.abs(p.interest),
+        'TAX': Math.abs(p.tax)
+    };
 
     // Рекурсивно вычисляем значения узлов дерева
     function computeNode(nodeId, path) {
@@ -1367,6 +1384,11 @@ Graph.prototype.computeDriverTree = function (treeConfig) {
             nonlinear: nodeConfig.nonlinear || null,
             computed: nodeConfig.computed || false
         };
+
+        // Ключевые узлы — из P&L (значение правильное, дети считаются как обычно)
+        if (pnlValues[nodeId] !== undefined) {
+            result.value = pnlValues[nodeId];
+        }
 
         // Если это драйвер — берём значение из модели
         if (nodeConfig.type === 'driver' && nodeConfig.nodeId) {
