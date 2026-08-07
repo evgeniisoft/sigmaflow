@@ -1389,6 +1389,7 @@ var DRIVER_TREES = {
             'MARGIN': {
                 label: 'Маржа',
                 type: 'computed',
+                nodeId: 'MARGIN',
                 children: ['REVENUE', 'CARRIER_COST'],
                 formula: 'REVENUE - CARRIER_COST',
                 drivers: []
