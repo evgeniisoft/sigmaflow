@@ -2719,7 +2719,11 @@
             if (!graph) { notify('Сначала загрузите модель', true); return; }
             if (!graph.industry) graph.industry = 'production';
 
-            var treeConfig = DRIVER_TREES[graph.industry];
+            var industryKey = graph.industry;
+            if (graph.industry === 'logistics') {
+                industryKey = graph.nodes['CARRIER_COST']?.value > 0 ? 'logistics_expeditor' : 'logistics_carrier';
+            }
+            var treeConfig = DRIVER_TREES[industryKey];
             if (!treeConfig) { notify('Для отрасли "' + graph.industry + '" нет дерева KPI', true); return; }
 
             driverTreeData = graph.computeDriverTree(treeConfig);
