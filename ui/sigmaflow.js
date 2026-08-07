@@ -876,6 +876,8 @@ Graph.prototype.getCashFlowCalendar = function (startMonth, horizon) {
         prodBase = self._val('SPECIALIST_PAYROLL');
     } else if (self.industry === 'retail') {
         prodBase = self._val('SALES_PAYROLL') + self._val('WAREHOUSE_PAYROLL');
+    } else if (self.industry === 'logistics') {
+        prodBase = self._val('DRIVERS_PAYROLL') + self._val('LOGISTICS_PAYROLL');
     } else {
         prodBase = self._val('DIRECT_LABOR');
     }
@@ -1331,7 +1333,7 @@ Graph.prototype.getMarginalEffects = function () {
     });
 
     return effects;
-    
+
 };
 
 // ============================================================
