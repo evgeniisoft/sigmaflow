@@ -476,22 +476,11 @@ table td.value-cell {
     font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 1400px) {
-    #dashboard-metrics {
-        grid-template-columns: repeat(3, 1fr) !important;
-    }
+#dashboard-metrics .metric-card {
+    min-height: 70px;
 }
-
-@media (max-width: 1100px) {
-    #dashboard-metrics {
-        grid-template-columns: repeat(2, 1fr) !important;
-    }
-}
-
-@media (max-width: 768px) {
-    #dashboard-metrics {
-        grid-template-columns: repeat(1, 1fr) !important;
-    }
+#dashboard-metrics .metric-card:hover {
+    border-color: var(--accent);
 }
 
 .forecast-mode-btn {
