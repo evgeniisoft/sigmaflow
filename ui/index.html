@@ -4628,7 +4628,10 @@
 
                     results.netProfit.push(graph.nodes['NET_PROFIT'] ? graph.nodes['NET_PROFIT'].value : 0);
                     results.revenue.push(graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : 0);
-                    results.cash.push(graph.nodes['CASH'] ? graph.nodes['CASH'].value : 0);
+                    // Считаем кассовый разрыв через Календарь ДДС (1 месяц)
+                    var calMC = graph.getCashFlowCalendar(new Date().getMonth(), 1);
+                    var endCash = calMC.periods[0].endCash;
+                    results.cash.push(endCash);
                     results.ebitda.push(graph.nodes['EBITDA'] ? graph.nodes['EBITDA'].value : 0);
                 }
 
