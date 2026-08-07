@@ -3584,6 +3584,7 @@
             html += '</select></div>';
             html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:8px;" id="fe-current-value"></div>';
             html += '<div class="form-group"><label>ТИП</label><select id="fe-type" style="width:100%;"><option value="delta">+ / −</option><option value="set">= установить</option></select></div>';
+            html += '<div class="form-group"><label>ЕДИНИЦЫ</label><select id="fe-unit" style="width:100%;"><option value="absolute">Абсолютные (₽/ед/чел)</option><option value="percent">Проценты (%)</option></select></div>';
             html += '<div class="form-group"><label>НОВОЕ ЗНАЧЕНИЕ</label><input type="text" id="fe-value" style="width:100%;"></div>';
             html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:8px;" id="fe-new-value-preview"></div>';
             html += '<div class="form-group"><label>С КАКОГО МЕСЯЦА</label><select id="fe-month" style="width:100%;">';
@@ -3614,11 +3615,22 @@
                 var month = parseInt(document.getElementById('fe-month').value);
                 var currentVal = graph.nodes[param] ? graph.nodes[param].value : 0;
 
+                var unit = document.getElementById('fe-unit').value;
+                var rawNum = parseFloat(rawValue.replace(/\s/g, '').replace(',', '.'));
                 var value;
+
                 if (type === 'set') {
-                    value = parseFloat(rawValue.replace(/\s/g, '').replace(',', '.'));
+                    if (unit === 'percent') {
+                        value = currentVal * (1 + rawNum / 100);
+                    } else {
+                        value = rawNum;
+                    }
                 } else {
-                    value = parseFloat(rawValue.replace(/\s/g, '').replace(',', '.'));
+                    if (unit === 'percent') {
+                        value = currentVal * (1 + rawNum / 100);
+                    } else {
+                        value = currentVal + rawNum;
+                    }
                 }
                 if (isNaN(value)) { notify('Введите число', true); return; }
 
@@ -3657,9 +3669,19 @@
             var newVal = parseFloat(String(rawValue).replace(/\s/g, '').replace(',', '.'));
             if (!isNaN(newVal) && typeEl) {
                 if (typeEl.value === 'delta') {
-                    previewEl.textContent = 'Станет: ' + formatValue(currentVal + newVal);
+                    var unitEl = document.getElementById('fe-unit');
+                    if (unitEl && unitEl.value === 'percent') {
+                        previewEl.textContent = 'Станет: ' + formatValue(currentVal * (1 + newVal / 100)) + ' (+' + newVal + '%)';
+                    } else {
+                        previewEl.textContent = 'Станет: ' + formatValue(currentVal + newVal);
+                    }
                 } else {
-                    previewEl.textContent = 'Станет: ' + formatValue(newVal);
+                    var unitEl2 = document.getElementById('fe-unit');
+                    if (unitEl2 && unitEl2.value === 'percent') {
+                        previewEl.textContent = 'Станет: ' + formatValue(currentVal * (1 + newVal / 100)) + ' (' + newVal + '% от текущего)';
+                    } else {
+                        previewEl.textContent = 'Станет: ' + formatValue(newVal);
+                    }
                 }
             }
         }
