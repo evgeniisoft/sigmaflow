@@ -3193,41 +3193,17 @@
             var horizon = 12;
             var startMonth = currentMonth;
 
-            // Получаем базовый P&L (уже считает правильно с сезонностью и налогами)
+            // ЕДИНЫЙ ИСТОЧНИК — P&L и Календарь
             var basePnL = graph.getPnL(startMonth, horizon);
-            // Применяем сезонность если включено
-            if (forecastUseSeason && graph.company && graph.company.season) {
-                var season = graph.company.season;
-                for (var p = 0; p < horizon; p++) {
-                    var mo = (startMonth + p) % 12;
-                    var coef = season[mo] || 1;
-                    basePnL.rows[p].revenue *= coef;
-                    basePnL.rows[p].cogs *= coef;
-                    basePnL.rows[p].selling *= coef;
-                    basePnL.rows[p].admin *= coef;
-                    // Пересчитываем производные
-                    basePnL.rows[p].gross = basePnL.rows[p].revenue + basePnL.rows[p].cogs;
-                    basePnL.rows[p].ebitda = basePnL.rows[p].gross + basePnL.rows[p].selling + basePnL.rows[p].admin;
-                    basePnL.rows[p].ebit = basePnL.rows[p].ebitda + basePnL.rows[p].da;
-                    basePnL.rows[p].ebt = basePnL.rows[p].ebit + basePnL.rows[p].interest + basePnL.rows[p].other;
-                    basePnL.rows[p].net = basePnL.rows[p].ebt + basePnL.rows[p].tax;
-                }
-            }
-
-
-            // Получаем базовый Календарь (для кэша)
             var baseCal = graph.getCashFlowCalendar(startMonth, horizon);
 
-            // Сохраняем копии узлов, которые могут меняться от событий
-            var savedNodes = {};
-            if (forecastMode === 'drivers') {
-                forecastEvents.forEach(function (evt) {
-                    if (!savedNodes[evt.param] && graph.nodes[evt.param]) {
-                        savedNodes[evt.param] = graph.nodes[evt.param].value;
-                    }
-                });
-            }
-            // Сохраняем базовое значение ключевого драйвера для сезонности
+            // Сохраняем базовые значения узлов для расчёта коэффициентов
+            var baseNodes = {};
+            Object.keys(graph.nodes).forEach(function (k) {
+                baseNodes[k] = graph.nodes[k].value;
+            });
+
+            // Ключевой параметр для сезонности
             var seasonalParam = (graph.industry === 'production' || graph.industry === 'retail') ? 'VOLUME' :
                 (graph.industry === 'it') ? 'UTILIZATION' :
                     (graph.industry === 'services') ? 'CLIENTS' :
@@ -3237,69 +3213,38 @@
             var rows = [];
             var chartData = { revenue: [], profit: [], cash: [], baseRevenue: [] };
             var runningCash = 0;
-            var savedMacroBase = {};
-            if (forecastMode === 'macro') {
-                MACRO_PARAMS.forEach(function (mp) {
-                    if (graph.nodes[mp.id]) {
-                        savedMacroBase[mp.id] = graph.nodes[mp.id].value;
-                    }
-                });
-                // Сохраняем также все INPUT-узлы, которые меняются макро-формулами
-                var industryFormulas = MACRO_FORMULAS[graph.industry] || {};
-                var commonFormulas = MACRO_FORMULAS['common'] || {};
-                [commonFormulas, industryFormulas].forEach(function (fs) {
-                    Object.keys(fs).forEach(function (macroId) {
-                        Object.keys(fs[macroId]).forEach(function (targetId) {
-                            if (graph.nodes[targetId] && !savedMacroBase[targetId]) {
-                                savedMacroBase[targetId] = graph.nodes[targetId].value;
-                            }
-                        });
-                    });
-                });
-            }
 
             for (var p = 0; p < horizon; p++) {
-                var baseRev = basePnL.rows[p].revenue;
-                var baseProfit = basePnL.rows[p].net;
-                var baseCash = baseCal.periods[p].endCash;
-                var revMultiplier = 1;
-                var costMultiplier = 1;
-                var rev, cogs, gross, selling, admin, ebitda, da, ebit, interest, other, ebt, tax, profit;
+                var mo = (startMonth + p) % 12;
+                var seasonCoef = (graph.company && graph.company.season) ? (graph.company.season[mo] || 1) : 1;
 
-                if (forecastMode === 'drivers') {
-                    // Восстанавливаем узлы к исходным значениям
-                    Object.keys(savedNodes).forEach(function (nodeId) {
-                        if (graph.nodes[nodeId]) {
-                            graph.nodes[nodeId].value = savedNodes[nodeId];
-                        }
-                    });
+                // Восстанавливаем модель к базовому состоянию
+                Object.keys(baseNodes).forEach(function (k) {
+                    if (graph.nodes[k]) graph.nodes[k].value = baseNodes[k];
+                });
 
-                    // Применяем сезонность к ключевому драйверу
-                    if (forecastUseSeason && graph.company && graph.company.season) {
-                        var seasonCoef = graph.company.season[(startMonth + p) % 12] || 1;
-                        var seasonalParam = (graph.industry === 'production' || graph.industry === 'retail') ? 'VOLUME' :
-                            (graph.industry === 'it') ? 'UTILIZATION' :
-                                (graph.industry === 'services') ? 'CLIENTS' :
-                                    (graph.industry === 'logistics') ? 'KM_PER_MONTH' : null;
-                        if (seasonalParam && graph.nodes[seasonalParam] && baseSeasonalValue) {
-                            graph.nodes[seasonalParam].value = baseSeasonalValue * seasonCoef;
-                        }
+                // === ПРИМЕНЯЕМ ИЗМЕНЕНИЯ ===
+
+                if (forecastMode === 'drivers' && forecastEvents.length > 0) {
+                    // Применяем сезонность
+                    if (forecastUseSeason && seasonalParam && graph.nodes[seasonalParam]) {
+                        graph.nodes[seasonalParam].value = baseSeasonalValue * seasonCoef;
                     }
 
-                    // Применяем события, активные в этом месяце
+                    // Применяем события
                     forecastEvents.forEach(function (evt) {
                         if (p >= evt.month && graph.nodes[evt.param]) {
                             if (evt.type === 'set') {
                                 graph.nodes[evt.param].value = evt.value;
                             } else if (evt.type === 'delta') {
-                                graph.nodes[evt.param].value = savedNodes[evt.param] + evt.value;
+                                graph.nodes[evt.param].value = baseNodes[evt.param] + evt.value;
                             } else if (evt.type === 'delta_percent') {
-                                graph.nodes[evt.param].value = savedNodes[evt.param] * (1 + evt.value / 100);
+                                graph.nodes[evt.param].value = baseNodes[evt.param] * (1 + evt.value / 100);
                             }
                         }
                     });
 
-                    // Пересчитываем формулы и модель
+                    // Пересчитываем
                     Object.keys(graph.nodes).forEach(function (key) {
                         var n = graph.nodes[key];
                         if (n.formula && n.enabled !== false) {
@@ -3307,21 +3252,6 @@
                         }
                     });
                     graph.compute();
-
-                    // Берём результаты напрямую из модели (как в макро-режиме)
-                    rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : baseRev;
-                    cogs = graph.nodes['COGS'] ? -Math.abs(graph.nodes['COGS'].value) : basePnL.rows[p].cogs;
-                    gross = rev + cogs;
-                    selling = graph.nodes['SELLING_EXP'] ? -Math.abs(graph.nodes['SELLING_EXP'].value) : basePnL.rows[p].selling;
-                    admin = graph.nodes['ADMIN_EXP'] ? -Math.abs(graph.nodes['ADMIN_EXP'].value) : basePnL.rows[p].admin;
-                    ebitda = gross + selling + admin;
-                    da = basePnL.rows[p].da;
-                    ebit = ebitda + da;
-                    interest = basePnL.rows[p].interest;
-                    other = basePnL.rows[p].other;
-                    ebt = ebit + interest + other;
-                    tax = basePnL.rows[p].tax;
-                    profit = ebt + tax;
                 }
 
                 if (forecastMode === 'macro') {
@@ -3329,19 +3259,12 @@
                     var nextQuarterIndex = Math.min(quarterIndex + 1, 3);
                     var progressInQuarter = (p % 3) / 3;
 
-
-                    Object.keys(savedMacroBase).forEach(function (id) {
-                        if (graph.nodes[id]) graph.nodes[id].value = savedMacroBase[id];
-                    });
-                    // Применяем сезонность к ключевому драйверу
-                    if (forecastUseSeason && graph.company && graph.company.season) {
-                        var seasonCoefMacro = graph.company.season[(startMonth + p) % 12] || 1;
-                        if (seasonalParam && graph.nodes[seasonalParam] && baseSeasonalValue) {
-                            graph.nodes[seasonalParam].value = baseSeasonalValue * seasonCoefMacro;
-                        }
+                    // Применяем сезонность
+                    if (forecastUseSeason && seasonalParam && graph.nodes[seasonalParam]) {
+                        graph.nodes[seasonalParam].value = baseSeasonalValue * seasonCoef;
                     }
 
-                    // Применяем макро-значения к модели
+                    // Применяем макро-значения
                     Object.keys(forecastMacro).forEach(function (paramId) {
                         var macro = forecastMacro[paramId];
                         if (macro && macro.quarters && graph.nodes[paramId]) {
@@ -3351,28 +3274,21 @@
                         }
                     });
 
-                    // Применяем макро-формулы к INPUT-узлам
+                    // Макро-формулы
                     var industryFormulas = MACRO_FORMULAS[graph.industry] || {};
                     var commonFormulas = MACRO_FORMULAS['common'] || {};
-
-                    [commonFormulas, industryFormulas].forEach(function (formulaSet) {
-                        Object.keys(formulaSet).forEach(function (macroId) {
-                            var newMacroVal = graph.nodes[macroId] ? graph.nodes[macroId].value : 0;
-                            var baseMacroVal = savedMacroBase[macroId] || newMacroVal;
-                            var targets = formulaSet[macroId];
-
-                            Object.keys(targets).forEach(function (targetId) {
-                                var rule = targets[targetId];
+                    [commonFormulas, industryFormulas].forEach(function (fs) {
+                        Object.keys(fs).forEach(function (macroId) {
+                            var newMacroVal = graph.nodes[macroId]?.value || 0;
+                            var baseMacroVal = baseNodes[macroId] || newMacroVal;
+                            Object.keys(fs[macroId]).forEach(function (targetId) {
+                                var rule = fs[macroId][targetId];
                                 if (!graph.nodes[targetId]) return;
-                                var baseTargetVal = savedMacroBase[targetId] || graph.nodes[targetId].value;
-                                if (!baseTargetVal) baseTargetVal = 1;
-
+                                var baseTargetVal = baseNodes[targetId] || graph.nodes[targetId].value || 1;
                                 if (rule.type === 'relative') {
-                                    // Относительное изменение: target = base × (1 + coeff × (macro - base_macro) / base_macro)
                                     var macroChange = baseMacroVal > 0 ? (newMacroVal - baseMacroVal) / baseMacroVal : 0;
                                     graph.nodes[targetId].value = baseTargetVal * (1 + rule.coeff * macroChange);
                                 } else if (rule.type === 'absolute_pct') {
-                                    // Абсолютное изменение в процентах: target = base × (1 + coeff × (macro - base_macro))
                                     var delta = rule.coeff * (newMacroVal - baseMacroVal);
                                     graph.nodes[targetId].value = baseTargetVal * (1 + delta);
                                 }
@@ -3380,44 +3296,74 @@
                         });
                     });
 
-                    // Пересчитываем формулы и модель
                     Object.keys(graph.nodes).forEach(function (key) {
                         var n = graph.nodes[key];
                         if (n.formula && n.enabled !== false) {
                             try { n.value = graph._evalFormula(n.formula); } catch (e) { }
                         }
                     });
-                    // Применяем сезонность после макро-формул
-                    if (forecastUseSeason && graph.company && graph.company.season) {
-                        var seasonCoefMacro = graph.company.season[(startMonth + p) % 12] || 1;
-                        if (seasonalParam && graph.nodes[seasonalParam]) {
-                            graph.nodes[seasonalParam].value = (graph.nodes[seasonalParam].value || baseSeasonalValue) * seasonCoefMacro;
-                        }
-                    }
                     graph.compute();
-
-                    // Результаты из модели
-                    rev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : baseRev;
-                    cogs = graph.nodes['COGS'] ? -Math.abs(graph.nodes['COGS'].value) : basePnL.rows[p].cogs;
-                    gross = rev + cogs;
-                    selling = graph.nodes['SELLING_EXP'] ? -Math.abs(graph.nodes['SELLING_EXP'].value) : basePnL.rows[p].selling;
-                    admin = graph.nodes['ADMIN_EXP'] ? -Math.abs(graph.nodes['ADMIN_EXP'].value) : basePnL.rows[p].admin;
-                    ebitda = gross + selling + admin;
-                    da = basePnL.rows[p].da;
-                    ebit = ebitda + da;
-                    interest = basePnL.rows[p].interest;
-                    other = basePnL.rows[p].other;
-                    ebt = ebit + interest + other;
-                    tax = basePnL.rows[p].tax;
-                    profit = ebt + tax;
                 }
 
-                // Кэш
-                var profitDiff = profit - baseProfit;
-                if (p === 0) {
-                    runningCash = baseCal.periods[0].startCash + baseCal.periods[0].netFlow + profitDiff;
+                // === РЕЗУЛЬТАТЫ ===
+
+                var hasChanges = (forecastMode === 'drivers' && forecastEvents.length > 0) || forecastMode === 'macro';
+
+                if (hasChanges) {
+                    // Считаем коэффициент отклонения от базы
+                    var newRev = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : basePnL.rows[0].revenue;
+                    var newCOGS = graph.nodes['COGS'] ? Math.abs(graph.nodes['COGS'].value) : Math.abs(basePnL.rows[0].cogs);
+                    var newSelling = graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : Math.abs(basePnL.rows[0].selling);
+                    var newAdmin = graph.nodes['ADMIN_EXP'] ? Math.abs(graph.nodes['ADMIN_EXP'].value) : Math.abs(basePnL.rows[0].admin);
+
+                    var baseRev = basePnL.rows[0].revenue;
+                    var baseCOGS = Math.abs(basePnL.rows[0].cogs);
+                    var baseSell = Math.abs(basePnL.rows[0].selling);
+                    var baseAdm = Math.abs(basePnL.rows[0].admin);
+
+                    var revMult = baseRev > 0 ? newRev / baseRev : 1;
+                    var costMult = (baseCOGS + baseSell + baseAdm) > 0 ? (newCOGS + newSelling + newAdmin) / (baseCOGS + baseSell + baseAdm) : 1;
+
+                    var rev = basePnL.rows[p].revenue * revMult;
+                    var cogs = basePnL.rows[p].cogs * costMult;
+                    var gross = rev + cogs;
+                    var selling = basePnL.rows[p].selling * costMult;
+                    var admin = basePnL.rows[p].admin * costMult;
+                    var ebitda = gross + selling + admin;
+                    var da = basePnL.rows[p].da;
+                    var ebit = ebitda + da;
+                    var interest = basePnL.rows[p].interest;
+                    var other = basePnL.rows[p].other;
+                    var ebt = ebit + interest + other;
+                    var tax = basePnL.rows[p].tax;
+                    var profit = ebt + tax;
                 } else {
-                    runningCash += baseCal.periods[p].netFlow + profitDiff;
+                    // Без изменений — P&L как есть
+                    var rev = basePnL.rows[p].revenue;
+                    var profit = basePnL.rows[p].net;
+                    var cogs = basePnL.rows[p].cogs;
+                    var gross = basePnL.rows[p].gross;
+                    var selling = basePnL.rows[p].selling;
+                    var admin = basePnL.rows[p].admin;
+                    var ebitda = basePnL.rows[p].ebitda;
+                }
+
+                // === КЭШ ===
+                if (graph.industry === 'logistics') {
+                    if (p === 0) {
+                        runningCash = (graph.nodes['CASH_START']?.value || 0) + profit;
+                    } else {
+                        runningCash += profit;
+                    }
+                } else {
+                    var baseNetFlow = baseCal.periods[p].netFlow;
+                    var baseProfit = basePnL.rows[p].net;
+                    var profitDiff = profit - baseProfit;
+                    if (p === 0) {
+                        runningCash = baseCal.periods[0].startCash + baseNetFlow + profitDiff;
+                    } else {
+                        runningCash += baseNetFlow + profitDiff;
+                    }
                 }
                 var cash = runningCash;
 
@@ -3436,29 +3382,11 @@
                 chartData.baseRevenue.push(basePnL.rows[p].revenue);
             }
 
-            // Восстанавливаем модель после макро
-            if (forecastMode === 'macro') {
-                Object.keys(forecastMacro).forEach(function (paramId) {
-                    if (graph.nodes[paramId]) {
-                        graph.nodes[paramId].value = forecastMacro[paramId].current;
-                    }
-                });
-            }
-            if (forecastMode === 'drivers') {
-                Object.keys(savedNodes).forEach(function (nodeId) {
-                    if (graph.nodes[nodeId]) {
-                        graph.nodes[nodeId].value = savedNodes[nodeId];
-                    }
-                });
-            }
+            // Восстанавливаем модель
+            Object.keys(baseNodes).forEach(function (k) {
+                if (graph.nodes[k]) graph.nodes[k].value = baseNodes[k];
+            });
             graph.compute();
-
-            if (savedMacroBase) {
-                Object.keys(savedMacroBase).forEach(function (id) {
-                    if (graph.nodes[id]) graph.nodes[id].value = savedMacroBase[id];
-                });
-                graph.compute();
-            }
 
             forecastData = { rows: rows, chartData: chartData, months: MONTHS_NAMES, startMonth: startMonth };
 
