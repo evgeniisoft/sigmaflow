@@ -1152,7 +1152,10 @@
                     graph.company.insurance_rate = preset.company.insurance_rate || 0.30;
                 }
 
-                graph.name = preset.name || graph.name;
+                // Не перезаписываем имя, если пользователь уже ввёл своё
+                if (!companyName || companyName === 'Новая компания') {
+                    graph.name = preset.name || graph.name;
+                }
             } else {
                 // Старое поведение, если пресета нет
                 if (!graph.company) graph.company = {};
