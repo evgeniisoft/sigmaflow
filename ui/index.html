@@ -3540,10 +3540,25 @@
                     if (!graph) return;
                     if (!graph.scenarios) graph.scenarios = [];
 
+                    var shocks = [];
+                    forecastEvents.forEach(function (evt) {
+                        var node = graph.nodes[evt.param];
+                        var baseVal = node ? node.value : 0;
+                        shocks.push({
+                            node: evt.param,
+                            type: evt.type,
+                            value: evt.value,
+                            label: node ? node.label : evt.param,
+                            baseValue: baseVal
+                        });
+                    });
+
                     var scenario = {
-                        name: 'Прогноз ' + (forecastMode === 'drivers' ? '(драйверы)' : '(макро)') + ' ' + new Date().toLocaleDateString(),
-                        desc: '12 мес.',
-                        shocks: []
+                        name: 'Прогноз (драйверы) ' + new Date().toLocaleDateString(),
+                        desc: forecastEvents.length + ' событий. ' + forecastEvents.map(function (e) {
+                            return e.param + (e.type === 'delta' ? '+' : '=') + e.value;
+                        }).join(', '),
+                        shocks: shocks
                     };
 
                     graph.scenarios.push(scenario);
@@ -3756,6 +3771,37 @@
                 });
                 buildForecast();
             });
+            var summaryEl = document.getElementById('forecast-summary');
+            if (summaryEl && summaryEl.innerHTML.indexOf('btn-save-macro-scenario') === -1) {
+                summaryEl.innerHTML += '<button id="btn-save-macro-scenario" class="primary" style="margin-top:8px;width:100%;">СОХРАНИТЬ КАК СЦЕНАРИЙ</button>';
+                document.getElementById('btn-save-macro-scenario').addEventListener('click', function () {
+                    if (!graph) return;
+                    if (!graph.scenarios) graph.scenarios = [];
+
+                    var shocks = [];
+                    Object.keys(forecastMacro).forEach(function (key) {
+                        var node = graph.nodes[key];
+                        shocks.push({
+                            node: key,
+                            type: 'set',
+                            value: forecastMacro[key].quarters[0],
+                            label: node ? node.label : key,
+                            baseValue: node ? node.value : 0
+                        });
+                    });
+
+                    var scenario = {
+                        name: 'Прогноз (макро) ' + new Date().toLocaleDateString(),
+                        desc: Object.keys(forecastMacro).length + ' факторов',
+                        shocks: shocks
+                    };
+
+                    graph.scenarios.push(scenario);
+                    saveScenarios();
+                    renderScenarios();
+                    notify('Сценарий сохранён: ' + scenario.name);
+                });
+            }
         }
 
         function deleteForecastEvent(idx) {
@@ -6992,8 +7038,11 @@
             (sc.shocks || []).forEach(function (shock) {
                 var node = graph.nodes[shock.node];
                 var label = node ? (node.label || node.id) : shock.node;
-                var oldVal = (sc.baseValues && sc.baseValues[shock.node] !== undefined) ? sc.baseValues[shock.node] : 0;
-                var newVal = shock.value;
+                var oldVal = shock.baseValue !== undefined ? shock.baseValue :
+                    ((sc.baseValues && sc.baseValues[shock.node] !== undefined) ? sc.baseValues[shock.node] : 0);
+                var newVal = shock.type === 'delta' ? oldVal + shock.value :
+                    shock.type === 'delta_percent' ? oldVal * (1 + shock.value / 100) :
+                    shock.value;
                 var delta = newVal - oldVal;
                 var color = delta >= 0 ? 'var(--ok)' : 'var(--critical)';
 
