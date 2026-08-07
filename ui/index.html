@@ -2920,7 +2920,11 @@
         }
 
         function showDriverDetail(nodeData) {
-            var treeConfig = DRIVER_TREES[graph.industry];
+            var industryKey = graph.industry;
+            if (graph.industry === 'logistics') {
+                industryKey = graph.nodes['CARRIER_COST']?.value > 0 ? 'logistics_expeditor' : 'logistics_carrier';
+            }
+            var treeConfig = DRIVER_TREES[industryKey];
             var panel = document.getElementById('driver-tree-detail');
             if (!panel) return;
 
