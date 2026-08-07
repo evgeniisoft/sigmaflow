@@ -3303,6 +3303,17 @@
                         }
                     });
                     graph.compute();
+
+                    // Коэффициенты для этого месяца
+                    var newRevM = graph.nodes['REVENUE'] ? Math.abs(graph.nodes['REVENUE'].value) : basePnL.rows[p].revenue;
+                    var baseRevM = basePnL.rows[p].revenue;
+                    revMult = baseRevM > 0 ? newRevM / baseRevM : 1;
+
+                    var newCOGSM = graph.nodes['COGS'] ? Math.abs(graph.nodes['COGS'].value) : Math.abs(basePnL.rows[p].cogs);
+                    var newSellM = graph.nodes['SELLING_EXP'] ? Math.abs(graph.nodes['SELLING_EXP'].value) : Math.abs(basePnL.rows[p].selling);
+                    var newAdminM = graph.nodes['ADMIN_EXP'] ? Math.abs(graph.nodes['ADMIN_EXP'].value) : Math.abs(basePnL.rows[p].admin);
+                    var baseCostsM = Math.abs(basePnL.rows[p].cogs) + Math.abs(basePnL.rows[p].selling) + Math.abs(basePnL.rows[p].admin);
+                    costMult = baseCostsM > 0 ? (newCOGSM + newSellM + newAdminM) / baseCostsM : 1;
                 }
 
                 // === РЕЗУЛЬТАТЫ ===
@@ -3321,8 +3332,7 @@
                     var baseSell = Math.abs(basePnL.rows[0].selling);
                     var baseAdm = Math.abs(basePnL.rows[0].admin);
 
-                    var revMult = baseRev > 0 ? newRev / baseRev : 1;
-                    var costMult = (baseCOGS + baseSell + baseAdm) > 0 ? (newCOGS + newSelling + newAdmin) / (baseCOGS + baseSell + baseAdm) : 1;
+                    
 
                     var rev = basePnL.rows[p].revenue * revMult;
                     var cogs = basePnL.rows[p].cogs * costMult;
