@@ -1177,6 +1177,371 @@ var DRIVER_TREES = {
                 computed: true
             }
         }
+    },
+
+    // ============================================================
+    // ЛОГИСТИКА — СВОЙ АВТОПАРК
+    // ============================================================
+    logistics_carrier: {
+        root: 'NET_PROFIT',
+        label: 'Логистика (свой автопарк)',
+        nodes: {
+            'NET_PROFIT': {
+                label: 'Чистая прибыль',
+                type: 'result',
+                children: ['REVENUE', 'TOTAL_COSTS'],
+                signs: { 'REVENUE': 1, 'TOTAL_COSTS': -1 }
+            },
+            'REVENUE': {
+                label: 'Выручка',
+                type: 'computed',
+                children: ['RATE_PER_KM', 'KM_PER_MONTH'],
+                formula: 'RATE_PER_KM * KM_PER_MONTH',
+                drivers: ['RATE_PER_KM', 'KM_PER_MONTH']
+            },
+            'RATE_PER_KM': {
+                label: 'Ставка за 1 км',
+                type: 'driver',
+                nodeId: 'RATE_PER_KM',
+                min: 30, max: 100, step: 1,
+                unit: '₽/км',
+                affects: ['REVENUE']
+            },
+            'KM_PER_MONTH': {
+                label: 'Пробег в месяц',
+                type: 'driver',
+                nodeId: 'KM_PER_MONTH',
+                min: 10000, max: 500000, step: 5000,
+                unit: 'км',
+                affects: ['REVENUE', 'FUEL_COST', 'TOLL_ROADS_COST', 'TIRES_COST', 'MAINTENANCE_COST'],
+                nonlinear: {
+                    'FUEL_COST': {
+                        type: 'two_part',
+                        params: { base: 0, perUnit: 0.35 },
+                        description: 'Топливо = пробег × расход / 100 × цена'
+                    },
+                    'TOLL_ROADS_COST': {
+                        type: 'two_part',
+                        params: { base: 0, perUnit: 0.2 },
+                        description: 'Платные дороги ~20% от пробега'
+                    }
+                }
+            },
+            'TOTAL_COSTS': {
+                label: 'Общие расходы',
+                type: 'computed',
+                children: ['COGS', 'OPEX', 'INTEREST', 'TAX']
+            },
+            'COGS': {
+                label: 'Себестоимость',
+                type: 'computed',
+                children: ['FUEL_COST', 'DRIVERS_PAYROLL', 'TOLL_ROADS_COST', 'TIRES_COST', 'MAINTENANCE_COST', 'INSURANCE_COST', 'DISPATCH_SERVICE', 'TRAVEL_COST', 'FINES_COST']
+            },
+            'FUEL_PRICE': {
+                label: 'Цена дизеля',
+                type: 'driver',
+                nodeId: 'FUEL_PRICE',
+                min: 40, max: 100, step: 1,
+                unit: '₽/л',
+                affects: ['FUEL_COST']
+            },
+            'FUEL_CONSUMPTION': {
+                label: 'Расход топлива',
+                type: 'driver',
+                nodeId: 'FUEL_CONSUMPTION',
+                min: 25, max: 50, step: 1,
+                unit: 'л/100км'
+            },
+            'DRIVERS_HEADCOUNT': {
+                label: 'Водители',
+                type: 'driver',
+                nodeId: 'DRIVERS_HEADCOUNT',
+                min: 1, max: 200, step: 1,
+                unit: 'чел',
+                affects: ['DRIVERS_PAYROLL']
+            },
+            'DRIVERS_AVG_SALARY': {
+                label: 'ЗП водителя',
+                type: 'driver',
+                nodeId: 'DRIVERS_AVG_SALARY',
+                min: 50000, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'TRUCKS_COUNT': {
+                label: 'Количество тягачей',
+                type: 'driver',
+                nodeId: 'TRUCKS_COUNT',
+                min: 1, max: 200, step: 1,
+                unit: 'ед',
+                affects: ['KM_PER_MONTH'],
+                nonlinear: {
+                    'KM_PER_MONTH': {
+                        type: 'capacity',
+                        paramNode: 'AVG_KM_PER_TRUCK',
+                        defaultValue: 10000,
+                        description: 'Пробег = тягачи × средний пробег на тягач'
+                    }
+                }
+            },
+            'AVG_KM_PER_TRUCK': {
+                label: 'Средний пробег на тягач',
+                type: 'hidden',
+                nodeId: 'AVG_KM_PER_TRUCK',
+                defaultValue: 10000
+            },
+            'TOLL_ROADS_COST': {
+                label: 'Платные дороги',
+                type: 'driver',
+                nodeId: 'TOLL_ROADS_COST',
+                min: 0, max: 500000, step: 5000,
+                unit: '₽/мес'
+            },
+            'TIRES_COST': {
+                label: 'Резина',
+                type: 'driver',
+                nodeId: 'TIRES_COST',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'MAINTENANCE_COST': {
+                label: 'ТО и ремонт',
+                type: 'driver',
+                nodeId: 'MAINTENANCE_COST',
+                min: 0, max: 300000, step: 5000,
+                unit: '₽/мес'
+            },
+            'OPEX': {
+                label: 'Операционные расходы',
+                type: 'computed',
+                children: ['ADMIN_PAYROLL', 'RENT', 'IT_EXP', 'MARKETING', 'BANK_FEES', 'OTHER_OPEX']
+            },
+            'ADMIN_PAYROLL': {
+                label: 'ФОТ АУП',
+                type: 'computed',
+                children: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY'],
+                formula: 'ADMIN_HEADCOUNT * ADMIN_AVG_SALARY',
+                drivers: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY']
+            },
+            'ADMIN_HEADCOUNT': {
+                label: 'АУП',
+                type: 'driver',
+                nodeId: 'ADMIN_HEADCOUNT',
+                min: 0, max: 30, step: 1,
+                unit: 'чел'
+            },
+            'ADMIN_AVG_SALARY': {
+                label: 'ЗП АУП',
+                type: 'driver',
+                nodeId: 'ADMIN_AVG_SALARY',
+                min: 50000, max: 300000, step: 10000,
+                unit: '₽/мес'
+            },
+            'RENT': {
+                label: 'Аренда',
+                type: 'driver',
+                nodeId: 'RENT',
+                min: 0, max: 500000, step: 10000,
+                unit: '₽/мес'
+            },
+            'IT_EXP': {
+                label: 'IT-расходы',
+                type: 'driver',
+                nodeId: 'IT_EXP',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'MARKETING': {
+                label: 'Маркетинг',
+                type: 'driver',
+                nodeId: 'MARKETING',
+                min: 0, max: 500000, step: 10000,
+                unit: '₽/мес'
+            },
+            'OTHER_OPEX': {
+                label: 'Прочие',
+                type: 'computed',
+                children: ['BANK_FEES', 'INSURANCE_COST', 'UTILITIES', 'OFFICE_EXP', 'TRAVEL_COST']
+            },
+            'INTEREST': { label: 'Проценты', type: 'driver', nodeId: 'INTEREST', computed: true },
+            'TAX': { label: 'Налог', type: 'driver', nodeId: 'TAX', computed: true }
+        }
+    },
+
+    // ============================================================
+    // ЛОГИСТИКА — ЭКСПЕДИТОР
+    // ============================================================
+    logistics_expeditor: {
+        root: 'NET_PROFIT',
+        label: 'Логистика (экспедитор)',
+        nodes: {
+            'NET_PROFIT': {
+                label: 'Чистая прибыль',
+                type: 'result',
+                children: ['MARGIN', 'TOTAL_COSTS'],
+                signs: { 'MARGIN': 1, 'TOTAL_COSTS': -1 }
+            },
+            'MARGIN': {
+                label: 'Маржа',
+                type: 'computed',
+                children: ['REVENUE', 'CARRIER_COST'],
+                formula: 'REVENUE - CARRIER_COST',
+                drivers: []
+            },
+            'REVENUE': {
+                label: 'Выручка',
+                type: 'computed',
+                children: ['RATE_PER_KM', 'KM_PER_MONTH'],
+                formula: 'RATE_PER_KM * KM_PER_MONTH',
+                drivers: ['RATE_PER_KM', 'KM_PER_MONTH']
+            },
+            'RATE_PER_KM': {
+                label: 'Ставка клиента',
+                type: 'driver',
+                nodeId: 'RATE_PER_KM',
+                min: 30, max: 100, step: 1,
+                unit: '₽/км',
+                affects: ['REVENUE', 'MARGIN']
+            },
+            'KM_PER_MONTH': {
+                label: 'Пробег в месяц',
+                type: 'driver',
+                nodeId: 'KM_PER_MONTH',
+                min: 10000, max: 500000, step: 5000,
+                unit: 'км',
+                affects: ['REVENUE', 'CARRIER_COST']
+            },
+            'CARRIER_RATE': {
+                label: 'Ставка перевозчика',
+                type: 'driver',
+                nodeId: 'CARRIER_RATE',
+                min: 25, max: 60, step: 1,
+                unit: '₽/км',
+                affects: ['CARRIER_COST', 'MARGIN']
+            },
+            'CARRIER_COST': {
+                label: 'Оплата перевозчикам',
+                type: 'computed',
+                children: ['KM_PER_MONTH', 'CARRIER_RATE'],
+                formula: 'KM_PER_MONTH * CARRIER_RATE',
+                drivers: []
+            },
+            'TOTAL_COSTS': {
+                label: 'Общие расходы',
+                type: 'computed',
+                children: ['COGS', 'OPEX', 'INTEREST', 'TAX']
+            },
+            'COGS': {
+                label: 'Себестоимость',
+                type: 'computed',
+                children: ['CARRIER_COST', 'LOGISTICS_PAYROLL', 'CLAIMS_RESERVE']
+            },
+            'LOGISTICS_HEADCOUNT': {
+                label: 'Логисты',
+                type: 'driver',
+                nodeId: 'LOGISTICS_HEADCOUNT',
+                min: 1, max: 100, step: 1,
+                unit: 'чел',
+                affects: ['LOGISTICS_PAYROLL', 'KM_PER_MONTH'],
+                nonlinear: {
+                    'KM_PER_MONTH': {
+                        type: 'capacity',
+                        paramNode: 'KM_PER_LOGISTICIAN',
+                        defaultValue: 15000,
+                        description: '1 логист = ~15 000 км/мес'
+                    }
+                }
+            },
+            'KM_PER_LOGISTICIAN': {
+                label: 'Км на логиста',
+                type: 'hidden',
+                nodeId: 'KM_PER_LOGISTICIAN',
+                defaultValue: 15000
+            },
+            'LOGISTICS_AVG_SALARY': {
+                label: 'ЗП логиста',
+                type: 'driver',
+                nodeId: 'LOGISTICS_AVG_SALARY',
+                min: 50000, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'CLAIMS_RESERVE': {
+                label: 'Претензии',
+                type: 'driver',
+                nodeId: 'CLAIMS_RESERVE',
+                min: 0, max: 10, step: 0.5,
+                unit: '%'
+            },
+            'TENNERS_COST': {
+                label: 'Тендеры',
+                type: 'driver',
+                nodeId: 'TENNERS_COST',
+                min: 0, max: 100000, step: 5000,
+                unit: '₽/мес'
+            },
+            'OPEX': {
+                label: 'Операционные расходы',
+                type: 'computed',
+                children: ['ADMIN_PAYROLL', 'SALES_PAYROLL', 'RENT', 'IT_EXP', 'MARKETING', 'BANK_FEES', 'TENNERS_COST']
+            },
+            'ADMIN_PAYROLL': {
+                label: 'ФОТ АУП',
+                type: 'computed',
+                children: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY'],
+                formula: 'ADMIN_HEADCOUNT * ADMIN_AVG_SALARY',
+                drivers: ['ADMIN_HEADCOUNT', 'ADMIN_AVG_SALARY']
+            },
+            'ADMIN_HEADCOUNT': {
+                label: 'АУП',
+                type: 'driver',
+                nodeId: 'ADMIN_HEADCOUNT',
+                min: 0, max: 20, step: 1,
+                unit: 'чел'
+            },
+            'ADMIN_AVG_SALARY': {
+                label: 'ЗП АУП',
+                type: 'driver',
+                nodeId: 'ADMIN_AVG_SALARY',
+                min: 50000, max: 300000, step: 10000,
+                unit: '₽/мес'
+            },
+            'SALES_HEADCOUNT': {
+                label: 'Продавцы',
+                type: 'driver',
+                nodeId: 'SALES_HEADCOUNT',
+                min: 0, max: 20, step: 1,
+                unit: 'чел'
+            },
+            'SALES_AVG_SALARY': {
+                label: 'ЗП продавцов',
+                type: 'driver',
+                nodeId: 'SALES_AVG_SALARY',
+                min: 40000, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'RENT': {
+                label: 'Аренда',
+                type: 'driver',
+                nodeId: 'RENT',
+                min: 0, max: 300000, step: 10000,
+                unit: '₽/мес'
+            },
+            'IT_EXP': {
+                label: 'IT-расходы',
+                type: 'driver',
+                nodeId: 'IT_EXP',
+                min: 0, max: 200000, step: 5000,
+                unit: '₽/мес'
+            },
+            'MARKETING': {
+                label: 'Маркетинг',
+                type: 'driver',
+                nodeId: 'MARKETING',
+                min: 0, max: 500000, step: 10000,
+                unit: '₽/мес'
+            },
+            'INTEREST': { label: 'Проценты', type: 'driver', nodeId: 'INTEREST', computed: true },
+            'TAX': { label: 'Налог', type: 'driver', nodeId: 'TAX', computed: true }
+        }
     }
 };
 
