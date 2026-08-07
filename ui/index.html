@@ -3281,6 +3281,13 @@
                     Object.keys(savedMacroBase).forEach(function (id) {
                         if (graph.nodes[id]) graph.nodes[id].value = savedMacroBase[id];
                     });
+                    // Применяем сезонность к ключевому драйверу
+                    if (forecastUseSeason && graph.company && graph.company.season) {
+                        var seasonCoefMacro = graph.company.season[(startMonth + p) % 12] || 1;
+                        if (seasonalParam && graph.nodes[seasonalParam] && baseSeasonalValue) {
+                            graph.nodes[seasonalParam].value = baseSeasonalValue * seasonCoefMacro;
+                        }
+                    }
 
                     // Применяем макро-значения к модели
                     Object.keys(forecastMacro).forEach(function (paramId) {
