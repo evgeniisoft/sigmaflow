@@ -910,7 +910,14 @@
                 hasCompanies = true;
                 var opt = document.createElement('option');
                 opt.value = id;
-                opt.textContent = companies[id].name + ' (' + companies[id].industry + ')';
+                var industryLabels = {
+                    'production': 'Производство',
+                    'it': 'IT',
+                    'services': 'Услуги',
+                    'retail': 'Ритейл',
+                    'logistics': 'Логистика'
+                };
+                opt.textContent = companies[id].name + ' (' + (industryLabels[companies[id].industry] || companies[id].industry) + ')';
                 if (id === current) opt.selected = true;
                 select.appendChild(opt);
             });
