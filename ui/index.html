@@ -3218,6 +3218,17 @@
                         }
                     });
 
+                    // Применяем сезонность к ключевому драйверу
+                    if (forecastUseSeason && graph.company && graph.company.season) {
+                        var seasonCoef = graph.company.season[(startMonth + p) % 12] || 1;
+                        var seasonalParam = (graph.industry === 'production' || graph.industry === 'retail') ? 'VOLUME' :
+                            (graph.industry === 'it') ? 'UTILIZATION' :
+                                (graph.industry === 'services') ? 'CLIENTS' : null;
+                        if (seasonalParam && graph.nodes[seasonalParam] && savedNodes[seasonalParam]) {
+                            graph.nodes[seasonalParam].value = savedNodes[seasonalParam] * seasonCoef;
+                        }
+                    }
+
                     // Применяем события, активные в этом месяце
                     forecastEvents.forEach(function (evt) {
                         if (p >= evt.month && graph.nodes[evt.param]) {
