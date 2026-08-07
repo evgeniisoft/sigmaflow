@@ -52,9 +52,7 @@
             <div style="display:flex;height:100%;">
                 <div style="flex:1;padding:16px;overflow-y:auto;">
                     <h3 style="margin:0 0 16px 0;">КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ</h3>
-                    <div id="dashboard-metrics"
-                        style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
-                    </div>
+                    <div id="dashboard-metrics" style="margin-bottom:24px;"></div>
                     <div id="dashboard-breakeven"
                         style="padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
                         <div id="breakeven-header"
@@ -1577,97 +1575,103 @@
             if (!graph) return;
 
             var pnl = graph.getPnL(new Date().getMonth(), 1);
-            var p = pnl.rows[0]; // первый месяц P&L — источник истины
+            var p = pnl.rows[0];
+            var cal = graph.getCashFlowCalendar(new Date().getMonth(), 1);
 
-            var keyMetrics = [
-                { id: 'NET_PROFIT', label: 'Чистая прибыль', value: p.net },
-                { id: 'ROS', label: 'Рентабельность (ROS)', format: 'pct', value: p.revenue > 0 ? (p.net / p.revenue * 100) : 0 },
-                { id: 'REVENUE', label: 'Выручка', value: p.revenue },
-                { id: 'EBITDA_MARGIN', label: 'Операц. рентаб.', format: 'pct', value: p.revenue > 0 ? (p.ebitda / p.revenue * 100) : 0 },
-                { id: 'EBITDA', label: 'EBITDA', value: p.ebitda },
-                { id: 'EBIT', label: 'Операционная прибыль', value: p.ebit },
+            var metrics = [
+                // Группа 1: ДОХОДЫ И ПРИБЫЛЬ
                 {
-                    id: 'DEBT_EBITDA', label: 'Долг/EBITDA', format: 'num', value: (function () {
-                        var totalDebt = 0;
-                        if (graph.credits && graph.credits.length > 0) {
-                            graph.credits.forEach(function (cr) { totalDebt += cr.amount || 0; });
-                        } else {
-                            totalDebt = graph.nodes['LOANS'] ? graph.nodes['LOANS'].value : 0;
-                        }
-                        return p.ebitda !== 0 ? (totalDebt / p.ebitda) : 0;
-                    })()
+                    group: 'ДОХОДЫ И ПРИБЫЛЬ',
+                    items: [
+                        {
+                            id: 'REVENUE', label: 'Выручка (без НДС)', value: p.revenue, format: 'money',
+                            sub: (function () {
+                                var isNDSPayer = graph.company && !graph.company.nds_exempt && graph.company.nds_rate > 0;
+                                if (!isNDSPayer) return null;
+                                var ndsRate = graph.company.nds_rate || 0;
+                                var ndsAmount = Math.round(p.revenue * ndsRate);
+                                return 'НДС к уплате (' + (ndsRate * 100).toFixed(0) + '%): ' + formatValue(ndsAmount) + ' | Итого с НДС: ' + formatValue(p.revenue + ndsAmount);
+                            })()
+                        },
+                        { id: 'GROSS_PROFIT', label: 'Валовая прибыль', value: p.gross, format: 'money' },
+                        { id: 'EBITDA', label: 'EBITDA', value: p.ebitda, format: 'money' },
+                        { id: 'NET_PROFIT', label: 'Чистая прибыль', value: p.net, format: 'money' }
+                    ]
                 },
+                // Группа 2: РЕНТАБЕЛЬНОСТЬ
                 {
-                    id: 'FCF', label: 'Денежный поток', value: (function () {
-                        var cal = graph.getCashFlowCalendar(new Date().getMonth(), 1);
-                        return cal.periods[0].netFlow;
-                    })()
+                    group: 'РЕНТАБЕЛЬНОСТЬ И ЭФФЕКТИВНОСТЬ',
+                    items: [
+                        { id: 'ROS', label: 'Рентабельность (ROS)', value: p.revenue > 0 ? (p.net / p.revenue * 100) : 0, format: 'pct' },
+                        { id: 'EBITDA_MARGIN', label: 'Операционная рентаб.', value: p.revenue > 0 ? (p.ebitda / p.revenue * 100) : 0, format: 'pct' },
+                        {
+                            id: 'PAYROLL_SHARE', label: 'Доля ФОТ', value: (function () {
+                                var total = 0;
+                                ['DIRECT_LABOR', 'DEV_PAYROLL', 'SPECIALIST_PAYROLL', 'SALES_PAYROLL', 'WAREHOUSE_PAYROLL', 'ADMIN_PAYROLL'].forEach(function (pid) {
+                                    if (graph.nodes[pid]) total += Math.abs(graph.nodes[pid].value);
+                                });
+                                return p.revenue > 0 ? (total / p.revenue * 100) : 0;
+                            })(), format: 'pct'
+                        },
+                        { id: 'INTEREST_COVERAGE', label: 'Покрытие процентов', value: p.interest !== 0 ? (p.ebit / Math.abs(p.interest)) : 0, format: 'num' }
+                    ]
                 },
+                // Группа 3: ДЕНЬГИ И ДОЛГИ
                 {
-                    id: 'PAYROLL_SHARE', label: 'Доля ФОТ', format: 'pct', value: (function () {
-                        var total = 0;
-                        ['DIRECT_LABOR', 'DEV_PAYROLL', 'SPECIALIST_PAYROLL', 'SALES_PAYROLL', 'WAREHOUSE_PAYROLL', 'ADMIN_PAYROLL'].forEach(function (pid) {
-                            if (graph.nodes[pid]) total += Math.abs(graph.nodes[pid].value);
-                        });
-                        return p.revenue > 0 ? (total / p.revenue * 100) : 0;
-                    })()
-                },
-                {
-                    id: 'CASH', label: 'Остаток денег', value: (function () {
-                        var cal = graph.getCashFlowCalendar(new Date().getMonth(), 1);
-                        return cal.periods[0].endCash;
-                    })()
-                },
-                { id: 'INTEREST_COVERAGE', label: 'Покрытие проц.', format: 'num', value: p.interest !== 0 ? (p.ebit / Math.abs(p.interest)) : 0 },
-                { id: 'GROSS_PROFIT', label: 'Валовая прибыль', value: p.gross },
-                {
-                    id: 'ASSETS', label: 'Активы', value: (function () {
-                        var cal = graph.getCashFlowCalendar(new Date().getMonth(), 1);
-                        return Math.abs(p.cogs) + cal.periods[0].endCash + (graph.nodes['FIXED_ASSETS'] ? graph.nodes['FIXED_ASSETS'].value : 0);
-                    })()
+                    group: 'ДЕНЬГИ И ДОЛГИ',
+                    items: [
+                        { id: 'FCF', label: 'Денежный поток', value: cal.periods[0].netFlow, format: 'money' },
+                        { id: 'CASH', label: 'Остаток денег', value: cal.periods[0].endCash, format: 'money' },
+                        {
+                            id: 'DEBT_EBITDA', label: 'Долг/EBITDA', value: (function () {
+                                var totalDebt = 0;
+                                if (graph.credits && graph.credits.length > 0) {
+                                    graph.credits.forEach(function (cr) { totalDebt += cr.amount || 0; });
+                                } else {
+                                    totalDebt = graph.nodes['LOANS'] ? graph.nodes['LOANS'].value : 0;
+                                }
+                                return p.ebitda !== 0 ? (totalDebt / p.ebitda) : 0;
+                            })(), format: 'num'
+                        },
+                        { id: 'ASSETS', label: 'Активы', value: Math.abs(p.cogs) + cal.periods[0].endCash + (graph.nodes['FIXED_ASSETS'] ? graph.nodes['FIXED_ASSETS'].value : 0), format: 'money' }
+                    ]
                 }
             ];
 
             var html = '';
-            keyMetrics.forEach(function (m) {
-                var val = m.value !== undefined ? m.value : (graph.nodes[m.id] ? graph.nodes[m.id].value : null);
-                if (val === null || val === undefined) return;
 
-                var color = val >= 0 ? 'var(--ok)' : 'var(--critical)';
-                var formatted;
-                if (m.format === 'pct') formatted = val.toFixed(1) + '%';
-                else if (m.format === 'num') formatted = val.toFixed(1);
-                else formatted = formatInputValue(val);
+            metrics.forEach(function (group) {
+                html += '<div style="margin-bottom:20px;">';
+                html += '<div style="font-size:10px;color:var(--text-hint);letter-spacing:2px;margin-bottom:8px;padding-left:4px;">' + group.group + '</div>';
+                html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">';
 
-                var borderColor = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
+                group.items.forEach(function (m) {
+                    var val = m.value;
+                    if (val === null || val === undefined) return;
 
-                if (m.id === 'REVENUE') {
-                    var isNDSPayer = graph.company && !graph.company.nds_exempt && graph.company.nds_rate > 0;
-                    var ndsRate = graph.company ? (graph.company.nds_rate || 0) : 0;
-                    var revenueWithoutNDS = val;
-                    var ndsAmount = isNDSPayer ? Math.round(revenueWithoutNDS * ndsRate) : 0;
-                    var revenueWithNDS = isNDSPayer ? revenueWithoutNDS + ndsAmount : revenueWithoutNDS;
+                    var color = val >= 0 ? 'var(--ok)' : 'var(--critical)';
+                    var formatted;
+                    if (m.format === 'pct') formatted = val.toFixed(1) + '%';
+                    else if (m.format === 'num') formatted = val.toFixed(1);
+                    else formatted = formatValue(val);
 
-                    html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
-                    html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + ' (без НДС)</div>';
-                    html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatValue(revenueWithoutNDS) + '</div>';
-                    if (isNDSPayer) {
-                        html += '<div style="font-size:10px;color:var(--critical);margin-top:2px;">НДС к уплате (' + (ndsRate * 100).toFixed(0) + '%): ' + formatValue(ndsAmount) + '</div>';
-                        html += '<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;font-size:11px;color:var(--text-heading);">';
-                        html += 'Итого с НДС: <span style="font-weight:600;">' + formatValue(revenueWithNDS) + '</span>';
-                        html += '</div>';
+                    var borderColor = m.id === currentTracedNode ? 'var(--accent)' : 'var(--border)';
+
+                    html += '<div class="metric-card" data-node="' + m.id + '" style="padding:10px 12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
+                    html += '<div style="font-size:9px;color:var(--text-hint);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">' + m.label + '</div>';
+                    html += '<div style="font-size:16px;font-weight:700;color:' + color + ';">' + formatted + '</div>';
+                    if (m.sub) {
+                        html += '<div style="font-size:8px;color:var(--text-hint);margin-top:4px;line-height:1.3;">' + m.sub + '</div>';
                     }
                     html += '</div>';
-                } else {
-                    html += '<div class="metric-card" data-node="' + m.id + '" style="padding:12px;background:var(--bg-input);border:2px solid ' + borderColor + ';cursor:pointer;">';
-                    html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
-                    html += '<div style="font-size:18px;font-weight:700;color:' + color + ';">' + formatted + '</div>';
-                    html += '</div>';
-                }
+                });
+
+                html += '</div></div>';
             });
 
             document.getElementById('dashboard-metrics').innerHTML = html;
 
+            // Кликабельность
             document.querySelectorAll('.metric-card').forEach(function (card) {
                 card.addEventListener('click', function () {
                     var nodeId = card.dataset.node;
@@ -1690,7 +1694,6 @@
                 document.getElementById('graph-selected-node').textContent = ' — Чистая прибыль';
                 renderTraceGraph('NET_PROFIT', 2);
                 renderAnalysis('NET_PROFIT');
-                renderBreakeven();
             }
         }
 
