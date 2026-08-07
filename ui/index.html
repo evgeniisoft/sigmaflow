@@ -3414,6 +3414,18 @@
             var container = document.getElementById('forecast-chart');
             var legendEl = document.getElementById('forecast-chart-legend');
             if (!container || !forecastData) return;
+
+            // Проверка на NaN
+            var allValues = forecastData.chartData.revenue.concat(
+                forecastData.chartData.profit,
+                forecastData.chartData.cash,
+                forecastData.chartData.baseRevenue
+            );
+            var hasInvalid = allValues.some(function (v) { return isNaN(v) || v === null || v === undefined; });
+            if (hasInvalid) {
+                console.error('forecastData содержит NaN');
+                return;
+            }
             container.innerHTML = '';
 
             var width = container.clientWidth;
@@ -3758,6 +3770,7 @@
             document.getElementById('btn-mode-drivers').classList.add('active');
             document.getElementById('btn-mode-macro').classList.remove('active');
             forecastData = null;
+            mcResults = null;
             renderForecastDrivers();
             document.getElementById('forecast-table').innerHTML = '';
             document.getElementById('forecast-chart').innerHTML = '';
@@ -3770,6 +3783,7 @@
             document.getElementById('btn-mode-macro').classList.add('active');
             document.getElementById('btn-mode-drivers').classList.remove('active');
             forecastData = null;
+            mcResults = null;
             renderForecastMacro();
             document.getElementById('forecast-table').innerHTML = '';
             document.getElementById('forecast-chart').innerHTML = '';
@@ -4637,6 +4651,7 @@
             document.getElementById('btn-mode-macro').classList.remove('active');
             this.classList.add('active');
             mcResults = null;
+            forecastData = null;
             document.getElementById('forecast-table').innerHTML = '';
             document.getElementById('forecast-chart').innerHTML = '';
             document.getElementById('forecast-chart-legend').innerHTML = '';
@@ -5893,7 +5908,7 @@
                 }
             }
 
-            
+
             window.renderScenarios = function () {
                 loadScenarios();
                 if (!graph || !graph.scenarios) { graph.scenarios = []; }
