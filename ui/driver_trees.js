@@ -1434,7 +1434,7 @@ var DRIVER_TREES = {
             'TOTAL_COSTS': {
                 label: 'Общие расходы',
                 type: 'computed',
-                children: ['COGS', 'OPEX', 'INTEREST', 'TAX']
+                children: ['OPEX', 'INTEREST', 'TAX']
             },
             'COGS': {
                 label: 'Себестоимость',
