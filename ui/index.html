@@ -1386,11 +1386,42 @@
 
             var marginality = revenue > 0 ? (revenue - totalVariable) / revenue * 100 : 0;
             var breakevenRevenue = marginality > 0 ? totalFixed / (marginality / 100) : -1;
-            var breakevenUnits = unitPrice > 0 && breakevenRevenue > 0 ? Math.ceil(breakevenRevenue / unitPrice) : 0;
+            var breakevenUnits = 0;
+            var currentUnits = 0;
+            var unitLabel = 'ед';
+            var showUnits = true;
 
-            var currentUnits = graph.nodes['VOLUME'] ? Math.round(graph.nodes['VOLUME'].value) :
-                (graph.nodes['CLIENTS'] ? Math.round(graph.nodes['CLIENTS'].value) :
-                    (graph.nodes['DEV_HEADCOUNT'] ? Math.round(graph.nodes['DEV_HEADCOUNT'].value) : 0));
+            if (graph.industry === 'production' || graph.industry === 'retail') {
+                // ТБУ в единицах
+                breakevenUnits = unitPrice > 0 && breakevenRevenue > 0 ? Math.ceil(breakevenRevenue / unitPrice) : 0;
+                currentUnits = graph.nodes['VOLUME'] ? Math.round(graph.nodes['VOLUME'].value) : 0;
+                unitLabel = 'ед';
+            } else if (graph.industry === 'it' || graph.industry === 'services') {
+                // ТБУ только в деньгах
+                showUnits = false;
+            } else if (graph.industry === 'logistics') {
+                // ТБУ в километрах
+                var km = graph.nodes['KM_PER_MONTH']?.value || 1;
+                currentUnits = Math.round(km);
+                unitLabel = 'км/мес';
+
+                var rate = graph.nodes['RATE_PER_KM']?.value || 0;
+                if (graph.nodes['CARRIER_COST']?.value > 0) {
+                    // Экспедитор: маржа с 1 км
+                    var carrierRate = graph.nodes['CARRIER_RATE']?.value || 0;
+                    var unitMargin = rate - carrierRate;
+                    breakevenUnits = unitMargin > 0 ? Math.ceil(totalFixed / unitMargin) : -1;
+                } else {
+                    // Транспортная: выручка минус переменные на 1 км
+                    var fuelPerKm = (graph.nodes['FUEL_COST']?.value || 0) / km;
+                    var tollPerKm = (graph.nodes['TOLL_ROADS_COST']?.value || 0) / km;
+                    var tiresPerKm = (graph.nodes['TIRES_COST']?.value || 0) / km;
+                    var maintPerKm = (graph.nodes['MAINTENANCE_COST']?.value || 0) / km;
+                    var unitVariable = fuelPerKm + tollPerKm + tiresPerKm + maintPerKm;
+                    var unitMargin = rate - unitVariable;
+                    breakevenUnits = unitMargin > 0 ? Math.ceil(totalFixed / unitMargin) : -1;
+                }
+            }
             var safetyMargin = revenue > 0 ? (revenue - breakevenRevenue) / revenue * 100 : 0;
 
             // Индикатор запаса прочности
@@ -1470,9 +1501,11 @@
                 html += '<span>Точка безубыточности</span><span style="font-weight:600;color:var(--warning);">' + formatValue(breakevenRevenue) + ' /мес</span>';
                 html += '</div>';
             }
-            html += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;">';
-            html += '<span>В натуральном выражении</span><span style="font-weight:600;">' + breakevenUnits + ' ед (сейчас ' + currentUnits + ')</span>';
-            html += '</div>';
+            if (showUnits) {
+                html += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;">';
+                html += '<span>В натуральном выражении</span><span style="font-weight:600;">' + formatValue(breakevenUnits) + ' ' + unitLabel + ' (сейчас ' + formatValue(currentUnits) + ')</span>';
+                html += '</div>';
+            }
             html += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;">';
             html += '<span>Запас прочности</span><span style="font-weight:600;color:' + (safetyMargin > 30 ? 'var(--ok)' : 'var(--critical)') + ';">' + safetyMargin.toFixed(1) + '% ' + safetyDots + '</span>';
             html += '</div>';
