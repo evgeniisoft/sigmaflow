@@ -1144,13 +1144,21 @@
                     });
                 }
 
-                // Налоговый режим из пресета
-                if (preset.company && preset.company.tax_system) {
-                    graph.company.tax_system = preset.company.tax_system;
-                    graph.company.nds_rate = preset.company.nds_rate || 0;
+                // Налоговый режим — из мастера
+                graph.company.tax_system = taxSystem;
+                if (taxSystem === 'OSNO') {
+                    graph.company.nds_rate = preset.company.nds_rate || 0.22;
                     graph.company.profit_tax_rate = preset.company.profit_tax_rate || 0.25;
-                    graph.company.insurance_rate = preset.company.insurance_rate || 0.30;
+                } else if (taxSystem === 'USN_INCOME') {
+                    graph.company.nds_rate = 0;
+                    graph.company.nds_exempt = true;
+                    graph.company.profit_tax_rate = 0.06;
+                } else if (taxSystem === 'USN_INCOME_MINUS') {
+                    graph.company.nds_rate = 0;
+                    graph.company.nds_exempt = true;
+                    graph.company.profit_tax_rate = 0.15;
                 }
+                graph.company.insurance_rate = preset.company.insurance_rate || 0.30;
 
                 // Не перезаписываем имя, если пользователь уже ввёл своё
                 if (!companyName || companyName === 'Новая компания') {
