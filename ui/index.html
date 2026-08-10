@@ -4016,7 +4016,7 @@
         });
 
         document.querySelector('[data-panel="projects"]').addEventListener('click', function () {
-            renderProjectForm();
+            renderProjectTypeForm();
             var saved = localStorage.getItem('sigmaflow_projects');
             if (saved) savedProjects = JSON.parse(saved);
             renderSavedProjects();
