@@ -73,9 +73,10 @@ Project.prototype._initArrays = function (h) {
     var self = this;
     var arrs = ['investmentFlow', 'revenueFlow', 'costFlow', 'depreciationFlow',
         'creditFlow', 'creditRepayment', 'interestFlow', 'taxFlow', 'ndsFlow',
-        'operatingFlow', 'financedFlow', 'cumOperating', 'cumFinanced',
+        'operatingFlow', 'financedFlow', 'netFlow', 'cumulativeFlow',
+        'cumOperating', 'cumFinanced',
         'realOperating', 'realFinanced', 'discOperating', 'discFinanced',
-        'cumDiscOperating', 'cumDiscFinanced'];
+        'cumDiscOperating', 'cumDiscFinanced', 'cumulativeDiscounted', 'discountedFlow'];
     arrs.forEach(function (a) { self[a] = new Array(h).fill(0); });
 };
 
@@ -289,6 +290,8 @@ Project.prototype._calculateOperatingFlow = function () {
         cum += self.operatingFlow[m];
         self.cumOperating[m] = cum;
     }
+    self.netFlow = self.operatingFlow;
+    self.cumulativeFlow = self.cumOperating;
 };
 
 Project.prototype._calculateFinancedFlow = function () {
