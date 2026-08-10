@@ -21,6 +21,17 @@ function Project(config) {
 }
 
 Project.prototype.calculate = function () {
+    // WACC если есть кредит
+    if (self.financing.credit && self.financing.credit.amount > 0 && self.financing.ownFunds > 0) {
+        var totalCapital = self.financing.ownFunds + self.financing.credit.amount;
+        var equityShare = self.financing.ownFunds / totalCapital;
+        var debtShare = self.financing.credit.amount / totalCapital;
+        // Стоимость своих денег = депозит (ключевая ставка), стоимость заёмных = ставка кредита × (1 − налог)
+        var costOfEquity = self.discountRate;
+        var costOfDebt = self.financing.credit.rate * (1 - self.taxRate);
+        self.wacc = equityShare * costOfEquity + debtShare * costOfDebt;
+        self.discountRate = self.wacc;
+    }
     var self = this;
     var h = self.horizon;
 
@@ -43,6 +54,29 @@ Project.prototype.calculate = function () {
         var m = inv.month || 0;
         if (m < h) {
             self.investmentFlow[m] += (inv.amount || 0);
+        }
+    });
+
+    // === ОБОРОТНЫЙ КАПИТАЛ (заморозка / высвобождение) ===
+    self.workingCapitalFlow = new Array(h).fill(0);
+    self.investments.forEach(function (inv) {
+        if (inv.type === 'working_capital' && inv.amount) {
+            var startM = inv.month || 0;
+            var releaseM = inv.releaseMonth || (h - 1);
+            if (startM < h) {
+                self.workingCapitalFlow[startM] -= (inv.amount || 0);
+            }
+            if (releaseM < h) {
+                self.workingCapitalFlow[releaseM] += (inv.amount || 0);
+            }
+        }
+    });
+
+    // === ЛИКВИДАЦИОННАЯ СТОИМОСТЬ ===
+    self.investments.forEach(function (inv) {
+        if (inv.type === 'capex' && inv.salvageValue) {
+            var endMonth = Math.min((inv.month || 0) + (inv.usefulLife || 60), h - 1);
+            self.netFlow[endMonth] += inv.salvageValue;
         }
     });
 
@@ -121,12 +155,42 @@ Project.prototype.calculate = function () {
         }
     }
 
-    // === НАЛОГ НА ПРИБЫЛЬ ===
+    // === НАЛОГ НА ПРИБЫЛЬ (перенос убытков + квартальная уплата) ===
+    var cumulativeTaxable = 0; // накопленная база с учётом убытков
     for (var m = 0; m < h; m++) {
-        var taxableIncome = self.revenueFlow[m] - self.costFlow[m] - self.interestFlow[m] - self.depreciationFlow[m];
-        if (taxableIncome > 0) {
-            self.taxFlow[m] = taxableIncome * self.taxRate;
+        var monthlyIncome = self.revenueFlow[m] - self.costFlow[m] - self.interestFlow[m] - self.depreciationFlow[m];
+        cumulativeTaxable += monthlyIncome;
+        // Если накопленная база отрицательная — налог не платим, убыток переносим
+        if (cumulativeTaxable > 0) {
+            // Квартальная уплата: месяцы 3, 6, 9, 12 от старта
+            var monthInQuarter = (m + 1) % 3; // 1, 2, 0
+            if (monthInQuarter === 0) {
+                self.taxFlow[m] = cumulativeTaxable * self.taxRate;
+                cumulativeTaxable = 0; // сброс после уплаты
+            } else {
+                self.taxFlow[m] = 0;
+            }
+        } else {
+            self.taxFlow[m] = 0;
         }
+    }
+    // Если в конце горизонта осталась прибыль — налог в последнем месяце
+    if (cumulativeTaxable > 0) {
+        self.taxFlow[h - 1] += cumulativeTaxable * self.taxRate;
+    }
+
+    // === НДС ===
+    self.ndsFlow = new Array(h).fill(0);
+    for (var m = 0; m < h; m++) {
+        // Исходящий НДС с выручки
+        var outputNDS = self.revenueFlow[m] * self.ndsRate;
+        // Входящий НДС с расходов (только с материалов, аренды, логистики — упрощённо все внешние расходы)
+        var inputNDS = self.costFlow[m] * self.ndsRate;
+        // НДС с инвестиций идёт к зачёту в том же месяце
+        var investNDS = self.investmentFlow[m] * self.ndsRate;
+        // НДС к уплате = исходящий − входящий − НДС с инвестиций
+        var ndsToPay = outputNDS - inputNDS - investNDS;
+        self.ndsFlow[m] = ndsToPay;
     }
 
     // === ЧИСТЫЙ ПОТОК ===
@@ -138,7 +202,9 @@ Project.prototype.calculate = function () {
             + self.creditFlow[m]
             - self.creditRepayment[m]
             - self.interestFlow[m]
-            - self.taxFlow[m];
+            - self.taxFlow[m]
+            - self.ndsFlow[m]
+            + self.workingCapitalFlow[m];
         cumCash += self.netFlow[m];
         self.cumulativeFlow[m] = cumCash;
     }
