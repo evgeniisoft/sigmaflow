@@ -5706,9 +5706,23 @@
             }
             g.append('text').attr('x', 0).attr('y', -3).attr('fill', '#6A7080').attr('font-size', '9px').text('NPV при разных ставках');
         }
-        // Сохранение проектов Вкладка ПРОЕКТЫ
+        // ЭКСПОРТ
         document.getElementById('btn-export-project')?.addEventListener('click', function () {
             if (!currentProject) return;
+
+            // Фиксируем значения полей в HTML перед сохранением
+            document.querySelectorAll('#eq-investments input, #prod-investments input, #branch-investments input, #chan-investments input').forEach(function (el) {
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    if (el.checked) el.setAttribute('checked', 'checked');
+                    else el.removeAttribute('checked');
+                } else {
+                    el.setAttribute('value', el.value);
+                }
+            });
+            document.querySelectorAll('#eq-investments select, #prod-investments select, #branch-investments select, #chan-investments select').forEach(function (el) {
+                el.setAttribute('value', el.value);
+            });
+
             var projectJSON = {
                 name: document.getElementById('pj-name').value,
                 type: document.getElementById('pj-type').value,
@@ -5720,23 +5734,6 @@
                     operatingIRR: currentProject.operatingIRR,
                     paybackPeriod: currentProject.paybackPeriod
                 },
-                // Фиксируем значения полей в HTML перед сохранением
-                document.querySelectorAll('#eq-investments input, #prod-investments input, #branch-investments input, #chan-investments input').forEach(function (el) {
-                    if (el.type === 'checkbox' || el.type === 'radio') {
-                        if (el.checked) el.setAttribute('checked', 'checked');
-                        else el.removeAttribute('checked');
-                    } else {
-                        el.setAttribute('value', el.value);
-                    }
-                });
-                document.querySelectorAll('#eq-investments select, #prod-investments select, #branch-investments select, #chan-investments select').forEach(function (el) {
-                    el.setAttribute('value', el.value);
-                    var opts = el.querySelectorAll('option');
-                    opts.forEach(function (opt) {
-                        if (opt.value === el.value) opt.setAttribute('selected', 'selected');
-                        else opt.removeAttribute('selected');
-                    });
-                });
                 eqInvestmentsHTML: document.getElementById('eq-investments')?.innerHTML || '',
                 prodInvestmentsHTML: document.getElementById('prod-investments')?.innerHTML || '',
                 branchInvestmentsHTML: document.getElementById('branch-investments')?.innerHTML || '',
@@ -5757,9 +5754,22 @@
             a.click();
             notify('Проект экспортирован');
         });
-        // Сохранение проектов
+        // СОХРАНЕНИЕ
         document.getElementById('btn-save-project')?.addEventListener('click', function () {
             if (!currentProject) return;
+
+            // Фиксируем значения полей в HTML перед сохранением
+            document.querySelectorAll('#eq-investments input, #prod-investments input, #branch-investments input, #chan-investments input').forEach(function (el) {
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    if (el.checked) el.setAttribute('checked', 'checked');
+                    else el.removeAttribute('checked');
+                } else {
+                    el.setAttribute('value', el.value);
+                }
+            });
+            document.querySelectorAll('#eq-investments select, #prod-investments select, #branch-investments select, #chan-investments select').forEach(function (el) {
+                el.setAttribute('value', el.value);
+            });
 
             var projectJSON = {
                 name: document.getElementById('pj-name').value,
@@ -5776,23 +5786,6 @@
                     dscr: currentProject.dscr,
                     breakevenFactor: currentProject.breakevenFactor
                 },
-                // Фиксируем значения полей в HTML перед сохранением
-                document.querySelectorAll('#eq-investments input, #prod-investments input, #branch-investments input, #chan-investments input').forEach(function (el) {
-                    if (el.type === 'checkbox' || el.type === 'radio') {
-                        if (el.checked) el.setAttribute('checked', 'checked');
-                        else el.removeAttribute('checked');
-                    } else {
-                        el.setAttribute('value', el.value);
-                    }
-                });
-                document.querySelectorAll('#eq-investments select, #prod-investments select, #branch-investments select, #chan-investments select').forEach(function (el) {
-                    el.setAttribute('value', el.value);
-                    var opts = el.querySelectorAll('option');
-                    opts.forEach(function (opt) {
-                        if (opt.value === el.value) opt.setAttribute('selected', 'selected');
-                        else opt.removeAttribute('selected');
-                    });
-                });
                 eqInvestmentsHTML: document.getElementById('eq-investments')?.innerHTML || '',
                 prodInvestmentsHTML: document.getElementById('prod-investments')?.innerHTML || '',
                 branchInvestmentsHTML: document.getElementById('branch-investments')?.innerHTML || '',
@@ -5812,13 +5805,6 @@
             localStorage.setItem('sigmaflow_projects', JSON.stringify(savedProjects));
             renderSavedProjects();
             notify('Проект сохранён');
-        });
-
-        document.querySelector('[data-panel="projects"]')?.addEventListener('click', function () {
-            renderProjectTypeForm();
-            var saved = localStorage.getItem('sigmaflow_projects');
-            if (saved) savedProjects = JSON.parse(saved);
-            renderSavedProjects();
         });
 
         document.getElementById('btn-calculate-project')?.addEventListener('click', calculateProject);
@@ -5898,7 +5884,7 @@
             setTimeout(function () {
                 calculateProject();
             }, 300);
-            
+
             notify('Проект «' + proj.name + '» загружен. Нажмите «РАССЧИТАТЬ» для полного анализа.');
         }
 
