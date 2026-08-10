@@ -38,6 +38,7 @@
         <button class="nav-btn" data-panel="live">ЖИВАЯ МОДЕЛЬ</button>
         <button class="nav-btn" data-panel="scenarios">СЦЕНАРИИ</button>
         <button class="nav-btn" data-panel="editor">РЕДАКТОР</button>
+        <button class="nav-btn" data-panel="projects">ПРОЕКТЫ</button>
         <button class="nav-btn" data-panel="driver-tree">KPI-МОСТЫ</button>
         <button class="nav-btn" data-panel="company">НАСТРОЙКИ</button>
         <button class="nav-btn" data-panel="forecast">ПРОГНОЗ</button>
@@ -706,6 +707,91 @@
                             style="margin-top:12px;padding:12px;background:var(--bg-input);border:1px solid var(--border);font-size:11px;">
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        <!-- ПАНЕЛЬ ПРОЕКТЫ -->
+        <div id="panel-projects" class="panel">
+            <div style="display:flex;height:100%;">
+                <!-- ЛЕВАЯ ПАНЕЛЬ — ФОРМА -->
+                <div
+                    style="width:450px;padding:16px;overflow-y:auto;background:var(--bg-panel);border-right:1px solid var(--border);flex-shrink:0;">
+                    <h3 style="margin:0 0 16px;">НОВЫЙ ПРОЕКТ</h3>
+
+                    <div class="form-group">
+                        <label>НАЗВАНИЕ ПРОЕКТА</label>
+                        <input type="text" id="pj-name" placeholder="Например: Покупка станка">
+                    </div>
+
+                    <div class="form-group">
+                        <label>ТИП ПРОЕКТА</label>
+                        <select id="pj-type" style="width:100%;" onchange="renderProjectForm()">
+                            <option value="equipment">Оборудование — покупка станка, машины, IT-системы</option>
+                            <option value="product">Продукт/Услуга — запуск нового направления</option>
+                            <option value="branch">Филиал/Точка — открытие офиса, склада, магазина</option>
+                            <option value="channel">Канал продаж — маркетплейс, дилеры</option>
+                            <option value="integration">Интеграция — покупка бизнеса, слияние</option>
+                        </select>
+                    </div>
+
+                    <div id="project-specific-fields"></div>
+
+                    <div class="form-group">
+                        <label>ГОРИЗОНТ ПЛАНИРОВАНИЯ (МЕС)</label>
+                        <input type="number" id="pj-horizon" value="36" min="6" max="120">
+                    </div>
+
+                    <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ФИНАНСИРОВАНИЕ</div>
+                    <div class="form-group">
+                        <label>СВОИ СРЕДСТВА</label>
+                        <input type="number" id="pj-own-funds" value="0" step="100000">
+                    </div>
+                    <div class="form-group">
+                        <label>КРЕДИТ (СУММА)</label>
+                        <input type="number" id="pj-credit-amount" value="0" step="100000">
+                    </div>
+                    <div class="form-group">
+                        <label>СТАВКА ПО КРЕДИТУ (%)</label>
+                        <input type="number" id="pj-credit-rate" value="22" step="0.5" min="0" max="50">
+                    </div>
+                    <div class="form-group">
+                        <label>СРОК КРЕДИТА (МЕС)</label>
+                        <input type="number" id="pj-credit-term" value="36" step="6" min="1" max="120">
+                    </div>
+
+                    <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАСТРОЙКИ РАСЧЁТА</div>
+                    <div class="form-group">
+                        <label>СТАВКА ДИСКОНТИРОВАНИЯ (%)</label>
+                        <input type="number" id="pj-discount" value="21" step="0.5" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>СТАВКА РЕИНВЕСТИРОВАНИЯ (%)</label>
+                        <input type="number" id="pj-reinvest" value="15" step="0.5" min="0" max="100">
+                    </div>
+
+                    <button id="btn-calculate-project" class="primary" style="width:100%;margin-top:12px;">▶ РАССЧИТАТЬ
+                        ПРОЕКТ</button>
+                </div>
+
+                <!-- ПРАВАЯ ПАНЕЛЬ — РЕЗУЛЬТАТЫ -->
+                <div style="flex:1;padding:16px;overflow-y:auto;">
+                    <div id="project-results" style="display:none;">
+                        <div id="project-metrics"
+                            style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;"></div>
+                        <div id="project-chart"
+                            style="height:300px;background:var(--bg-primary);border:1px solid var(--border);margin-bottom:16px;">
+                        </div>
+                        <div id="project-sensitivity" style="margin-bottom:16px;"></div>
+                        <div id="project-conclusion"
+                            style="padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
+                        </div>
+                        <button id="btn-save-project" class="primary" style="margin-right:8px;">СОХРАНИТЬ
+                            ПРОЕКТ</button>
+                        <button id="btn-export-project">ЭКСПОРТ</button>
+                    </div>
+                    <div id="project-empty" style="color:var(--text-hint);text-align:center;padding-top:60px;">Заполните
+                        форму
+                        слева и нажмите «РАССЧИТАТЬ ПРОЕКТ»</div>
                 </div>
             </div>
         </div>
@@ -4877,6 +4963,211 @@
                 localStorage.setItem('sigmaflow_scenarios_' + getCurrentCompanyId(), JSON.stringify(graph.scenarios));
             }
         }
+
+
+
+        // ============================================================
+        // ПРОЕКТЫ
+        // ============================================================
+
+        var currentProject = null;
+        var savedProjects = [];
+
+        function renderProjectForm() {
+            var type = document.getElementById('pj-type').value;
+            var container = document.getElementById('project-specific-fields');
+            var html = '';
+
+            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ИНВЕСТИЦИИ</div>';
+
+            if (type === 'equipment') {
+                html += '<div class="form-group"><label>СТОИМОСТЬ ОБОРУДОВАНИЯ</label><input type="number" id="pj-cost" value="5000000" step="100000"></div>';
+                html += '<div class="form-group"><label>СРОК СЛУЖБЫ (МЕС)</label><input type="number" id="pj-useful-life" value="60" min="1" max="360"></div>';
+                html += '<div class="form-group"><label>ЛИКВИДАЦИОННАЯ СТОИМОСТЬ</label><input type="number" id="pj-salvage" value="0" step="50000"></div>';
+                html += '<div class="form-group"><label>ПРОДАЖА СТАРОГО ОБОРУДОВАНИЯ</label><input type="number" id="pj-old-sale" value="0" step="50000"></div>';
+
+                html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ВЛИЯНИЕ НА БИЗНЕС</div>';
+                html += '<div class="form-group"><label>РОСТ ВЫРУЧКИ (₽/МЕС)</label><input type="number" id="pj-rev-increase" value="0" step="10000"></div>';
+                html += '<div class="form-group"><label>СНИЖЕНИЕ РАСХОДОВ (₽/МЕС)</label><input type="number" id="pj-cost-decrease" value="0" step="10000"></div>';
+                html += '<div class="form-group"><label>ДОПОЛНИТЕЛЬНЫЕ РАСХОДЫ (₽/МЕС)</label><input type="number" id="pj-cost-increase" value="0" step="5000"></div>';
+                html += '<div class="form-group"><label>RAMP-UP (МЕС ДО ВЫХОДА НА ПЛАН)</label><input type="number" id="pj-rampup" value="3" min="0" max="24"></div>';
+            } else {
+                html += '<div class="form-group"><label>ОБЩИЕ ИНВЕСТИЦИИ</label><input type="number" id="pj-cost" value="5000000" step="100000"></div>';
+                html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ДОХОДЫ</div>';
+                html += '<div class="form-group"><label>ВЫРУЧКА (₽/МЕС)</label><input type="number" id="pj-rev-increase" value="0" step="10000"></div>';
+                html += '<div class="form-group"><label>RAMP-UP (МЕС)</label><input type="number" id="pj-rampup" value="3" min="0" max="24"></div>';
+                html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">РАСХОДЫ</div>';
+                html += '<div class="form-group"><label>РАСХОДЫ (₽/МЕС)</label><input type="number" id="pj-cost-increase" value="0" step="10000"></div>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function calculateProject() {
+            var type = document.getElementById('pj-type').value;
+            var name = document.getElementById('pj-name').value || 'Новый проект';
+            var horizon = parseInt(document.getElementById('pj-horizon').value) || 36;
+
+            var cost = parseFloat(document.getElementById('pj-cost').value) || 0;
+            var revIncrease = parseFloat(document.getElementById('pj-rev-increase').value) || 0;
+            var costDecrease = parseFloat(document.getElementById('pj-cost-decrease')?.value) || 0;
+            var costIncrease = parseFloat(document.getElementById('pj-cost-increase').value) || 0;
+            var rampUp = parseInt(document.getElementById('pj-rampup').value) || 0;
+            var usefulLife = parseInt(document.getElementById('pj-useful-life')?.value) || 60;
+            var salvage = parseFloat(document.getElementById('pj-salvage')?.value) || 0;
+            var oldSale = parseFloat(document.getElementById('pj-old-sale')?.value) || 0;
+
+            var ownFunds = parseFloat(document.getElementById('pj-own-funds').value) || 0;
+            var creditAmount = parseFloat(document.getElementById('pj-credit-amount').value) || 0;
+            var creditRate = parseFloat(document.getElementById('pj-credit-rate').value) / 100;
+            var creditTerm = parseInt(document.getElementById('pj-credit-term').value) || 36;
+
+            var discountRate = parseFloat(document.getElementById('pj-discount').value) / 100;
+            var reinvestRate = parseFloat(document.getElementById('pj-reinvest').value) / 100;
+
+            var config = {
+                name: name,
+                type: type,
+                horizon: horizon,
+                investments: [
+                    { month: 0, amount: cost, type: 'capex', usefulLife: usefulLife, salvageValue: salvage }
+                ],
+                revenues: revIncrease > 0 ? [
+                    { month: rampUp, baseAmount: revIncrease, rampUpMonths: rampUp }
+                ] : [],
+                costs: [],
+                financing: {
+                    ownFunds: ownFunds,
+                    credit: creditAmount > 0 ? { amount: creditAmount, rate: creditRate, term: creditTerm, startMonth: 0 } : null
+                },
+                discountRate: discountRate,
+                reinvestmentRate: reinvestRate
+            };
+
+            // Снижение расходов = отрицательные доп. расходы
+            if (costDecrease > 0) {
+                config.costs.push({ name: 'Экономия', month: rampUp, baseAmount: -costDecrease, type: 'fixed' });
+            }
+            if (costIncrease > 0) {
+                config.costs.push({ name: 'Доп. расходы', month: rampUp, baseAmount: costIncrease, type: 'fixed' });
+            }
+            // Продажа старого
+            if (oldSale > 0) {
+                config.investments.push({ month: 0, amount: -oldSale, type: 'capex' });
+            }
+
+            currentProject = new Project(config);
+            renderProjectResults();
+        }
+
+        function renderProjectResults() {
+            if (!currentProject) return;
+
+            document.getElementById('project-results').style.display = 'block';
+            document.getElementById('project-empty').style.display = 'none';
+
+            var p = currentProject;
+            var metricsHtml = '';
+
+            function metricCard(label, value, color) {
+                return '<div style="padding:10px;background:var(--bg-input);border:1px solid var(--border);text-align:center;">' +
+                    '<div style="font-size:9px;color:var(--text-hint);margin-bottom:4px;">' + label + '</div>' +
+                    '<div style="font-size:16px;font-weight:700;color:' + (color || 'var(--text-primary)') + ';">' + value + '</div>' +
+                    '</div>';
+            }
+
+            metricsHtml += metricCard('NPV', p.npv >= 0 ? '+' + formatValue(Math.round(p.npv)) : formatValue(Math.round(p.npv)), p.npv >= 0 ? 'var(--ok)' : 'var(--critical)');
+            metricsHtml += metricCard('IRR', (p.irr * 100).toFixed(1) + '%', p.irr > p.wacc ? 'var(--ok)' : 'var(--warning)');
+            metricsHtml += metricCard('MIRR', (p.mirr * 100).toFixed(1) + '%');
+            metricsHtml += metricCard('Срок окуп.', p.paybackPeriod >= 0 ? p.paybackPeriod + ' мес' : '> ' + p.horizon + ' мес');
+            metricsHtml += metricCard('ROI', p.roi.toFixed(1) + '%');
+            metricsHtml += metricCard('PI', p.pi.toFixed(2));
+            metricsHtml += metricCard('DSCR', p.dscr ? p.dscr.toFixed(2) : '—');
+            metricsHtml += metricCard('ТБУ', p.breakevenRevenue > 0 ? (p.breakevenRevenue * 100).toFixed(1) + '%' : '—');
+
+            document.getElementById('project-metrics').innerHTML = metricsHtml;
+
+            // График
+            renderProjectChart();
+
+            // Вывод
+            var conclusion = '';
+            if (p.npv > 0 && p.irr > p.wacc) {
+                conclusion = '<div style="font-weight:600;color:var(--ok);margin-bottom:4px;">● ПРОЕКТ ВЫГОДЕН</div>';
+                conclusion += '<div>NPV положительный, IRR выше ставки дисконтирования.</div>';
+            } else if (p.npv > 0) {
+                conclusion = '<div style="font-weight:600;color:var(--warning);margin-bottom:4px;">● ПРОЕКТ НА ГРАНИ</div>';
+                conclusion += '<div>NPV положительный, но IRR ниже WACC.</div>';
+            } else {
+                conclusion = '<div style="font-weight:600;color:var(--critical);margin-bottom:4px;">● ПРОЕКТ НЕВЫГОДЕН</div>';
+                conclusion += '<div>NPV отрицательный. Проект не окупается.</div>';
+            }
+            if (p.maxCashGap < 0) {
+                conclusion += '<div style="margin-top:4px;">⚠ Максимальный кассовый разрыв: ' + formatValue(Math.abs(Math.round(p.maxCashGap))) + ' на ' + p.maxGapMonth + '-й месяц. Обеспечьте резерв.</div>';
+            }
+            document.getElementById('project-conclusion').innerHTML = conclusion;
+        }
+
+        function renderProjectChart() {
+            var container = document.getElementById('project-chart');
+            if (!container || !currentProject) return;
+            container.innerHTML = '';
+
+            var p = currentProject;
+            var width = container.clientWidth;
+            var height = 300;
+            if (width === 0) return;
+
+            var margin = { top: 20, right: 30, bottom: 40, left: 70 };
+            var w = width - margin.left - margin.right;
+            var h = height - margin.top - margin.bottom;
+
+            var svg = d3.select('#project-chart').append('svg').attr('width', width).attr('height', height);
+            var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+            var xScale = d3.scaleLinear().domain([0, p.horizon - 1]).range([0, w]);
+            var maxVal = Math.max.apply(null, p.cumulativeFlow.map(Math.abs));
+            var minVal = Math.min.apply(null, p.cumulativeFlow.concat([0]));
+            var yScale = d3.scaleLinear().domain([minVal, maxVal * 1.1]).range([h, 0]);
+
+            // Оси
+            g.append('g').attr('transform', 'translate(0,' + h + ')').call(d3.axisBottom(xScale).ticks(Math.min(p.horizon, 12))).attr('font-size', '9px');
+            g.append('g').call(d3.axisLeft(yScale).ticks(6).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '9px');
+
+            // Нулевая линия
+            g.append('line').attr('x1', 0).attr('x2', w).attr('y1', yScale(0)).attr('y2', yScale(0)).attr('stroke', '#2A3040').attr('stroke-width', 1);
+
+            // Кумулятивный поток
+            var line = d3.line().x(function (d, i) { return xScale(i); }).y(function (d) { return yScale(d); });
+            g.append('path').datum(p.cumulativeFlow).attr('fill', 'none').attr('stroke', '#5A9FD4').attr('stroke-width', 2).attr('d', line);
+
+            // NPV в конце
+            g.append('circle').attr('cx', xScale(p.horizon - 1)).attr('cy', yScale(p.npv + p.totalInvestment)).attr('r', 4).attr('fill', p.npv >= 0 ? '#4B8C5A' : '#D44B3C');
+            g.append('text').attr('x', xScale(p.horizon - 1) + 6).attr('y', yScale(p.npv + p.totalInvestment) + 4).attr('fill', '#C8CCD4').attr('font-size', '9px').text('NPV');
+        }
+
+        // Сохранение проектов
+        document.getElementById('btn-save-project')?.addEventListener('click', function () {
+            if (!currentProject) return;
+            savedProjects.push({
+                name: currentProject.name,
+                type: currentProject.type,
+                npv: currentProject.npv,
+                irr: currentProject.irr,
+                paybackPeriod: currentProject.paybackPeriod
+            });
+            localStorage.setItem('sigmaflow_projects', JSON.stringify(savedProjects));
+            notify('Проект сохранён');
+        });
+
+        // Инициализация
+        document.querySelector('[data-panel="projects"]')?.addEventListener('click', function () {
+            renderProjectForm();
+            var saved = localStorage.getItem('sigmaflow_projects');
+            if (saved) savedProjects = JSON.parse(saved);
+        });
+
+        document.getElementById('btn-calculate-project')?.addEventListener('click', calculateProject);
 
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
