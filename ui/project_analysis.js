@@ -210,33 +210,37 @@ Project.prototype._calculateNPV_at_rate = function (rate) {
 // IRR методом бинарный поиск
 Project.prototype._calculateIRR = function () {
     var self = this;
-    var flows = self.netFlow;
-
-    // Бинарный поиск
-    var low = -0.99;
-    var high = 5.0; // 500% годовых
-    var tol = 1e-6;
-    var maxIter = 100;
 
     var npvAt = function (r) {
         var monthlyR = Math.pow(1 + r, 1 / 12) - 1;
         var sum = 0;
-        for (var t = 0; t < flows.length; t++) {
-            sum += flows[t] / Math.pow(1 + monthlyR, t);
+        for (var t = 0; t < self.horizon; t++) {
+            sum += self.netFlow[t] / Math.pow(1 + monthlyR, t);
         }
         return sum;
     };
 
-    if (npvAt(low) * npvAt(high) > 0) return 0; // нет решения
+    // Находим low где NPV > 0 (обычно 0)
+    var low = 0;
+    // Находим high где NPV < 0
+    var high = 1;
+    while (npvAt(high) > 0 && high < 100) {
+        high *= 2;
+    }
+
+    if (npvAt(low) < 0) return 0; // всегда отрицательный — нет IRR
+
+    var tol = 1e-6;
+    var maxIter = 100;
 
     for (var i = 0; i < maxIter; i++) {
         var mid = (low + high) / 2;
         var npvMid = npvAt(mid);
         if (Math.abs(npvMid) < tol) return mid;
-        if (npvAt(low) * npvMid < 0) {
-            high = mid;
-        } else {
+        if (npvMid > 0) {
             low = mid;
+        } else {
+            high = mid;
         }
     }
     return (low + high) / 2;
