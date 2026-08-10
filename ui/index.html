@@ -5454,7 +5454,7 @@
                 rate: parseFloat(document.getElementById('pj-credit-rate').value) / 100,
                 term: parseInt(document.getElementById('pj-credit-term').value) || 36,
                 type: document.getElementById('pj-credit-type').value,
-                deferredMonths: (document.getElementById('pj-credit-type')?.value === 'deferred') ? (parseInt(document.getElementById('pj-deferred-months')?.value) || 6) : 0
+                deferredMonths: 0
             } : null;
 
             // Налоги
