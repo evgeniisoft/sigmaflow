@@ -14,7 +14,7 @@ function Project(config) {
     this.taxRate = config.taxRate || 0.25;
     this.ndsRate = config.ndsRate || 0.22;
     this.insuranceRate = config.insuranceRate || 0.30;
-    this.season = config.season || [1,1,1,1,1,1,1,1,1,1,1,1];
+    this.season = config.season || [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 
     // Рассчитываем
     this.calculate();
@@ -226,35 +226,41 @@ Project.prototype._calculateSensitivity = function () {
     var baseNPV = self.npv;
     var results = [];
 
-    // Параметры для анализа
     var params = [
-        { name: 'Выручка', getBase: function () { return self.revenueFlow.reduce(function (s, v) { return s + v; }, 0); }, apply: function (factor) {
-            var orig = self.revenueFlow.slice();
-            for (var i = 0; i < self.horizon; i++) self.revenueFlow[i] *= factor;
-            self.calculate();
-            var npv = self.npv;
-            self.revenueFlow = orig;
-            self.calculate();
-            return npv;
-        }},
-        { name: 'Расходы', getBase: function () { return self.costFlow.reduce(function (s, v) { return s + v; }, 0); }, apply: function (factor) {
-            var orig = self.costFlow.slice();
-            for (var i = 0; i < self.horizon; i++) self.costFlow[i] *= factor;
-            self.calculate();
-            var npv = self.npv;
-            self.costFlow = orig;
-            self.calculate();
-            return npv;
-        }},
-        { name: 'Ставка дисконтирования', getBase: function () { return self.discountRate; }, apply: function (factor) {
-            var orig = self.discountRate;
-            self.discountRate = orig * factor;
-            self.calculate();
-            var npv = self.npv;
-            self.discountRate = orig;
-            self.calculate();
-            return npv;
-        }}
+        {
+            name: 'Выручка',
+            apply: function (factor) {
+                // Сохраняем оригинал
+                var origRev = self.revenueFlow.slice();
+                // Временно меняем
+                for (var i = 0; i < self.horizon; i++) self.revenueFlow[i] *= factor;
+                // Считаем NPV вручную без полного пересчёта
+                var npv = self._calculateNPV();
+                // Возвращаем
+                self.revenueFlow = origRev;
+                return npv;
+            }
+        },
+        {
+            name: 'Расходы',
+            apply: function (factor) {
+                var origCost = self.costFlow.slice();
+                for (var i = 0; i < self.horizon; i++) self.costFlow[i] *= factor;
+                var npv = self._calculateNPV();
+                self.costFlow = origCost;
+                return npv;
+            }
+        },
+        {
+            name: 'Ставка дисконтирования',
+            apply: function (factor) {
+                var origDR = self.discountRate;
+                self.discountRate = origDR * factor;
+                var npv = self._calculateNPV();
+                self.discountRate = origDR;
+                return npv;
+            }
+        }
     ];
 
     params.forEach(function (param) {
@@ -270,4 +276,17 @@ Project.prototype._calculateSensitivity = function () {
     });
 
     return results;
+};
+
+// Быстрый расчёт NPV без пересчёта всего проекта
+Project.prototype._calculateNPV = function () {
+    var self = this;
+    var monthlyRate = Math.pow(1 + self.discountRate, 1 / 12) - 1;
+    var npv = 0;
+    for (var m = 0; m < self.horizon; m++) {
+        var netFlow = self.revenueFlow[m] - self.costFlow[m] - self.investmentFlow[m]
+            + self.creditFlow[m] - self.creditRepayment[m] - self.interestFlow[m] - self.taxFlow[m];
+        npv += netFlow / Math.pow(1 + monthlyRate, m);
+    }
+    return npv;
 };
