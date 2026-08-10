@@ -195,31 +195,43 @@ Project.prototype.calculate = function () {
     self.maxGapMonth = self.cumulativeFlow.indexOf(self.maxCashGap);
 
     // === АНАЛИЗ ЧУВСТВИТЕЛЬНОСТИ ===
-   // === self.sensitivity = self._calculateSensitivity(); ===
+    // === self.sensitivity = self._calculateSensitivity(); ===
 };
 
-// IRR методом Ньютона-Рафсона
+// IRR методом бинарный поиск
 Project.prototype._calculateIRR = function () {
     var self = this;
     var flows = self.netFlow;
-    var guess = 0.1;
-    var maxIter = 100;
+
+    // Бинарный поиск
+    var low = -0.99;
+    var high = 5.0; // 500% годовых
     var tol = 1e-6;
+    var maxIter = 100;
 
-    for (var iter = 0; iter < maxIter; iter++) {
-        var npv = 0, dnpv = 0;
+    var npvAt = function (r) {
+        var monthlyR = Math.pow(1 + r, 1 / 12) - 1;
+        var sum = 0;
         for (var t = 0; t < flows.length; t++) {
-            npv += flows[t] / Math.pow(1 + guess, t);
-            dnpv += -t * flows[t] / Math.pow(1 + guess, t + 1);
+            sum += flows[t] / Math.pow(1 + monthlyR, t);
         }
-        if (Math.abs(dnpv) < tol) break;
-        var newGuess = guess - npv / dnpv;
-        if (Math.abs(newGuess - guess) < tol) return newGuess;
-        guess = newGuess;
-    }
-    return guess;
-};
+        return sum;
+    };
 
+    if (npvAt(low) * npvAt(high) > 0) return 0; // нет решения
+
+    for (var i = 0; i < maxIter; i++) {
+        var mid = (low + high) / 2;
+        var npvMid = npvAt(mid);
+        if (Math.abs(npvMid) < tol) return mid;
+        if (npvAt(low) * npvMid < 0) {
+            high = mid;
+        } else {
+            low = mid;
+        }
+    }
+    return (low + high) / 2;
+};
 // Анализ чувствительности
 Project.prototype._calculateSensitivity = function () {
     var self = this;
