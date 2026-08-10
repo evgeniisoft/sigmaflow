@@ -5423,9 +5423,9 @@
             }
 
             // Расходы
-            var costs = [];
             var costsStart = parseInt(document.getElementById('pj-costs-start')?.value) || 0;
 
+            var costs = [];
             if (type === 'equipment') {
                 var costInc = parseFloat(document.getElementById('pj-cost-increase')?.value.replace(/\s/g, '')) || 0;
                 if (costInc > 0) costs.push({ name: 'Доп. расходы', baseAmount: costInc, type: 'fixed', rampUpMonths: 0, includesNDS: true });
