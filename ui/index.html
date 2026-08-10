@@ -5336,6 +5336,10 @@
             var name = document.getElementById('pj-name').value || 'Новый проект';
             var type = document.getElementById('pj-type').value;
             var horizon = parseInt(document.getElementById('pj-horizon').value) || 36;
+            function gv(id) {
+                var el = document.getElementById(id);
+                return el ? el.value : '';
+            }
 
             var costs = [];
 
@@ -5425,7 +5429,8 @@
             }
 
             // Расходы
-            var costsStart = parseInt(document.getElementById('pj-costs-start')?.value) || 0;
+            var costsStartEl = document.getElementById('pj-costs-start');
+            var costsStart = costsStartEl ? (parseInt(costsStartEl.value) || 0) : 0;
            
             if (type === 'equipment') {
                 var costInc = parseFloat(document.getElementById('pj-cost-increase')?.value.replace(/\s/g, '')) || 0;
