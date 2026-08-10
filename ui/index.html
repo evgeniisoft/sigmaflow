@@ -4997,17 +4997,17 @@
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 2: ЧТО ДАЁТ ОБОРУДОВАНИЕ</div>
         <div class="form-group">
             <label>РОСТ ВЫРУЧКИ (₽/МЕС)</label>
-            <input type="text" id="pj-rev-increase" value="250 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)'">
+            <input type="text" id="pj-rev-increase" value="250 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this);this.style.color='var(--text-hint)'">
             <div style="font-size:9px;color:var(--text-hint);">Больше продукции / клиентов / скорость</div>
         </div>
         <div class="form-group">
             <label>СНИЖЕНИЕ РАСХОДОВ (₽/МЕС)</label>
-            <input type="text" id="pj-cost-decrease" value="0" style="width:100%;" onfocus="this.style.color='var(--text-primary)'">
+            <input type="text" id="pj-rev-increase" value="250 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this);this.style.color='var(--text-hint)'">
             <div style="font-size:9px;color:var(--text-hint);">Меньше ремонта, брака, энергии</div>
         </div>
         <div class="form-group">
             <label>ДОП. РАСХОДЫ (₽/МЕС)</label>
-            <input type="text" id="pj-cost-increase" value="35 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)'">
+            <input type="text" id="pj-rev-increase" value="250 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this);this.style.color='var(--text-hint)'">
             <div style="font-size:9px;color:var(--text-hint);">Обслуживание, энергия, персонал</div>
         </div>
         <div class="form-group">
@@ -5229,8 +5229,8 @@
         // ==================== ОБЩИЕ БЛОКИ ====================
         function renderFinancingBlock() {
             return `
-        <div class="form-group"><label>СВОИ СРЕДСТВА (₽)</label><input type="text" id="pj-own-funds" value="0" style="width:100%;"></div>
-        <div class="form-group"><label>КРЕДИТ (СУММА)</label><input type="text" id="pj-credit-amount" value="0" style="width:100%;"></div>
+        <div class="form-group"><label>СВОИ СРЕДСТВА (₽)</label><input type="text" id="pj-rev-increase" value="250 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this);this.style.color='var(--text-hint)'"></div>
+        <div class="form-group"><label>КРЕДИТ (СУММА)</label><input type="text" id="pj-rev-increase" value="250 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this);this.style.color='var(--text-hint)'"></div>
         <div class="form-group"><label>СТАВКА (%)</label><input type="number" id="pj-credit-rate" value="21" step="0.5" style="width:80px;"></div>
         <div class="form-group"><label>СРОК (МЕС)</label><input type="number" id="pj-credit-term" value="36" style="width:80px;"></div>
         <div class="form-group"><label>ТИП ПЛАТЕЖЕЙ</label>
@@ -5784,6 +5784,13 @@
                 el.setAttribute('value', el.value);
             });
 
+            // Фиксируем select'ы
+            document.querySelectorAll('#eq-investments select, #prod-investments select, #branch-investments select, #chan-investments select').forEach(function (el) {
+                el.setAttribute('data-value', el.value);
+            });
+
+            // Сохраняем HTML блока дисконтирования
+            projectJSON.discountRowsHTML = document.getElementById('discount-rows')?.innerHTML || '';
             var projectJSON = {
                 name: document.getElementById('pj-name').value,
                 type: document.getElementById('pj-type').value,
@@ -5831,6 +5838,13 @@
             document.querySelectorAll('#eq-investments select, #prod-investments select, #branch-investments select, #chan-investments select').forEach(function (el) {
                 el.setAttribute('value', el.value);
             });
+            // Фиксируем select'ы
+            document.querySelectorAll('#eq-investments select, #prod-investments select, #branch-investments select, #chan-investments select').forEach(function (el) {
+                el.setAttribute('data-value', el.value);
+            });
+
+            // Сохраняем HTML блока дисконтирования
+            projectJSON.discountRowsHTML = document.getElementById('discount-rows')?.innerHTML || '';
 
             var projectJSON = {
                 name: document.getElementById('pj-name').value,
@@ -5907,6 +5921,10 @@
                 if (proj.prodInvestmentsHTML) document.getElementById('prod-investments').innerHTML = proj.prodInvestmentsHTML;
                 if (proj.branchInvestmentsHTML) document.getElementById('branch-investments').innerHTML = proj.branchInvestmentsHTML;
                 if (proj.chanInvestmentsHTML) document.getElementById('chan-investments').innerHTML = proj.chanInvestmentsHTML;
+                if (proj.discountRowsHTML) {
+                    var discEl = document.getElementById('discount-rows');
+                    if (discEl) discEl.innerHTML = proj.discountRowsHTML;
+                }
 
                 // Восстанавливаем значения полей
                 if (proj.formValues) {
