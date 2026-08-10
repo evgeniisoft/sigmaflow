@@ -5894,6 +5894,11 @@
                 document.getElementById('project-metrics').style.display = 'grid';
             }
 
+            // Автопересчёт при загрузке
+            setTimeout(function () {
+                calculateProject();
+            }, 300);
+            
             notify('Проект «' + proj.name + '» загружен. Нажмите «РАССЧИТАТЬ» для полного анализа.');
         }
 
