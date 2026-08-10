@@ -18,7 +18,7 @@ function Project(config) {
     this.inflationRate = config.inflationRate || 0.07;
     this.propertyTaxRate = config.propertyTaxRate || 0;
     this.amortizationPremium = config.amortizationPremium || 0; // амортизационная премия (0.1 = 10%)
-    this.season = config.season || [1,1,1,1,1,1,1,1,1,1,1,1];
+    this.season = config.season || [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
     this.scenarios = config.scenarios || null; // { optimistic: {revenueMul: 1.2, costMul: 0.9}, pessimistic: {revenueMul: 0.8, costMul: 1.1} }
 
     this.calculate();
@@ -403,7 +403,22 @@ Project.prototype._calculateIRR = function () {
         return sum;
     };
 
-    if (npvAt(0) <= 0) return 0;
+    if (npvAt(0) <= 0) {
+        // Проект не окупается даже при 0% — IRR отрицательный
+        // Ищем отрицательную IRR
+        var lowNeg = -0.99;
+        var highNeg = 0;
+        if (npvAt(lowNeg) > 0) {
+            for (var i = 0; i < 100; i++) {
+                var midNeg = (lowNeg + highNeg) / 2;
+                var npvMidNeg = npvAt(midNeg);
+                if (Math.abs(npvMidNeg) < 1e-6) return midNeg;
+                if (npvMidNeg > 0) lowNeg = midNeg; else highNeg = midNeg;
+            }
+            return (lowNeg + highNeg) / 2;
+        }
+        return -0.99;
+    }
     var low = 0;
     var high = 1;
     while (npvAt(high) > 0 && high < 1000) high *= 2;
