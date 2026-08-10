@@ -5600,7 +5600,7 @@
 
         function renderBarChart(divId, data, title) {
             var container = document.getElementById(divId);
-            if (!container) return;
+            if (!container || !data || data.length === 0) return;
             var width = container.clientWidth, height = container.clientHeight;
             if (width === 0) return;
             var svg = d3.select('#' + divId).append('svg').attr('width', width).attr('height', height);
@@ -5608,24 +5608,26 @@
             var w = width - margin.left - margin.right, h = height - margin.top - margin.bottom;
             var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
             var xScale = d3.scaleLinear().domain([0, data.length - 1]).range([0, w]);
-            var maxVal = Math.max.apply(null, data.map(Math.abs));
+            var maxVal = Math.max.apply(null, data.map(Math.abs)) || 1;
             var yScale = d3.scaleLinear().domain([-maxVal, maxVal]).range([h, 0]);
-            g.append('g').attr('transform', 'translate(0,' + h + ')').call(d3.axisBottom(xScale).ticks(Math.min(data.length, 12))).attr('font-size', '8px');
-            g.append('g').call(d3.axisLeft(yScale).ticks(4).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '8px');
+            g.append('g').attr('transform', 'translate(0,' + h + ')').call(d3.axisBottom(xScale).ticks(Math.min(data.length, 12)).tickFormat(function (d) { return d; })).attr('font-size', '8px');
+            g.append('g').call(d3.axisLeft(yScale).ticks(5).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '8px');
             g.append('line').attr('x1', 0).attr('x2', w).attr('y1', yScale(0)).attr('y2', yScale(0)).attr('stroke', '#2A3040');
-            var barW = Math.max(2, w / data.length - 1);
+
+            var barW = Math.max(3, w / data.length - 1);
             g.selectAll('rect').data(data).enter().append('rect')
                 .attr('x', function (d, i) { return xScale(i); })
                 .attr('y', function (d) { return d >= 0 ? yScale(d) : yScale(0); })
                 .attr('width', barW)
                 .attr('height', function (d) { return Math.abs(yScale(d) - yScale(0)); })
-                .attr('fill', function (d) { return d >= 0 ? 'rgba(75,140,90,0.6)' : 'rgba(212,75,60,0.6)'; });
+                .attr('fill', function (d) { return d >= 0 ? 'rgba(75,140,90,0.7)' : 'rgba(212,75,60,0.7)'; });
+
             g.append('text').attr('x', 0).attr('y', -3).attr('fill', '#6A7080').attr('font-size', '9px').text(title);
         }
 
         function renderCumulativeChart(divId, data, payback, title) {
             var container = document.getElementById(divId);
-            if (!container) return;
+            if (!container || !data || data.length === 0) return;
             var width = container.clientWidth, height = container.clientHeight;
             if (width === 0) return;
             var svg = d3.select('#' + divId).append('svg').attr('width', width).attr('height', height);
@@ -5633,24 +5635,37 @@
             var w = width - margin.left - margin.right, h = height - margin.top - margin.bottom;
             var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
             var xScale = d3.scaleLinear().domain([0, data.length - 1]).range([0, w]);
-            var maxVal = Math.max.apply(null, data.map(Math.abs));
+            var maxVal = Math.max.apply(null, data.map(Math.abs)) || 1;
             var minVal = Math.min.apply(null, data.concat([0]));
             var yScale = d3.scaleLinear().domain([minVal, maxVal]).range([h, 0]);
-            g.append('g').attr('transform', 'translate(0,' + h + ')').call(d3.axisBottom(xScale).ticks(Math.min(data.length, 12))).attr('font-size', '8px');
-            g.append('g').call(d3.axisLeft(yScale).ticks(4).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '8px');
+            g.append('g').attr('transform', 'translate(0,' + h + ')').call(d3.axisBottom(xScale).ticks(Math.min(data.length, 12)).tickFormat(function (d) { return d; })).attr('font-size', '8px');
+            g.append('g').call(d3.axisLeft(yScale).ticks(5).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '8px');
             g.append('line').attr('x1', 0).attr('x2', w).attr('y1', yScale(0)).attr('y2', yScale(0)).attr('stroke', '#2A3040');
+
+            // Столбцы кумулятивного потока
+            var barW = Math.max(3, w / data.length - 1);
+            g.selectAll('rect').data(data).enter().append('rect')
+                .attr('x', function (d, i) { return xScale(i); })
+                .attr('y', function (d) { return d >= 0 ? yScale(d) : yScale(0); })
+                .attr('width', barW)
+                .attr('height', function (d) { return Math.abs(yScale(d) - yScale(0)); })
+                .attr('fill', function (d) { return d >= 0 ? 'rgba(90,159,212,0.5)' : 'rgba(212,75,60,0.5)'; });
+
+            // Линия тренда
             var line = d3.line().x(function (d, i) { return xScale(i); }).y(function (d) { return yScale(d); });
             g.append('path').datum(data).attr('fill', 'none').attr('stroke', '#5A9FD4').attr('stroke-width', 2).attr('d', line);
-            if (payback >= 0) {
-                g.append('circle').attr('cx', xScale(payback)).attr('cy', yScale(0)).attr('r', 4).attr('fill', '#D4A843');
-                g.append('text').attr('x', xScale(payback) + 4).attr('y', yScale(0) - 6).attr('fill', '#D4A843').attr('font-size', '8px').text('Окуп: ' + payback + 'м');
+
+            // Точка окупаемости
+            if (payback >= 0 && payback < data.length) {
+                g.append('circle').attr('cx', xScale(payback)).attr('cy', yScale(0)).attr('r', 5).attr('fill', '#D4A843');
+                g.append('text').attr('x', xScale(payback) + 6).attr('y', yScale(0) - 6).attr('fill', '#D4A843').attr('font-size', '9px').text('Окуп: ' + payback + 'м');
             }
             g.append('text').attr('x', 0).attr('y', -3).attr('fill', '#6A7080').attr('font-size', '9px').text(title);
         }
 
         function renderNPVCurve(divId, p) {
             var container = document.getElementById(divId);
-            if (!container) return;
+            if (!container || !p) return;
             var width = container.clientWidth, height = container.clientHeight;
             if (width === 0) return;
             var svg = d3.select('#' + divId).append('svg').attr('width', width).attr('height', height);
@@ -5664,10 +5679,27 @@
             var minNpv = Math.min.apply(null, npvData.map(function (d) { return d.npv; }));
             var yScale = d3.scaleLinear().domain([minNpv, maxNpv]).range([h, 0]);
             g.append('g').attr('transform', 'translate(0,' + h + ')').call(d3.axisBottom(xScale).ticks(5).tickFormat(function (d) { return (d * 100) + '%'; })).attr('font-size', '8px');
-            g.append('g').call(d3.axisLeft(yScale).ticks(3).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '8px');
+            g.append('g').call(d3.axisLeft(yScale).ticks(4).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '8px');
             g.append('line').attr('x1', 0).attr('x2', w).attr('y1', yScale(0)).attr('y2', yScale(0)).attr('stroke', '#2A3040');
+
+            // Заливка: зелёная где NPV>0, красная где NPV<0
+            var areaAbove = d3.area().x(function (d) { return xScale(d.rate); }).y0(yScale(0)).y1(function (d) { return yScale(Math.max(0, d.npv)); });
+            var areaBelow = d3.area().x(function (d) { return xScale(d.rate); }).y0(yScale(0)).y1(function (d) { return yScale(Math.min(0, d.npv)); });
+            g.append('path').datum(npvData).attr('d', areaAbove).attr('fill', 'rgba(75,140,90,0.2)');
+            g.append('path').datum(npvData).attr('d', areaBelow).attr('fill', 'rgba(212,75,60,0.2)');
+
             var line = d3.line().x(function (d) { return xScale(d.rate); }).y(function (d) { return yScale(d.npv); });
             g.append('path').datum(npvData).attr('fill', 'none').attr('stroke', '#D4A843').attr('stroke-width', 2).attr('d', line);
+            g.selectAll('circle').data(npvData).enter().append('circle')
+                .attr('cx', function (d) { return xScale(d.rate); }).attr('cy', function (d) { return yScale(d.npv); })
+                .attr('r', 3).attr('fill', '#D4A843');
+
+            // Метка IRR
+            if (p.operatingIRR > 0 && p.operatingIRR < 0.5) {
+                g.append('line').attr('x1', xScale(p.operatingIRR)).attr('x2', xScale(p.operatingIRR))
+                    .attr('y1', 0).attr('y2', h).attr('stroke', '#D44B3C').attr('stroke-width', 1).attr('stroke-dasharray', '4 2');
+                g.append('text').attr('x', xScale(p.operatingIRR) + 2).attr('y', 12).attr('fill', '#D44B3C').attr('font-size', '8px').text('IRR ' + (p.operatingIRR * 100).toFixed(1) + '%');
+            }
             g.append('text').attr('x', 0).attr('y', -3).attr('fill', '#6A7080').attr('font-size', '9px').text('NPV при разных ставках');
         }
         // Сохранение проектов Вкладка ПРОЕКТЫ
