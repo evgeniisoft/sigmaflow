@@ -717,6 +717,10 @@
                 <div
                     style="width:480px;padding:16px;overflow-y:auto;background:var(--bg-panel);border-right:1px solid var(--border);flex-shrink:0;">
                     <h3 style="margin:0 0 16px;">НОВЫЙ ПРОЕКТ</h3>
+                    <div style="display:flex;gap:8px;margin-bottom:12px;">
+                        <input type="file" id="project-file-import" accept=".json" style="display:none;">
+                        <button id="btn-import-project" style="font-size:10px;">ИМПОРТ</button>
+                    </div>
 
                     <div class="form-group">
                         <label>НАЗВАНИЕ ПРОЕКТА</label>
@@ -5705,39 +5709,46 @@
         // Сохранение проектов Вкладка ПРОЕКТЫ
         document.getElementById('btn-export-project')?.addEventListener('click', function () {
             if (!currentProject) return;
-            var csv = 'Месяц;Выручка;Расходы;Кредит;Проценты;Налог;Поток;Накопленный\n';
-            for (var i = 0; i < currentProject.horizon; i++) {
-                csv += i + ';' + Math.round(currentProject.revenueFlow[i]) + ';' + Math.round(currentProject.costFlow[i]) + ';' +
-                    Math.round(currentProject.creditRepayment[i]) + ';' + Math.round(currentProject.interestFlow[i]) + ';' +
-                    Math.round(currentProject.taxFlow[i]) + ';' + Math.round(currentProject.netFlow[i]) + ';' +
-                    Math.round(currentProject.cumulativeFlow[i]) + '\n';
-            }
-            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            var projectJSON = {
+                name: document.getElementById('pj-name').value,
+                type: document.getElementById('pj-type').value,
+                horizon: parseInt(document.getElementById('pj-horizon').value) || 36,
+                formValues: {},
+                results: {
+                    operatingNPV: currentProject.operatingNPV,
+                    financedNPV: currentProject.financedNPV,
+                    operatingIRR: currentProject.operatingIRR,
+                    paybackPeriod: currentProject.paybackPeriod
+                },
+                eqInvestmentsHTML: document.getElementById('eq-investments')?.innerHTML || '',
+                prodInvestmentsHTML: document.getElementById('prod-investments')?.innerHTML || '',
+                branchInvestmentsHTML: document.getElementById('branch-investments')?.innerHTML || '',
+                chanInvestmentsHTML: document.getElementById('chan-investments')?.innerHTML || ''
+            };
+            var allInputs = document.querySelectorAll('#project-type-form input, #project-type-form select');
+            allInputs.forEach(function (el) {
+                if (el.id) {
+                    if (el.type === 'checkbox') projectJSON.formValues[el.id] = el.checked;
+                    else if (el.type === 'radio') { if (el.checked) projectJSON.formValues[el.name] = el.value; }
+                    else projectJSON.formValues[el.id] = el.value;
+                }
+            });
+            var blob = new Blob([JSON.stringify(projectJSON, null, 2)], { type: 'application/json' });
             var a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = (currentProject.name || 'project') + '.csv';
+            a.download = (projectJSON.name || 'project') + '.json';
             a.click();
+            notify('Проект экспортирован');
         });
         // Сохранение проектов
         document.getElementById('btn-save-project')?.addEventListener('click', function () {
             if (!currentProject) return;
 
-            // Собираем все данные формы
-            var data = {
+            var projectJSON = {
                 name: document.getElementById('pj-name').value,
                 type: document.getElementById('pj-type').value,
                 horizon: parseInt(document.getElementById('pj-horizon').value) || 36,
-                config: {
-                    ownFunds: document.getElementById('pj-own-funds').value,
-                    creditAmount: document.getElementById('pj-credit-amount').value,
-                    creditRate: document.getElementById('pj-credit-rate').value,
-                    creditTerm: document.getElementById('pj-credit-term').value,
-                    creditType: document.getElementById('pj-credit-type').value,
-                    reinvest: document.getElementById('pj-reinvest').value,
-                    amortType: document.getElementById('pj-amort-type').value,
-                    amortPremium: document.getElementById('pj-amort-premium').value,
-                    useCompanyTax: document.getElementById('pj-use-company-tax').checked
-                },
+                formValues: {},
                 results: {
                     operatingNPV: currentProject.operatingNPV,
                     financedNPV: currentProject.financedNPV,
@@ -5747,10 +5758,23 @@
                     roi: currentProject.roi,
                     dscr: currentProject.dscr,
                     breakevenFactor: currentProject.breakevenFactor
-                }
+                },
+                eqInvestmentsHTML: document.getElementById('eq-investments')?.innerHTML || '',
+                prodInvestmentsHTML: document.getElementById('prod-investments')?.innerHTML || '',
+                branchInvestmentsHTML: document.getElementById('branch-investments')?.innerHTML || '',
+                chanInvestmentsHTML: document.getElementById('chan-investments')?.innerHTML || ''
             };
 
-            savedProjects.push(data);
+            var allInputs = document.querySelectorAll('#project-type-form input, #project-type-form select');
+            allInputs.forEach(function (el) {
+                if (el.id) {
+                    if (el.type === 'checkbox') projectJSON.formValues[el.id] = el.checked;
+                    else if (el.type === 'radio') { if (el.checked) projectJSON.formValues[el.name] = el.value; }
+                    else projectJSON.formValues[el.id] = el.value;
+                }
+            });
+
+            savedProjects.push(projectJSON);
             localStorage.setItem('sigmaflow_projects', JSON.stringify(savedProjects));
             renderSavedProjects();
             notify('Проект сохранён');
@@ -5790,38 +5814,43 @@
             var proj = savedProjects[idx];
             if (!proj) return;
 
-            // Восстанавливаем имя и тип
             document.getElementById('pj-name').value = proj.name || '';
             document.getElementById('pj-type').value = proj.type || 'equipment';
             document.getElementById('pj-horizon').value = proj.horizon || 36;
 
-            // Перестраиваем форму нужного типа
             renderProjectTypeForm();
 
-            // Восстанавливаем финансирование и настройки
-            if (proj.config) {
-                document.getElementById('pj-own-funds').value = proj.config.ownFunds || '0';
-                document.getElementById('pj-credit-amount').value = proj.config.creditAmount || '0';
-                document.getElementById('pj-credit-rate').value = proj.config.creditRate || '21';
-                document.getElementById('pj-credit-term').value = proj.config.creditTerm || '36';
-                document.getElementById('pj-credit-type').value = proj.config.creditType || 'annuity';
-                document.getElementById('pj-reinvest').value = proj.config.reinvest || '15';
-                document.getElementById('pj-amort-type').value = proj.config.amortType || 'linear';
-                document.getElementById('pj-amort-premium').value = proj.config.amortPremium || '10';
-                document.getElementById('pj-use-company-tax').checked = proj.config.useCompanyTax !== false;
-            }
+            // Восстанавливаем HTML динамических блоков
+            setTimeout(function () {
+                if (proj.eqInvestmentsHTML) document.getElementById('eq-investments').innerHTML = proj.eqInvestmentsHTML;
+                if (proj.prodInvestmentsHTML) document.getElementById('prod-investments').innerHTML = proj.prodInvestmentsHTML;
+                if (proj.branchInvestmentsHTML) document.getElementById('branch-investments').innerHTML = proj.branchInvestmentsHTML;
+                if (proj.chanInvestmentsHTML) document.getElementById('chan-investments').innerHTML = proj.chanInvestmentsHTML;
+
+                // Восстанавливаем значения полей
+                if (proj.formValues) {
+                    Object.keys(proj.formValues).forEach(function (key) {
+                        var el = document.getElementById(key);
+                        if (el) {
+                            if (el.type === 'checkbox') el.checked = proj.formValues[key];
+                            else if (el.type === 'radio') el.checked = (el.value === proj.formValues[key]);
+                            else el.value = proj.formValues[key];
+                        }
+                    });
+                }
+            }, 100);
 
             // Показываем сохранённые результаты
             if (proj.results) {
                 document.getElementById('project-results').style.display = 'block';
                 document.getElementById('project-empty').style.display = 'none';
-                var html = '';
                 var metrics = [
                     { label: 'Опер. NPV', value: formatValue(Math.round(proj.results.operatingNPV)) + ' ₽' },
                     { label: 'NPV с фин.', value: formatValue(Math.round(proj.results.financedNPV)) + ' ₽' },
                     { label: 'IRR', value: (proj.results.operatingIRR * 100).toFixed(1) + '%' },
                     { label: 'Срок окуп.', value: proj.results.paybackPeriod >= 0 ? proj.results.paybackPeriod + ' мес' : '—' }
                 ];
+                var html = '';
                 metrics.forEach(function (m) {
                     html += '<div style="padding:8px;background:var(--bg-input);border:1px solid var(--border);text-align:center;">' +
                         '<div style="font-size:8px;color:var(--text-hint);">' + m.label + '</div>' +
@@ -5865,6 +5894,30 @@
 
             document.getElementById('btn-save-plan-gs').addEventListener('click', savePlanToGAS);
             document.getElementById('btn-load-compare-gs').addEventListener('click', loadComparisonFromGAS);
+
+
+            document.getElementById('btn-import-project')?.addEventListener('click', function () {
+                document.getElementById('project-file-import').click();
+            });
+
+            document.getElementById('project-file-import')?.addEventListener('change', function (e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function (ev) {
+                    try {
+                        var proj = JSON.parse(ev.target.result);
+                        savedProjects.push(proj);
+                        localStorage.setItem('sigmaflow_projects', JSON.stringify(savedProjects));
+                        renderSavedProjects();
+                        notify('Проект импортирован: ' + proj.name);
+                    } catch (err) {
+                        notify('Ошибка: неверный формат файла', true);
+                    }
+                };
+                reader.readAsText(file);
+            });
+
 
 
             document.querySelectorAll('.project-input').forEach(function (inp) {
