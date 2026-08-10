@@ -5343,15 +5343,33 @@
                 document.querySelectorAll('#eq-investments > div').forEach(function (row) {
                     var amt = parseFloat(row.querySelector('.eq-inv-amount').value.replace(/\s/g, '')) || 0;
                     if (amt === 0) return;
-                    investments.push({
-                        name: row.querySelector('.eq-inv-name').value,
-                        amount: amt,
-                        month: parseInt(row.querySelector('.eq-inv-month').value) || 0,
-                        type: row.querySelector('.eq-inv-type')?.value || 'capex',
-                        usefulLife: parseInt(row.querySelector('.eq-inv-life').value) || 0,
-                        salvageValue: parseFloat(row.querySelector('.eq-inv-salvage').value.replace(/\s/g, '')) || 0,
-                        includesNDS: row.querySelector('.eq-inv-nds')?.checked || false
-                    });
+                    var invType = row.querySelector('.eq-inv-type')?.value || 'capex';
+                    var invName = row.querySelector('.eq-inv-name').value;
+                    var invMonth = parseInt(row.querySelector('.eq-inv-month').value) || 0;
+                    var invNDS = row.querySelector('.eq-inv-nds')?.checked || false;
+
+                    if (invType === 'opex' || invType === 'materials') {
+                        // OPEX и материалы — добавляем в расходы
+                        costs.push({
+                            name: invName,
+                            baseAmount: amt,
+                            type: 'fixed',
+                            rampUpMonths: 0,
+                            month: invMonth,
+                            includesNDS: invNDS
+                        });
+                    } else {
+                        // CAPEX и old_sale — добавляем в инвестиции
+                        investments.push({
+                            name: invName,
+                            amount: invType === 'old_sale' ? -amt : amt,
+                            month: invMonth,
+                            type: invType,
+                            usefulLife: parseInt(row.querySelector('.eq-inv-life')?.value) || 0,
+                            salvageValue: parseFloat(row.querySelector('.eq-inv-salvage')?.value.replace(/\s/g, '')) || 0,
+                            includesNDS: invNDS
+                        });
+                    }
                 });
             } else {
                 document.querySelectorAll('.gi-amount').forEach(function (el, idx) {
@@ -5435,7 +5453,7 @@
                 rate: parseFloat(document.getElementById('pj-credit-rate').value) / 100,
                 term: parseInt(document.getElementById('pj-credit-term').value) || 36,
                 type: document.getElementById('pj-credit-type').value,
-                deferredMonths: parseInt(document.getElementById('pj-deferred-months')?.value) || 0
+                deferredMonths: creditType === 'deferred' ? (parseInt(document.getElementById('pj-deferred-months')?.value) || 6) : 0
             } : null;
 
             // Налоги
