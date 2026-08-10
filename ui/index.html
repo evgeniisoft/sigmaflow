@@ -5032,29 +5032,34 @@
 
         function addEquipmentInvestment() {
             var div = document.createElement('div');
-            div.style.cssText = 'padding:8px;margin-bottom:6px;background:var(--bg-input);border:1px solid var(--border);';
+            div.style.cssText = 'padding:8px;margin-bottom:6px;background:var(--bg-input);border:1px solid var(--border);position:relative;';
+            var uid = Date.now() + Math.random();
             div.innerHTML = `
-        <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">
-            <span style="font-size:10px;color:var(--text-hint);min-width:80px;">НАЗВАНИЕ:</span>
-            <input type="text" class="eq-inv-name" value="Оборудование" style="flex:1;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px 6px;">
+        <button onclick="this.parentElement.remove()" style="position:absolute;top:4px;right:4px;font-size:9px;padding:1px 6px;color:var(--critical);background:transparent;border:1px solid var(--critical);">✕</button>
+        <div style="margin-bottom:4px;">
+            <span style="font-size:10px;color:var(--text-hint);">НАЗВАНИЕ</span>
+            <input type="text" class="eq-inv-name" value="Оборудование" style="width:100%;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px 6px;margin-top:2px;">
         </div>
-        <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">
-            <span style="font-size:10px;color:var(--text-hint);min-width:80px;">СТОИМОСТЬ:</span>
-            <input type="text" class="eq-inv-amount" value="6 500 000" style="width:140px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px 6px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
-            <span style="font-size:10px;color:var(--text-hint);">₽</span>
-            <span style="font-size:10px;color:var(--text-hint);margin-left:8px;">МЕСЯЦ:</span>
-            <input type="number" class="eq-inv-month" value="0" min="0" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+            <div>
+                <span style="font-size:10px;color:var(--text-hint);">СТОИМОСТЬ (₽)</span>
+                <input type="text" class="eq-inv-amount" value="6 500 000" style="width:130px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px 6px;text-align:right;display:block;margin-top:2px;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
+            </div>
+            <div>
+                <span style="font-size:10px;color:var(--text-hint);">МЕСЯЦ ОПЛАТЫ</span>
+                <input type="number" class="eq-inv-month" value="0" min="0" style="width:60px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;display:block;margin-top:2px;">
+                <span style="font-size:8px;color:var(--text-hint);">0 = начало проекта</span>
+            </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;font-size:10px;">
-            <label><input type="radio" name="eq-type-\${Date.now()}" class="eq-inv-type" value="capex" checked> CAPEX (амортизируется)</label>
-            <label><input type="radio" name="eq-type-\${Date.now()}" class="eq-inv-type" value="old_sale"> Продажа старого</label>
-            <span style="margin-left:auto;font-size:10px;color:var(--text-hint);">Срок:</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:10px;">
+            <label style="margin-right:8px;"><input type="radio" name="eq-type-${uid}" class="eq-inv-type" value="capex" checked> CAPEX (амортизируется)</label>
+            <label style="margin-right:8px;"><input type="radio" name="eq-type-${uid}" class="eq-inv-type" value="old_sale"> Продажа старого</label>
+            <span style="color:var(--text-hint);">Срок службы:</span>
             <input type="number" class="eq-inv-life" value="60" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;">
-            <span style="font-size:10px;color:var(--text-hint);">мес</span>
-            <span style="font-size:10px;color:var(--text-hint);">Ликв.:</span>
+            <span style="color:var(--text-hint);">мес</span>
+            <span style="color:var(--text-hint);margin-left:4px;">Ликв. ст-ть:</span>
             <input type="text" class="eq-inv-salvage" value="0" style="width:80px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
-            <label><input type="checkbox" class="eq-inv-nds" checked> НДС</label>
-            <button onclick="this.parentElement.parentElement.remove()" style="font-size:9px;padding:1px 6px;color:var(--critical);">✕</button>
+            <label style="margin-left:4px;"><input type="checkbox" class="eq-inv-nds" checked> Включает НДС</label>
         </div>
     `;
             document.getElementById('eq-investments').appendChild(div);
@@ -5567,6 +5572,16 @@
             var p = currentProject;
             var width = container.clientWidth;
             if (width === 0) return;
+
+            // Проверка данных
+            if (!p.netFlow || p.netFlow.length === 0) {
+                console.error('netFlow пустой');
+                return;
+            }
+            if (!p.cumulativeFlow || p.cumulativeFlow.length === 0) {
+                console.error('cumulativeFlow пустой');
+                return;
+            }
 
             // Каждый график в своём контейнере
             container.innerHTML = '<div id="chart-monthly" style="height:180px;margin-bottom:8px;"></div>' +
