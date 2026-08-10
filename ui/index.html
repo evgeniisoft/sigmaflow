@@ -5034,6 +5034,14 @@
             addEquipmentInvestment(); // первый транш по умолчанию
         }
 
+
+        function toggleInvFields(selectEl) {
+            var capexFields = selectEl.parentElement.querySelector('.capex-fields');
+            if (capexFields) {
+                capexFields.style.display = selectEl.value === 'capex' ? 'inline' : 'none';
+            }
+        }
+
         function addEquipmentInvestment() {
             var div = document.createElement('div');
             div.style.cssText = 'padding:8px;margin-bottom:6px;background:var(--bg-input);border:1px solid var(--border);position:relative;';
@@ -5056,13 +5064,19 @@
             </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:10px;">
-            <label style="margin-right:8px;"><input type="radio" name="eq-type-${uid}" class="eq-inv-type" value="capex" checked> CAPEX (амортизируется)</label>
-            <label style="margin-right:8px;"><input type="radio" name="eq-type-${uid}" class="eq-inv-type" value="old_sale"> Продажа старого</label>
-            <span style="color:var(--text-hint);">Срок службы:</span>
-            <input type="number" class="eq-inv-life" value="60" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;">
-            <span style="color:var(--text-hint);">мес</span>
-            <span style="color:var(--text-hint);margin-left:4px;">Ликв. ст-ть:</span>
-            <input type="text" class="eq-inv-salvage" value="0" style="width:80px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
+            <select class="eq-inv-type" style="font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;" onchange="toggleInvFields(this)">
+                 <option value="capex">CAPEX — оборудование (амортизируется)</option>
+                 <option value="opex">OPEX — ПО, лицензии, обучение</option>
+                 <option value="materials">Материалы / ЗИП / сырьё</option>
+                 <option value="old_sale">Продажа старого оборудования</option>
+            </select>
+            <span class="capex-fields">
+                 <span style="color:var(--text-hint);">Срок службы:</span>
+                 <input type="number" class="eq-inv-life" value="60" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;">
+                 <span style="color:var(--text-hint);">мес</span>
+                 <span style="color:var(--text-hint);margin-left:4px;">Ликв. ст-ть:</span>
+                  <input type="text" class="eq-inv-salvage" value="0" style="width:80px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
+            </span>
             <label style="margin-left:4px;"><input type="checkbox" class="eq-inv-nds" checked> Включает НДС</label>
         </div>
     `;
@@ -5444,6 +5458,35 @@
                 parseFloat(document.getElementById('pj-infl-y2')?.value || 6) / 100,
                 parseFloat(document.getElementById('pj-infl-y3')?.value || 5) / 100
             ];
+
+            // Проверка достаточности финансирования
+            var totalInvestment = investments.reduce(function (s, inv) { return s + (inv.amount || 0); }, 0);
+            var totalFinancing = ownFunds + creditAmount;
+            var financingGap = totalInvestment - totalFinancing;
+
+            if (financingGap > 0) {
+                var warnHtml = '<div style="color:var(--critical);font-size:10px;margin:8px 0;padding:8px;border:1px solid var(--critical);background:rgba(212,75,60,0.1);">' +
+                    '<div style="font-weight:600;margin-bottom:4px;">⚠ НЕДОСТАТОЧНО ФИНАНСИРОВАНИЯ</div>' +
+                    '<div>Общие инвестиции: <b>' + formatValue(totalInvestment) + ' ₽</b></div>' +
+                    '<div>Доступно средств: <b>' + formatValue(totalFinancing) + ' ₽</b> (свои: ' + formatValue(ownFunds) + ' ₽ + кредит: ' + formatValue(creditAmount) + ' ₽)</div>' +
+                    '<div>Дефицит: <b>' + formatValue(financingGap) + ' ₽</b></div>' +
+                    '<div style="margin-top:4px;">Проект не может быть профинансирован в полном объёме. Увеличьте свои средства или сумму кредита.</div>' +
+                    '</div>';
+
+                document.getElementById('project-results').style.display = 'block';
+                document.getElementById('project-empty').style.display = 'none';
+                document.getElementById('project-metrics').innerHTML = warnHtml;
+                document.getElementById('project-chart').innerHTML = '';
+                document.getElementById('project-table').innerHTML = '';
+                document.getElementById('project-conclusion').innerHTML = '';
+                return;
+            }
+
+            // Убираем предупреждение если было
+            var existingWarn = document.querySelector('#project-metrics + div');
+            if (existingWarn && existingWarn.style.color === 'var(--critical)') {
+                existingWarn.remove();
+            }
 
             currentProject = new Project({
                 name: name, type: type, horizon: horizon,
