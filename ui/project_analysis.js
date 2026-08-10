@@ -21,17 +21,6 @@ function Project(config) {
 }
 
 Project.prototype.calculate = function () {
-    // WACC если есть кредит
-    if (self.financing.credit && self.financing.credit.amount > 0 && self.financing.ownFunds > 0) {
-        var totalCapital = self.financing.ownFunds + self.financing.credit.amount;
-        var equityShare = self.financing.ownFunds / totalCapital;
-        var debtShare = self.financing.credit.amount / totalCapital;
-        // Стоимость своих денег = депозит (ключевая ставка), стоимость заёмных = ставка кредита × (1 − налог)
-        var costOfEquity = self.discountRate;
-        var costOfDebt = self.financing.credit.rate * (1 - self.taxRate);
-        self.wacc = equityShare * costOfEquity + debtShare * costOfDebt;
-        self.discountRate = self.wacc;
-    }
     var self = this;
     var h = self.horizon;
 
@@ -208,7 +197,17 @@ Project.prototype.calculate = function () {
         cumCash += self.netFlow[m];
         self.cumulativeFlow[m] = cumCash;
     }
-
+    // WACC если есть кредит
+    if (self.financing.credit && self.financing.credit.amount > 0 && self.financing.ownFunds > 0) {
+        var totalCapital = self.financing.ownFunds + self.financing.credit.amount;
+        var equityShare = self.financing.ownFunds / totalCapital;
+        var debtShare = self.financing.credit.amount / totalCapital;
+        // Стоимость своих денег = депозит (ключевая ставка), стоимость заёмных = ставка кредита × (1 − налог)
+        var costOfEquity = self.discountRate;
+        var costOfDebt = self.financing.credit.rate * (1 - self.taxRate);
+        self.wacc = equityShare * costOfEquity + debtShare * costOfDebt;
+        self.discountRate = self.wacc;
+    }
     // === ДИСКОНТИРОВАННЫЙ ПОТОК ===
     var monthlyRate = Math.pow(1 + self.discountRate, 1 / 12) - 1;
     for (var m = 0; m < h; m++) {
