@@ -774,6 +774,8 @@
                 </div>
 
                 <!-- ПРАВАЯ ПАНЕЛЬ — РЕЗУЛЬТАТЫ -->
+                <div id="saved-projects-list"
+                    style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px;"></div>
                 <div style="flex:1;padding:16px;overflow-y:auto;">
                     <div id="project-results" style="display:none;">
                         <div id="project-metrics"
@@ -4038,6 +4040,13 @@
             }
             setTimeout(buildForecast, 100);
         });
+        
+        document.querySelector('[data-panel="projects"]').addEventListener('click', function () {
+            renderProjectForm();
+            var saved = localStorage.getItem('sigmaflow_projects');
+            if (saved) savedProjects = JSON.parse(saved);
+            renderSavedProjects();
+        });
 
         document.getElementById('btn-build-forecast').addEventListener('click', buildForecast);
 
@@ -5162,85 +5171,94 @@
 
             var p = currentProject;
             var width = container.clientWidth;
-            var totalHeight = 550;
             if (width === 0) return;
 
-            var svg = d3.select('#project-chart').append('svg').attr('width', width).attr('height', totalHeight);
+            // Каждый график в своём контейнере
+            container.innerHTML = '<div id="chart-monthly" style="height:180px;margin-bottom:8px;"></div>' +
+                '<div id="chart-cumulative" style="height:160px;margin-bottom:8px;"></div>' +
+                '<div id="chart-npv" style="height:130px;"></div>';
 
-            // ========== ГРАФИК 1: ЕЖЕМЕСЯЧНЫЕ ПОТОКИ ==========
-            var margin1 = { top: 20, right: 30, bottom: 30, left: 70 };
-            var h1 = 200;
-            var w1 = width - margin1.left - margin1.right;
-            var g1 = svg.append('g').attr('transform', 'translate(' + margin1.left + ',' + margin1.top + ')');
+            // График 1: Ежемесячные потоки
+            renderBarChart('chart-monthly', p.netFlow, 'Ежемесячный денежный поток');
 
-            var xScale1 = d3.scaleLinear().domain([0, p.horizon - 1]).range([0, w1]);
-            var maxFlow = Math.max.apply(null, p.netFlow.map(Math.abs));
-            var yScale1 = d3.scaleLinear().domain([-maxFlow, maxFlow]).range([h1, 0]);
+            // График 2: Кумулятивный
+            renderCumulativeChart('chart-cumulative', p.cumulativeFlow, p.paybackPeriod, 'Накопленный поток');
 
-            g1.append('g').attr('transform', 'translate(0,' + h1 + ')').call(d3.axisBottom(xScale1).ticks(Math.min(p.horizon, 12))).attr('font-size', '9px');
-            g1.append('g').call(d3.axisLeft(yScale1).ticks(5).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '9px');
-            g1.append('line').attr('x1', 0).attr('x2', w1).attr('y1', yScale1(0)).attr('y2', yScale1(0)).attr('stroke', '#2A3040');
+            // График 3: NPV при разных ставках
+            renderNPVCurve('chart-npv', p);
+        }
 
-            // Столбцы
-            g1.selectAll('rect').data(p.netFlow).enter().append('rect')
-                .attr('x', function (d, i) { return xScale1(i); })
-                .attr('y', function (d) { return d >= 0 ? yScale1(d) : yScale1(0); })
-                .attr('width', w1 / p.horizon - 1)
-                .attr('height', function (d) { return Math.abs(yScale1(d) - yScale1(0)); })
+        function renderBarChart(divId, data, title) {
+            var container = document.getElementById(divId);
+            if (!container) return;
+            var width = container.clientWidth, height = container.clientHeight;
+            if (width === 0) return;
+            var svg = d3.select('#' + divId).append('svg').attr('width', width).attr('height', height);
+            var margin = { top: 18, right: 10, bottom: 25, left: 60 };
+            var w = width - margin.left - margin.right, h = height - margin.top - margin.bottom;
+            var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+            var xScale = d3.scaleLinear().domain([0, data.length - 1]).range([0, w]);
+            var maxVal = Math.max.apply(null, data.map(Math.abs));
+            var yScale = d3.scaleLinear().domain([-maxVal, maxVal]).range([h, 0]);
+            g.append('g').attr('transform', 'translate(0,' + h + ')').call(d3.axisBottom(xScale).ticks(Math.min(data.length, 12))).attr('font-size', '8px');
+            g.append('g').call(d3.axisLeft(yScale).ticks(4).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '8px');
+            g.append('line').attr('x1', 0).attr('x2', w).attr('y1', yScale(0)).attr('y2', yScale(0)).attr('stroke', '#2A3040');
+            var barW = Math.max(2, w / data.length - 1);
+            g.selectAll('rect').data(data).enter().append('rect')
+                .attr('x', function (d, i) { return xScale(i); })
+                .attr('y', function (d) { return d >= 0 ? yScale(d) : yScale(0); })
+                .attr('width', barW)
+                .attr('height', function (d) { return Math.abs(yScale(d) - yScale(0)); })
                 .attr('fill', function (d) { return d >= 0 ? 'rgba(75,140,90,0.6)' : 'rgba(212,75,60,0.6)'; });
+            g.append('text').attr('x', 0).attr('y', -3).attr('fill', '#6A7080').attr('font-size', '9px').text(title);
+        }
 
-            g1.append('text').attr('x', 0).attr('y', -5).attr('fill', '#C8CCD4').attr('font-size', '10px').text('Ежемесячный денежный поток');
-
-            // ========== ГРАФИК 2: КУМУЛЯТИВНЫЙ ПОТОК ==========
-            var margin2 = { top: 20, right: 30, bottom: 30, left: 70 };
-            var h2 = 150;
-            var w2 = width - margin2.left - margin2.right;
-            var g2 = svg.append('g').attr('transform', 'translate(' + margin2.left + ',' + (margin1.top + h1 + margin1.bottom + margin2.top) + ')');
-
-            var xScale2 = d3.scaleLinear().domain([0, p.horizon - 1]).range([0, w2]);
-            var maxCum = Math.max.apply(null, p.cumulativeFlow.map(Math.abs));
-            var minCum = Math.min.apply(null, p.cumulativeFlow.concat([0]));
-            var yScale2 = d3.scaleLinear().domain([minCum, maxCum]).range([h2, 0]);
-
-            g2.append('g').attr('transform', 'translate(0,' + h2 + ')').call(d3.axisBottom(xScale2).ticks(Math.min(p.horizon, 12))).attr('font-size', '9px');
-            g2.append('g').call(d3.axisLeft(yScale2).ticks(4).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '9px');
-            g2.append('line').attr('x1', 0).attr('x2', w2).attr('y1', yScale2(0)).attr('y2', yScale2(0)).attr('stroke', '#2A3040');
-
-            var lineCum = d3.line().x(function (d, i) { return xScale2(i); }).y(function (d) { return yScale2(d); });
-            g2.append('path').datum(p.cumulativeFlow).attr('fill', 'none').attr('stroke', '#5A9FD4').attr('stroke-width', 2).attr('d', lineCum);
-
-            // Точка окупаемости
-            if (p.paybackPeriod >= 0) {
-                g2.append('circle').attr('cx', xScale2(p.paybackPeriod)).attr('cy', yScale2(0)).attr('r', 5).attr('fill', '#D4A843');
-                g2.append('text').attr('x', xScale2(p.paybackPeriod) + 6).attr('y', yScale2(0) - 8).attr('fill', '#D4A843').attr('font-size', '9px').text('Окуп: ' + p.paybackPeriod + ' мес');
+        function renderCumulativeChart(divId, data, payback, title) {
+            var container = document.getElementById(divId);
+            if (!container) return;
+            var width = container.clientWidth, height = container.clientHeight;
+            if (width === 0) return;
+            var svg = d3.select('#' + divId).append('svg').attr('width', width).attr('height', height);
+            var margin = { top: 18, right: 10, bottom: 25, left: 60 };
+            var w = width - margin.left - margin.right, h = height - margin.top - margin.bottom;
+            var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+            var xScale = d3.scaleLinear().domain([0, data.length - 1]).range([0, w]);
+            var maxVal = Math.max.apply(null, data.map(Math.abs));
+            var minVal = Math.min.apply(null, data.concat([0]));
+            var yScale = d3.scaleLinear().domain([minVal, maxVal]).range([h, 0]);
+            g.append('g').attr('transform', 'translate(0,' + h + ')').call(d3.axisBottom(xScale).ticks(Math.min(data.length, 12))).attr('font-size', '8px');
+            g.append('g').call(d3.axisLeft(yScale).ticks(4).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '8px');
+            g.append('line').attr('x1', 0).attr('x2', w).attr('y1', yScale(0)).attr('y2', yScale(0)).attr('stroke', '#2A3040');
+            var line = d3.line().x(function (d, i) { return xScale(i); }).y(function (d) { return yScale(d); });
+            g.append('path').datum(data).attr('fill', 'none').attr('stroke', '#5A9FD4').attr('stroke-width', 2).attr('d', line);
+            if (payback >= 0) {
+                g.append('circle').attr('cx', xScale(payback)).attr('cy', yScale(0)).attr('r', 4).attr('fill', '#D4A843');
+                g.append('text').attr('x', xScale(payback) + 4).attr('y', yScale(0) - 6).attr('fill', '#D4A843').attr('font-size', '8px').text('Окуп: ' + payback + 'м');
             }
+            g.append('text').attr('x', 0).attr('y', -3).attr('fill', '#6A7080').attr('font-size', '9px').text(title);
+        }
 
-            g2.append('text').attr('x', 0).attr('y', -5).attr('fill', '#C8CCD4').attr('font-size', '10px').text('Накопленный денежный поток');
-
-            // ========== ГРАФИК 3: NPV ПРИ РАЗНЫХ СТАВКАХ ==========
-            var margin3 = { top: 20, right: 30, bottom: 30, left: 70 };
-            var h3 = 120;
-            var w3 = width - margin3.left - margin3.right;
-            var g3 = svg.append('g').attr('transform', 'translate(' + margin3.left + ',' + (margin2.top + h1 + margin1.bottom + margin2.top + h2 + margin2.bottom + margin3.top) + ')');
-
+        function renderNPVCurve(divId, p) {
+            var container = document.getElementById(divId);
+            if (!container) return;
+            var width = container.clientWidth, height = container.clientHeight;
+            if (width === 0) return;
+            var svg = d3.select('#' + divId).append('svg').attr('width', width).attr('height', height);
+            var margin = { top: 18, right: 10, bottom: 25, left: 60 };
+            var w = width - margin.left - margin.right, h = height - margin.top - margin.bottom;
+            var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
             var rates = [0, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50];
             var npvData = rates.map(function (r) { return { rate: r, npv: p._calculateNPV_at_rate(r) }; });
-            var xScale3 = d3.scaleLinear().domain([0, 0.5]).range([0, w3]);
+            var xScale = d3.scaleLinear().domain([0, 0.5]).range([0, w]);
             var maxNpv = Math.max.apply(null, npvData.map(function (d) { return d.npv; }));
             var minNpv = Math.min.apply(null, npvData.map(function (d) { return d.npv; }));
-            var yScale3 = d3.scaleLinear().domain([minNpv, maxNpv]).range([h3, 0]);
-
-            g3.append('g').attr('transform', 'translate(0,' + h3 + ')').call(d3.axisBottom(xScale3).ticks(5).tickFormat(function (d) { return (d * 100) + '%'; })).attr('font-size', '9px');
-            g3.append('g').call(d3.axisLeft(yScale3).ticks(4).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '9px');
-            g3.append('line').attr('x1', 0).attr('x2', w3).attr('y1', yScale3(0)).attr('y2', yScale3(0)).attr('stroke', '#2A3040');
-
-            var lineNpv = d3.line().x(function (d) { return xScale3(d.rate); }).y(function (d) { return yScale3(d.npv); });
-            g3.append('path').datum(npvData).attr('fill', 'none').attr('stroke', '#D4A843').attr('stroke-width', 2).attr('d', lineNpv);
-            g3.selectAll('circle.npv').data(npvData).enter().append('circle')
-                .attr('cx', function (d) { return xScale3(d.rate); }).attr('cy', function (d) { return yScale3(d.npv); })
-                .attr('r', 3).attr('fill', '#D4A843');
-
-            g3.append('text').attr('x', 0).attr('y', -5).attr('fill', '#C8CCD4').attr('font-size', '10px').text('NPV при разных ставках дисконтирования');
+            var yScale = d3.scaleLinear().domain([minNpv, maxNpv]).range([h, 0]);
+            g.append('g').attr('transform', 'translate(0,' + h + ')').call(d3.axisBottom(xScale).ticks(5).tickFormat(function (d) { return (d * 100) + '%'; })).attr('font-size', '8px');
+            g.append('g').call(d3.axisLeft(yScale).ticks(3).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '8px');
+            g.append('line').attr('x1', 0).attr('x2', w).attr('y1', yScale(0)).attr('y2', yScale(0)).attr('stroke', '#2A3040');
+            var line = d3.line().x(function (d) { return xScale(d.rate); }).y(function (d) { return yScale(d.npv); });
+            g.append('path').datum(npvData).attr('fill', 'none').attr('stroke', '#D4A843').attr('stroke-width', 2).attr('d', line);
+            g.append('text').attr('x', 0).attr('y', -3).attr('fill', '#6A7080').attr('font-size', '9px').text('NPV при разных ставках');
         }
 
         // Сохранение проектов
@@ -5255,6 +5273,7 @@
             });
             localStorage.setItem('sigmaflow_projects', JSON.stringify(savedProjects));
             notify('Проект сохранён');
+            renderSavedProjects();
         });
 
         // Инициализация
@@ -5265,6 +5284,39 @@
         });
 
         document.getElementById('btn-calculate-project')?.addEventListener('click', calculateProject);
+
+        function renderSavedProjects() {
+            var container = document.getElementById('saved-projects-list');
+            if (!container) return;
+            if (savedProjects.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-hint);padding:8px;">Нет сохранённых проектов</div>';
+                return;
+            }
+            var html = '<table style="font-size:10px;"><thead><tr><th>НАЗВАНИЕ</th><th>NPV</th><th>IRR</th><th>СРОК</th></tr></thead><tbody>';
+            savedProjects.forEach(function (proj, idx) {
+                html += '<tr style="cursor:pointer;" onclick="loadProject(' + idx + ')">';
+                html += '<td>' + proj.name + '</td>';
+                html += '<td class="value-cell" style="color:' + (proj.npv >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(Math.round(proj.npv)) + '</td>';
+                html += '<td class="value-cell">' + (proj.irr * 100).toFixed(1) + '%</td>';
+                html += '<td class="value-cell">' + (proj.paybackPeriod >= 0 ? proj.paybackPeriod + 'м' : '—') + '</td>';
+                html += '<td><button onclick="event.stopPropagation(); deleteProject(' + idx + ')" style="font-size:9px;">✕</button></td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function loadProject(idx) {
+            // Загрузка сохранённого проекта
+            notify('Загрузка проекта #' + (idx + 1));
+        }
+
+        function deleteProject(idx) {
+            savedProjects.splice(idx, 1);
+            localStorage.setItem('sigmaflow_projects', JSON.stringify(savedProjects));
+            renderSavedProjects();
+        }
+
 
         // ============================================================
         // ИНИЦИАЛИЗАЦИЯ
