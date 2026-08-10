@@ -5720,6 +5720,23 @@
                     operatingIRR: currentProject.operatingIRR,
                     paybackPeriod: currentProject.paybackPeriod
                 },
+                // Фиксируем значения полей в HTML перед сохранением
+                document.querySelectorAll('#eq-investments input, #prod-investments input, #branch-investments input, #chan-investments input').forEach(function (el) {
+                    if (el.type === 'checkbox' || el.type === 'radio') {
+                        if (el.checked) el.setAttribute('checked', 'checked');
+                        else el.removeAttribute('checked');
+                    } else {
+                        el.setAttribute('value', el.value);
+                    }
+                });
+                document.querySelectorAll('#eq-investments select, #prod-investments select, #branch-investments select, #chan-investments select').forEach(function (el) {
+                    el.setAttribute('value', el.value);
+                    var opts = el.querySelectorAll('option');
+                    opts.forEach(function (opt) {
+                        if (opt.value === el.value) opt.setAttribute('selected', 'selected');
+                        else opt.removeAttribute('selected');
+                    });
+                });
                 eqInvestmentsHTML: document.getElementById('eq-investments')?.innerHTML || '',
                 prodInvestmentsHTML: document.getElementById('prod-investments')?.innerHTML || '',
                 branchInvestmentsHTML: document.getElementById('branch-investments')?.innerHTML || '',
@@ -5759,6 +5776,23 @@
                     dscr: currentProject.dscr,
                     breakevenFactor: currentProject.breakevenFactor
                 },
+                // Фиксируем значения полей в HTML перед сохранением
+                document.querySelectorAll('#eq-investments input, #prod-investments input, #branch-investments input, #chan-investments input').forEach(function (el) {
+                    if (el.type === 'checkbox' || el.type === 'radio') {
+                        if (el.checked) el.setAttribute('checked', 'checked');
+                        else el.removeAttribute('checked');
+                    } else {
+                        el.setAttribute('value', el.value);
+                    }
+                });
+                document.querySelectorAll('#eq-investments select, #prod-investments select, #branch-investments select, #chan-investments select').forEach(function (el) {
+                    el.setAttribute('value', el.value);
+                    var opts = el.querySelectorAll('option');
+                    opts.forEach(function (opt) {
+                        if (opt.value === el.value) opt.setAttribute('selected', 'selected');
+                        else opt.removeAttribute('selected');
+                    });
+                });
                 eqInvestmentsHTML: document.getElementById('eq-investments')?.innerHTML || '',
                 prodInvestmentsHTML: document.getElementById('prod-investments')?.innerHTML || '',
                 branchInvestmentsHTML: document.getElementById('branch-investments')?.innerHTML || '',
