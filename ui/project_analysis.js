@@ -359,8 +359,10 @@ Project.prototype._calculateMetrics = function () {
 
     // Срок окупаемости (операционный)
     self.paybackPeriod = -1;
+    var firstNegativeMonth = -1;
     for (var m = 0; m < self.horizon; m++) {
-        if (self.cumOperating[m] >= 0) { self.paybackPeriod = m; break; }
+        if (self.cumOperating[m] < 0 && firstNegativeMonth < 0) firstNegativeMonth = m;
+        if (firstNegativeMonth >= 0 && self.cumOperating[m] >= 0) { self.paybackPeriod = m; break; }
     }
 
     // Дисконтированный срок окупаемости
