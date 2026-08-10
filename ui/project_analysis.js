@@ -198,6 +198,15 @@ Project.prototype.calculate = function () {
     // === self.sensitivity = self._calculateSensitivity(); ===
 };
 
+Project.prototype._calculateNPV_at_rate = function (rate) {
+    var monthlyR = Math.pow(1 + rate, 1 / 12) - 1;
+    var sum = 0;
+    for (var t = 0; t < this.horizon; t++) {
+        sum += this.netFlow[t] / Math.pow(1 + monthlyR, t);
+    }
+    return sum;
+};
+
 // IRR методом бинарный поиск
 Project.prototype._calculateIRR = function () {
     var self = this;
