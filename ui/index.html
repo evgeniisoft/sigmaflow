@@ -768,14 +768,22 @@
                         <label>СТАВКА РЕИНВЕСТИРОВАНИЯ (%)</label>
                         <input type="number" id="pj-reinvest" value="15" step="0.5" min="0" max="100">
                     </div>
+                    <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАЛОГИ</div>
+                    <label><input type="checkbox" id="pj-use-company-tax" checked onchange="toggleProjectTax()">
+                        Использовать настройки
+                        компании</label>
+                    <div id="pj-tax-settings" style="display:none;">
+                        <div class="form-group"><label>НАЛОГ НА ПРИБЫЛЬ (%)</label><input type="number" id="pj-tax-rate"
+                                value="25" step="0.5"></div>
+                        <div class="form-group"><label>НДС (%)</label><input type="number" id="pj-nds-rate" value="22"
+                                step="0.5"></div>
+                    </div>
 
                     <button id="btn-calculate-project" class="primary" style="width:100%;margin-top:12px;">▶ РАССЧИТАТЬ
                         ПРОЕКТ</button>
                 </div>
 
                 <!-- ПРАВАЯ ПАНЕЛЬ — РЕЗУЛЬТАТЫ -->
-                <div id="saved-projects-list"
-                    style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px;"></div>
                 <div style="flex:1;padding:16px;overflow-y:auto;">
                     <div id="project-results" style="display:none;">
                         <div id="project-metrics"
@@ -787,6 +795,7 @@
                         <div id="project-conclusion"
                             style="padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
                         </div>
+                        <div id="project-table" style="overflow-x:auto;margin-top:16px;"></div>
                         <button id="btn-save-project" class="primary" style="margin-right:8px;">СОХРАНИТЬ
                             ПРОЕКТ</button>
                         <button id="btn-export-project">ЭКСПОРТ</button>
@@ -794,6 +803,8 @@
                     <div id="project-empty" style="color:var(--text-hint);text-align:center;padding-top:60px;">Заполните
                         форму
                         слева и нажмите «РАССЧИТАТЬ ПРОЕКТ»</div>
+                    <div id="saved-projects-list"
+                        style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px;"></div>
                 </div>
             </div>
         </div>
@@ -4040,7 +4051,7 @@
             }
             setTimeout(buildForecast, 100);
         });
-        
+
         document.querySelector('[data-panel="projects"]').addEventListener('click', function () {
             renderProjectForm();
             var saved = localStorage.getItem('sigmaflow_projects');
@@ -5032,6 +5043,9 @@
             var creditTerm = parseInt(document.getElementById('pj-credit-term').value) || 36;
 
             var discountRate = parseFloat(document.getElementById('pj-discount').value) / 100;
+            var useCompanyTax = document.getElementById('pj-use-company-tax')?.checked;
+            var taxRate = useCompanyTax ? (graph?.company?.profit_tax_rate || 0.25) : parseFloat(document.getElementById('pj-tax-rate')?.value || 25) / 100;
+            var ndsRate = useCompanyTax ? (graph?.company?.nds_rate || 0.22) : parseFloat(document.getElementById('pj-nds-rate')?.value || 22) / 100;
             var reinvestRate = parseFloat(document.getElementById('pj-reinvest').value) / 100;
 
             var config = {
@@ -5050,7 +5064,9 @@
                     credit: creditAmount > 0 ? { amount: creditAmount, rate: creditRate, term: creditTerm, startMonth: 0 } : null
                 },
                 discountRate: discountRate,
-                reinvestmentRate: reinvestRate
+                reinvestmentRate: reinvestRate,
+                taxRate: taxRate,
+                ndsRate: ndsRate
             };
 
             // Снижение расходов = отрицательные доп. расходы
@@ -5067,6 +5083,31 @@
 
             currentProject = new Project(config);
             renderProjectResults();
+            renderProjectTable()
+        }
+
+
+        function renderProjectTable() {
+            if (!currentProject) return;
+            var p = currentProject;
+            var html = '<div style="margin-top:16px;font-size:10px;font-weight:600;">ПОМЕСЯЧНЫЕ ДАННЫЕ</div>';
+            html += '<table style="font-size:9px;min-width:100%;margin-top:4px;"><thead><tr>';
+            html += '<th>МЕС</th><th>ВЫРУЧКА</th><th>РАСХОДЫ</th><th>КРЕДИТ</th><th>ПРОЦЕНТЫ</th><th>НАЛОГ</th><th>ПОТОК</th><th>НАКОПЛ.</th>';
+            html += '</tr></thead><tbody>';
+            for (var i = 0; i < Math.min(p.horizon, 36); i++) {
+                html += '<tr>';
+                html += '<td>' + i + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round(p.revenueFlow[i])) + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round(p.costFlow[i])) + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round(p.creditRepayment[i])) + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round(p.interestFlow[i])) + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round(p.taxFlow[i])) + '</td>';
+                html += '<td class="value-cell" style="color:' + (p.netFlow[i] >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(Math.round(p.netFlow[i])) + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round(p.cumulativeFlow[i])) + '</td>';
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+            document.getElementById('project-table').innerHTML = html;
         }
 
         function renderProjectResults() {
@@ -5260,7 +5301,22 @@
             g.append('path').datum(npvData).attr('fill', 'none').attr('stroke', '#D4A843').attr('stroke-width', 2).attr('d', line);
             g.append('text').attr('x', 0).attr('y', -3).attr('fill', '#6A7080').attr('font-size', '9px').text('NPV при разных ставках');
         }
-
+        // Сохранение проектов Вкладка ПРОЕКТЫ
+        document.getElementById('btn-export-project')?.addEventListener('click', function () {
+            if (!currentProject) return;
+            var csv = 'Месяц;Выручка;Расходы;Кредит;Проценты;Налог;Поток;Накопленный\n';
+            for (var i = 0; i < currentProject.horizon; i++) {
+                csv += i + ';' + Math.round(currentProject.revenueFlow[i]) + ';' + Math.round(currentProject.costFlow[i]) + ';' +
+                    Math.round(currentProject.creditRepayment[i]) + ';' + Math.round(currentProject.interestFlow[i]) + ';' +
+                    Math.round(currentProject.taxFlow[i]) + ';' + Math.round(currentProject.netFlow[i]) + ';' +
+                    Math.round(currentProject.cumulativeFlow[i]) + '\n';
+            }
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = (currentProject.name || 'project') + '.csv';
+            a.click();
+        });
         // Сохранение проектов
         document.getElementById('btn-save-project')?.addEventListener('click', function () {
             if (!currentProject) return;
@@ -5307,8 +5363,12 @@
         }
 
         function loadProject(idx) {
-            // Загрузка сохранённого проекта
-            notify('Загрузка проекта #' + (idx + 1));
+            var proj = savedProjects[idx];
+            if (!proj) return;
+            // Заполняем форму (сохраняем только базовые поля)
+            document.getElementById('pj-name').value = proj.name || '';
+            // Восстанавливаем что можем — но не все поля сохранены
+            notify('Проект «' + proj.name + '» загружен. Проверьте параметры.');
         }
 
         function deleteProject(idx) {
@@ -5341,6 +5401,17 @@
 
             document.getElementById('btn-save-plan-gs').addEventListener('click', savePlanToGAS);
             document.getElementById('btn-load-compare-gs').addEventListener('click', loadComparisonFromGAS);
+
+
+            document.querySelectorAll('.project-input').forEach(function (inp) {
+                inp.addEventListener('blur', function () {
+                    var val = parseFloat(this.value.replace(/\s/g, ''));
+                    if (!isNaN(val)) this.value = val.toLocaleString('ru-RU');
+                });
+                inp.addEventListener('focus', function () {
+                    this.value = this.value.replace(/\s/g, '');
+                });
+            });
 
             // Обновить статус при открытии вкладки
             document.querySelector('[data-panel="planfact"]').addEventListener('click', async function () {
