@@ -4997,92 +4997,232 @@
             var container = document.getElementById('project-specific-fields');
             var html = '';
 
+            // === ИНВЕСТИЦИИ ===
             html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ИНВЕСТИЦИИ</div>';
+            html += '<div id="investment-rows">';
+            html += '<div class="inv-row" style="display:flex;gap:4px;margin-bottom:4px;align-items:center;">';
+            html += '<input type="text" class="inv-name" placeholder="Название" style="flex:1;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="Оборудование">';
+            html += '<input type="text" class="inv-amount" placeholder="Сумма" style="width:100px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" value="5000000">';
+            html += '<input type="number" class="inv-month" placeholder="Месяц" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="0" min="0">';
+            html += '<select class="inv-type" style="width:90px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px;"><option value="capex">CAPEX</option><option value="old_sale">Продажа старого</option></select>';
+            html += '<input type="number" class="inv-life" placeholder="Срок" style="width:50px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="60" min="0">';
+            html += '<input type="text" class="inv-salvage" placeholder="Ликв." style="width:70px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" value="0">';
+            html += '<label style="font-size:9px;white-space:nowrap;"><input type="checkbox" class="inv-nds" checked> НДС</label>';
+            html += '</div></div>';
+            html += '<button onclick="addInvestmentRow()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ ТРАНШ</button>';
 
-            if (type === 'equipment') {
-                html += '<div class="form-group"><label>СТОИМОСТЬ ОБОРУДОВАНИЯ</label><input type="number" id="pj-cost" value="5000000" step="100000"></div>';
-                html += '<div class="form-group"><label>СРОК СЛУЖБЫ (МЕС)</label><input type="number" id="pj-useful-life" value="60" min="1" max="360"></div>';
-                html += '<div class="form-group"><label>ЛИКВИДАЦИОННАЯ СТОИМОСТЬ</label><input type="number" id="pj-salvage" value="0" step="50000"></div>';
-                html += '<div class="form-group"><label>ПРОДАЖА СТАРОГО ОБОРУДОВАНИЯ</label><input type="number" id="pj-old-sale" value="0" step="50000"></div>';
+            // === ДОХОДЫ ===
+            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ДОХОДЫ</div>';
+            html += '<div id="revenue-rows">';
+            html += '<div class="rev-row" style="display:flex;gap:4px;margin-bottom:4px;align-items:center;">';
+            html += '<input type="text" class="rev-name" placeholder="Название" style="flex:1;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="Выручка">';
+            html += '<input type="text" class="rev-amount" placeholder="Сумма/мес" style="width:100px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" value="250000">';
+            html += '<input type="number" class="rev-start" placeholder="Старт" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="3" min="0">';
+            html += '<input type="number" class="rev-ramp" placeholder="Ramp" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="4" min="0">';
+            html += '</div></div>';
+            html += '<button onclick="addRevenueRow()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ ДОХОД</button>';
 
-                html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ВЛИЯНИЕ НА БИЗНЕС</div>';
-                html += '<div class="form-group"><label>РОСТ ВЫРУЧКИ (₽/МЕС)</label><input type="number" id="pj-rev-increase" value="0" step="10000"></div>';
-                html += '<div class="form-group"><label>СНИЖЕНИЕ РАСХОДОВ (₽/МЕС)</label><input type="number" id="pj-cost-decrease" value="0" step="10000"></div>';
-                html += '<div class="form-group"><label>ДОПОЛНИТЕЛЬНЫЕ РАСХОДЫ (₽/МЕС)</label><input type="number" id="pj-cost-increase" value="0" step="5000"></div>';
-                html += '<div class="form-group"><label>RAMP-UP (МЕС ДО ВЫХОДА НА ПЛАН)</label><input type="number" id="pj-rampup" value="3" min="0" max="24"></div>';
-            } else {
-                html += '<div class="form-group"><label>ОБЩИЕ ИНВЕСТИЦИИ</label><input type="number" id="pj-cost" value="5000000" step="100000"></div>';
-                html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ДОХОДЫ</div>';
-                html += '<div class="form-group"><label>ВЫРУЧКА (₽/МЕС)</label><input type="number" id="pj-rev-increase" value="0" step="10000"></div>';
-                html += '<div class="form-group"><label>RAMP-UP (МЕС)</label><input type="number" id="pj-rampup" value="3" min="0" max="24"></div>';
-                html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">РАСХОДЫ</div>';
-                html += '<div class="form-group"><label>РАСХОДЫ (₽/МЕС)</label><input type="number" id="pj-cost-increase" value="0" step="10000"></div>';
-            }
+            // === РАСХОДЫ ===
+            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">РАСХОДЫ</div>';
+            html += '<div class="form-group"><label>СТАРТ РАСХОДОВ (МЕС)</label><input type="number" id="pj-costs-start" value="0" min="0" style="width:80px;"></div>';
+            html += '<div id="cost-rows">';
+            html += '<div class="cost-row" style="display:flex;gap:4px;margin-bottom:4px;align-items:center;">';
+            html += '<input type="text" class="cost-name" placeholder="Название" style="flex:1;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="Доп. расходы">';
+            html += '<input type="text" class="cost-amount" placeholder="Сумма/мес" style="width:100px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" value="150000">';
+            html += '<select class="cost-type" style="width:80px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px;"><option value="fixed">Пост.</option><option value="variable">Перем.</option></select>';
+            html += '<input type="number" class="cost-ramp" placeholder="Ramp" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="0" min="0">';
+            html += '<label style="font-size:9px;white-space:nowrap;"><input type="checkbox" class="cost-nds" checked> НДС</label>';
+            html += '</div></div>';
+            html += '<button onclick="addCostRow()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ РАСХОД</button>';
+
+            // === ФИНАНСИРОВАНИЕ ===
+            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ФИНАНСИРОВАНИЕ</div>';
+            html += '<div class="form-group"><label>СВОИ СРЕДСТВА</label><input type="text" id="pj-own-funds" value="0" style="width:100%;"></div>';
+            html += '<div class="form-group"><label>КРЕДИТ (СУММА)</label><input type="text" id="pj-credit-amount" value="0" style="width:100%;"></div>';
+            html += '<div class="form-group"><label>СТАВКА (%)</label><input type="number" id="pj-credit-rate" value="21" step="0.5" style="width:100px;"></div>';
+            html += '<div class="form-group"><label>СРОК (МЕС)</label><input type="number" id="pj-credit-term" value="36" style="width:80px;"></div>';
+            html += '<div class="form-group"><label>ТИП ПЛАТЕЖЕЙ</label><select id="pj-credit-type" style="width:100%;"><option value="annuity">Аннуитет</option><option value="differential">Дифференцированный</option><option value="deferred">С отсрочкой</option></select></div>';
+            html += '<div class="form-group" id="deferred-months-group" style="display:none;"><label>ОТСРОЧКА (МЕС)</label><input type="number" id="pj-deferred-months" value="6" style="width:80px;"></div>';
+
+            // === НАСТРОЙКИ ===
+            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ДИСКОНТИРОВАНИЕ</div>';
+            html += '<div id="discount-rows">';
+            html += '<div class="disc-row" style="display:flex;gap:4px;margin-bottom:4px;"><input type="number" class="disc-months" value="12" style="width:55px;" placeholder="Мес"><input type="number" class="disc-rate" value="21" step="0.5" style="width:60px;" placeholder="Ставка %"></div>';
+            html += '<div class="disc-row" style="display:flex;gap:4px;margin-bottom:4px;"><input type="number" class="disc-months" value="12" style="width:55px;"><input type="number" class="disc-rate" value="18" step="0.5" style="width:60px;"></div>';
+            html += '<div class="disc-row" style="display:flex;gap:4px;margin-bottom:4px;"><input type="number" class="disc-months" value="12" style="width:55px;"><input type="number" class="disc-rate" value="15" step="0.5" style="width:60px;"></div>';
+            html += '</div>';
+
+            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ИНФЛЯЦИЯ ПО ГОДАМ (%)</div>';
+            html += '<div style="display:flex;gap:4px;"><input type="number" id="pj-infl-y1" value="7" step="0.5" style="width:60px;" placeholder="Год1"><input type="number" id="pj-infl-y2" value="6" step="0.5" style="width:60px;" placeholder="Год2"><input type="number" id="pj-infl-y3" value="5" step="0.5" style="width:60px;" placeholder="Год3"></div>';
+
+            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">АМОРТИЗАЦИЯ</div>';
+            html += '<select id="pj-amort-type" style="width:100%;"><option value="linear">Линейная</option><option value="accelerated">Ускоренная (×2 первые 2 года)</option></select>';
+            html += '<div class="form-group"><label>АМОРТИЗАЦИОННАЯ ПРЕМИЯ (%)</label><input type="number" id="pj-amort-premium" value="10" step="5" style="width:80px;"></div>';
+
+            // === НАЛОГИ ===
+            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАЛОГИ</div>';
+            html += '<label><input type="checkbox" id="pj-use-company-tax" checked onchange="toggleProjectTax()"> Использовать настройки компании</label>';
+            html += '<div id="pj-tax-settings" style="display:none;"><div class="form-group"><label>НАЛОГ НА ПРИБЫЛЬ (%)</label><input type="number" id="pj-tax-rate" value="25" style="width:80px;"></div><div class="form-group"><label>НДС (%)</label><input type="number" id="pj-nds-rate" value="22" style="width:80px;"></div></div>';
+
+            html += '<div class="form-group"><label>СТАВКА РЕИНВЕСТИРОВАНИЯ (%)</label><input type="number" id="pj-reinvest" value="15" step="0.5" style="width:80px;"></div>';
 
             container.innerHTML = html;
+
+            // Показать/скрыть отсрочку
+            document.getElementById('pj-credit-type').addEventListener('change', function () {
+                document.getElementById('deferred-months-group').style.display = this.value === 'deferred' ? 'block' : 'none';
+            });
         }
 
+        // Добавление строк
+        function addInvestmentRow() {
+            var div = document.createElement('div');
+            div.className = 'inv-row';
+            div.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;align-items:center;';
+            div.innerHTML = '<input type="text" class="inv-name" style="flex:1;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" placeholder="Название">' +
+                '<input type="text" class="inv-amount" style="width:100px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" placeholder="Сумма">' +
+                '<input type="number" class="inv-month" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" placeholder="Мес" value="0">' +
+                '<select class="inv-type" style="width:90px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px;"><option value="capex">CAPEX</option><option value="old_sale">Продажа</option></select>' +
+                '<input type="number" class="inv-life" style="width:50px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" placeholder="Срок" value="60">' +
+                '<input type="text" class="inv-salvage" style="width:70px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" placeholder="Ликв." value="0">' +
+                '<label style="font-size:9px;"><input type="checkbox" class="inv-nds" checked>НДС</label>' +
+                '<button onclick="this.parentElement.remove()" style="font-size:9px;padding:1px 4px;">✕</button>';
+            document.getElementById('investment-rows').appendChild(div);
+        }
+
+        function addRevenueRow() {
+            var div = document.createElement('div');
+            div.className = 'rev-row';
+            div.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;align-items:center;';
+            div.innerHTML = '<input type="text" class="rev-name" style="flex:1;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" placeholder="Название">' +
+                '<input type="text" class="rev-amount" style="width:100px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" placeholder="Сумма/мес">' +
+                '<input type="number" class="rev-start" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" placeholder="Старт" value="0">' +
+                '<input type="number" class="rev-ramp" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" placeholder="Ramp" value="0">' +
+                '<button onclick="this.parentElement.remove()" style="font-size:9px;padding:1px 4px;">✕</button>';
+            document.getElementById('revenue-rows').appendChild(div);
+        }
+
+        function addCostRow() {
+            var div = document.createElement('div');
+            div.className = 'cost-row';
+            div.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;align-items:center;';
+            div.innerHTML = '<input type="text" class="cost-name" style="flex:1;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" placeholder="Название">' +
+                '<input type="text" class="cost-amount" style="width:100px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" placeholder="Сумма/мес">' +
+                '<select class="cost-type" style="width:80px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px;"><option value="fixed">Пост.</option><option value="variable">Перем.</option></select>' +
+                '<input type="number" class="cost-ramp" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" placeholder="Ramp" value="0">' +
+                '<label style="font-size:9px;"><input type="checkbox" class="cost-nds" checked>НДС</label>' +
+                '<button onclick="this.parentElement.remove()" style="font-size:9px;padding:1px 4px;">✕</button>';
+            document.getElementById('cost-rows').appendChild(div);
+        }
+
+        function toggleProjectTax() {
+            document.getElementById('pj-tax-settings').style.display =
+                document.getElementById('pj-use-company-tax').checked ? 'none' : 'block';
+        }
+
+        // ==================== РАССЧЁТ ====================
         function calculateProject() {
-            var type = document.getElementById('pj-type').value;
             var name = document.getElementById('pj-name').value || 'Новый проект';
+            var type = document.getElementById('pj-type').value;
             var horizon = parseInt(document.getElementById('pj-horizon').value) || 36;
 
-            var cost = parseFloat(document.getElementById('pj-cost').value) || 0;
-            var revIncrease = parseFloat(document.getElementById('pj-rev-increase').value) || 0;
-            var costDecrease = parseFloat(document.getElementById('pj-cost-decrease')?.value) || 0;
-            var costIncrease = parseFloat(document.getElementById('pj-cost-increase').value) || 0;
-            var rampUp = parseInt(document.getElementById('pj-rampup').value) || 0;
-            var usefulLife = parseInt(document.getElementById('pj-useful-life')?.value) || 60;
-            var salvage = parseFloat(document.getElementById('pj-salvage')?.value) || 0;
-            var oldSale = parseFloat(document.getElementById('pj-old-sale')?.value) || 0;
+            // Инвестиции
+            var investments = [];
+            document.querySelectorAll('.inv-row').forEach(function (row) {
+                var amt = parseFloat(row.querySelector('.inv-amount').value.replace(/\s/g, '')) || 0;
+                if (amt === 0) return;
+                investments.push({
+                    name: row.querySelector('.inv-name').value,
+                    month: parseInt(row.querySelector('.inv-month').value) || 0,
+                    amount: amt,
+                    type: row.querySelector('.inv-type').value,
+                    usefulLife: parseInt(row.querySelector('.inv-life').value) || 0,
+                    salvageValue: parseFloat(row.querySelector('.inv-salvage').value.replace(/\s/g, '')) || 0,
+                    includesNDS: row.querySelector('.inv-nds').checked
+                });
+            });
 
-            var ownFunds = parseFloat(document.getElementById('pj-own-funds').value) || 0;
-            var creditAmount = parseFloat(document.getElementById('pj-credit-amount').value) || 0;
-            var creditRate = parseFloat(document.getElementById('pj-credit-rate').value) / 100;
-            var creditTerm = parseInt(document.getElementById('pj-credit-term').value) || 36;
+            // Доходы
+            var revenues = [];
+            document.querySelectorAll('.rev-row').forEach(function (row) {
+                var amt = parseFloat(row.querySelector('.rev-amount').value.replace(/\s/g, '')) || 0;
+                if (amt === 0) return;
+                revenues.push({
+                    name: row.querySelector('.rev-name').value,
+                    month: parseInt(row.querySelector('.rev-start').value) || 0,
+                    baseAmount: amt,
+                    rampUpMonths: parseInt(row.querySelector('.rev-ramp').value) || 0
+                });
+            });
 
-            var discountRate = parseFloat(document.getElementById('pj-discount').value) / 100;
-            var useCompanyTax = document.getElementById('pj-use-company-tax')?.checked;
-            var taxRate = useCompanyTax ? (graph?.company?.profit_tax_rate || 0.25) : parseFloat(document.getElementById('pj-tax-rate')?.value || 25) / 100;
-            var ndsRate = useCompanyTax ? (graph?.company?.nds_rate || 0.22) : parseFloat(document.getElementById('pj-nds-rate')?.value || 22) / 100;
-            var reinvestRate = parseFloat(document.getElementById('pj-reinvest').value) / 100;
+            // Расходы
+            var costs = [];
+            document.querySelectorAll('.cost-row').forEach(function (row) {
+                var amt = parseFloat(row.querySelector('.cost-amount').value.replace(/\s/g, '')) || 0;
+                if (amt === 0) return;
+                costs.push({
+                    name: row.querySelector('.cost-name').value,
+                    baseAmount: amt,
+                    type: row.querySelector('.cost-type').value,
+                    rampUpMonths: parseInt(row.querySelector('.cost-ramp').value) || 0,
+                    includesNDS: row.querySelector('.cost-nds').checked
+                });
+            });
+            var costsStart = parseInt(document.getElementById('pj-costs-start').value) || 0;
 
-            var config = {
+            // Кредит
+            var creditAmount = parseFloat(document.getElementById('pj-credit-amount').value.replace(/\s/g, '')) || 0;
+            var credit = creditAmount > 0 ? {
+                amount: creditAmount,
+                rate: parseFloat(document.getElementById('pj-credit-rate').value) / 100,
+                term: parseInt(document.getElementById('pj-credit-term').value) || 36,
+                type: document.getElementById('pj-credit-type').value,
+                deferredMonths: parseInt(document.getElementById('pj-deferred-months').value) || 0
+            } : null;
+
+            // Налоги
+            var useCompanyTax = document.getElementById('pj-use-company-tax').checked;
+            var taxRate = useCompanyTax ? (graph?.company?.profit_tax_rate || 0.25) : parseFloat(document.getElementById('pj-tax-rate').value || 25) / 100;
+            var ndsRate = useCompanyTax ? (graph?.company?.nds_rate || 0.22) : parseFloat(document.getElementById('pj-nds-rate').value || 22) / 100;
+
+            // Дисконтирование
+            var discSchedule = [];
+            document.querySelectorAll('.disc-row').forEach(function (row) {
+                var months = parseInt(row.querySelector('.disc-months').value) || 0;
+                var rate = parseFloat(row.querySelector('.disc-rate').value) / 100;
+                if (months > 0) discSchedule.push({ months: months, rate: rate });
+            });
+            if (discSchedule.length === 0) discSchedule = [{ months: 999, rate: 0.21 }];
+
+            // Инфляция
+            var inflRates = [
+                parseFloat(document.getElementById('pj-infl-y1').value || 7) / 100,
+                parseFloat(document.getElementById('pj-infl-y2').value || 6) / 100,
+                parseFloat(document.getElementById('pj-infl-y3').value || 5) / 100
+            ];
+
+            currentProject = new Project({
                 name: name,
                 type: type,
                 horizon: horizon,
-                investments: [
-                    { month: 0, amount: cost, type: 'capex', usefulLife: usefulLife, salvageValue: salvage }
-                ],
-                revenues: revIncrease > 0 ? [
-                    { month: rampUp, baseAmount: revIncrease, rampUpMonths: rampUp }
-                ] : [],
-                costs: [],
+                investments: investments,
+                revenues: revenues,
+                costs: costs,
+                costsStartMonth: costsStart,
                 financing: {
-                    ownFunds: ownFunds,
-                    credit: creditAmount > 0 ? { amount: creditAmount, rate: creditRate, term: creditTerm, startMonth: 0 } : null
+                    ownFunds: parseFloat(document.getElementById('pj-own-funds').value.replace(/\s/g, '')) || 0,
+                    credit: credit
                 },
-                discountRate: discountRate,
-                reinvestmentRate: reinvestRate,
                 taxRate: taxRate,
-                ndsRate: ndsRate
-            };
+                ndsRate: ndsRate,
+                discountSchedule: discSchedule,
+                reinvestmentRate: parseFloat(document.getElementById('pj-reinvest').value) / 100,
+                inflationRates: inflRates,
+                amortizationType: document.getElementById('pj-amort-type').value,
+                amortizationPremium: parseFloat(document.getElementById('pj-amort-premium').value || 0) / 100
+            });
 
-            // Снижение расходов = отрицательные доп. расходы
-            if (costDecrease > 0) {
-                config.costs.push({ name: 'Экономия', month: rampUp, baseAmount: -costDecrease, type: 'fixed' });
-            }
-            if (costIncrease > 0) {
-                config.costs.push({ name: 'Доп. расходы', month: rampUp, baseAmount: costIncrease, type: 'fixed' });
-            }
-            // Продажа старого
-            if (oldSale > 0) {
-                config.investments.push({ month: 0, amount: -oldSale, type: 'capex' });
-            }
-
-            currentProject = new Project(config);
             renderProjectResults();
-            renderProjectTable()
         }
 
 
@@ -5111,95 +5251,81 @@
 
         function renderProjectResults() {
             if (!currentProject) return;
-
             document.getElementById('project-results').style.display = 'block';
             document.getElementById('project-empty').style.display = 'none';
 
             var p = currentProject;
-            var revIncrease = parseFloat(document.getElementById('pj-rev-increase').value) || 1;
-            var tbuRevenue = Math.round(p.breakevenRevenue * revIncrease);
+            var revBase = p.revenues.reduce(function (s, r) { return s + (r.baseAmount || 0); }, 0);
+            var tbuRevenue = Math.round(p.breakevenFactor * revBase);
 
             var metrics = [
                 {
-                    label: 'NPV',
-                    value: (p.npv >= 0 ? '+' : '') + formatValue(Math.round(p.npv)) + ' ₽',
-                    color: p.npv >= 0 ? 'var(--ok)' : 'var(--critical)',
-                    hint: 'Чистая приведённая стоимость. Сколько денег принесёт проект сверх затрат с учётом ставки дисконтирования. NPV > 0 — проект создаёт ценность.'
+                    label: 'Опер. NPV', value: (p.operatingNPV >= 0 ? '+' : '') + formatValue(Math.round(p.operatingNPV)) + ' ₽',
+                    color: p.operatingNPV >= 0 ? 'var(--ok)' : 'var(--critical)',
+                    hint: 'Чистая приведённая стоимость без учёта кредита. Только доходы − расходы − инвестиции.'
                 },
                 {
-                    label: 'IRR',
-                    value: (p.irr * 100).toFixed(1) + '%',
-                    color: p.irr > p.wacc ? 'var(--ok)' : 'var(--warning)',
-                    hint: 'Внутренняя норма доходности. При какой ставке дисконтирования NPV = 0. IRR > WACC — проект выгоден.'
+                    label: 'NPV с финанс.', value: (p.financedNPV >= 0 ? '+' : '') + formatValue(Math.round(p.financedNPV)) + ' ₽',
+                    color: p.financedNPV >= 0 ? 'var(--ok)' : 'var(--critical)',
+                    hint: 'NPV с учётом кредита (поступления − погашение − проценты).'
                 },
                 {
-                    label: 'MIRR',
-                    value: (p.mirr * 100).toFixed(1) + '%',
-                    color: 'var(--text-primary)',
-                    hint: 'Модифицированная IRR. Учитывает реинвестирование промежуточных доходов по ставке ' + ((p.reinvestmentRate || 0.15) * 100).toFixed(0) + '%.'
+                    label: 'IRR (опер.)', value: p.operatingIRR > -0.9 ? (p.operatingIRR * 100).toFixed(1) + '%' : 'убыток',
+                    color: p.operatingIRR > p.wacc ? 'var(--ok)' : 'var(--warning)',
+                    hint: 'Внутренняя норма доходности операционного потока.'
                 },
                 {
-                    label: 'Срок окуп.',
-                    value: p.paybackPeriod >= 0 ? p.paybackPeriod + ' мес' : '> ' + p.horizon + ' мес',
-                    color: p.paybackPeriod >= 0 && p.paybackPeriod < p.horizon / 2 ? 'var(--ok)' : 'var(--warning)',
-                    hint: 'Простой срок окупаемости. Через сколько месяцев накопленный денежный поток станет положительным.'
+                    label: 'MIRR', value: (p.mirr * 100).toFixed(1) + '%',
+                    hint: 'Модифицированная IRR с учётом реинвестирования.'
                 },
                 {
-                    label: 'ROI',
-                    value: p.roi.toFixed(1) + '%',
-                    color: p.roi > 20 ? 'var(--ok)' : 'var(--warning)',
-                    hint: 'Рентабельность инвестиций. Отношение прибыли к вложенным средствам. ROI > 20% — хорошо.'
+                    label: 'Срок окуп.', value: p.paybackPeriod >= 0 ? p.paybackPeriod + ' мес' : '> ' + p.horizon + ' мес',
+                    hint: 'Простой срок окупаемости операционных затрат.'
                 },
                 {
-                    label: 'PI',
-                    value: p.pi.toFixed(2),
-                    color: p.pi > 1 ? 'var(--ok)' : 'var(--critical)',
-                    hint: 'Индекс прибыльности. Сколько рублей NPV приходится на 1 рубль инвестиций. PI > 1 — проект выгоден.'
+                    label: 'ROI', value: p.roi.toFixed(1) + '%',
+                    hint: 'Рентабельность инвестиций.'
                 },
                 {
-                    label: 'DSCR',
-                    value: p.dscr ? p.dscr.toFixed(2) : '—',
-                    color: p.dscr && p.dscr > 1.2 ? 'var(--ok)' : 'var(--warning)',
-                    hint: 'Коэффициент покрытия долга. Отношение операционного дохода к платежам по кредиту. DSCR > 1.2 — комфортно для банка.'
+                    label: 'DSCR', value: p.dscr ? p.dscr.toFixed(2) : '—',
+                    hint: 'Коэффициент покрытия долга.'
                 },
                 {
-                    label: 'Точка безубыт.',
-                    value: p.breakevenRevenue > 0 ? formatValue(tbuRevenue) + ' ₽/мес' : '—',
-                    color: p.breakevenRevenue <= 1 ? 'var(--ok)' : 'var(--warning)',
-                    hint: 'Минимальная ежемесячная выручка, при которой NPV = 0. Сейчас план: ' + formatValue(Math.round(revIncrease)) + ' ₽/мес.'
+                    label: 'ТБУ', value: p.breakevenFactor > 0 ? formatValue(tbuRevenue) + ' ₽/мес' : '—',
+                    hint: 'Минимальная выручка для NPV=0. Сейчас план: ' + formatValue(Math.round(revBase)) + ' ₽/мес.'
                 }
             ];
 
             var html = '';
             metrics.forEach(function (m) {
-                html += '<div style="padding:10px;background:var(--bg-input);border:1px solid var(--border);text-align:center;cursor:help;" title="' + m.hint + '">';
-                html += '<div style="font-size:9px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
-                html += '<div style="font-size:14px;font-weight:700;color:' + m.color + ';">' + m.value + '</div>';
+                html += '<div style="padding:8px;background:var(--bg-input);border:1px solid var(--border);text-align:center;cursor:help;" title="' + m.hint + '">';
+                html += '<div style="font-size:8px;color:var(--text-hint);margin-bottom:3px;">' + m.label + '</div>';
+                html += '<div style="font-size:13px;font-weight:700;color:' + m.color + ';">' + m.value + '</div>';
                 html += '</div>';
             });
-
             document.getElementById('project-metrics').innerHTML = html;
 
-            // Графики
-            renderProjectChart();
+            // Валидация
+            var validationHtml = '';
+            if (p.creditExcess > 0) {
+                validationHtml += '<div style="color:var(--warning);font-size:10px;margin-top:4px;">⚠ Кредит превышает потребность на ' + formatValue(Math.round(p.creditExcess)) + ' ₽</div>';
+            }
+            document.getElementById('project-metrics').insertAdjacentHTML('afterend', validationHtml);
 
-            // Вывод
+            renderProjectChart();
+            renderProjectTable();
+
             var conclusion = '';
-            if (p.npv > 0 && p.irr > p.wacc) {
-                conclusion = '<div style="font-weight:600;color:var(--ok);margin-bottom:4px;">● ПРОЕКТ РЕКОМЕНДУЕТСЯ</div>';
-                conclusion += '<div>NPV положительный (' + formatValue(Math.round(p.npv)) + ' ₽), IRR (' + (p.irr * 100).toFixed(1) + '%) выше WACC (' + (p.wacc * 100).toFixed(1) + '%).</div>';
-            } else if (p.npv > 0) {
-                conclusion = '<div style="font-weight:600;color:var(--warning);margin-bottom:4px;">● ПРОЕКТ НА ГРАНИ</div>';
-                conclusion += '<div>NPV положительный, но IRR (' + (p.irr * 100).toFixed(1) + '%) ниже WACC (' + (p.wacc * 100).toFixed(1) + '%).</div>';
+            if (p.operatingNPV > 0) {
+                conclusion = '<div style="font-weight:600;color:var(--ok);">● ПРОЕКТ ОКУПАЕТСЯ</div>';
+            } else if (p.financedNPV > 0) {
+                conclusion = '<div style="font-weight:600;color:var(--warning);">● ОКУПАЕТСЯ ЗА СЧЁТ КРЕДИТА</div>';
+                conclusion += '<div>Операционный NPV отрицательный. Проект выходит в плюс только благодаря кредитному плечу.</div>';
             } else {
-                conclusion = '<div style="font-weight:600;color:var(--critical);margin-bottom:4px;">● ПРОЕКТ НЕ ОКУПАЕТСЯ</div>';
-                conclusion += '<div>NPV отрицательный (' + formatValue(Math.round(p.npv)) + ' ₽). Для окупаемости нужна выручка ' + formatValue(tbuRevenue) + ' ₽/мес.</div>';
+                conclusion = '<div style="font-weight:600;color:var(--critical);">● ПРОЕКТ НЕ ОКУПАЕТСЯ</div>';
             }
             if (p.maxCashGap < 0) {
-                conclusion += '<div style="margin-top:4px;">⚠ Максимальный кассовый разрыв: <span style="color:var(--critical);">' + formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽</span> на ' + p.maxGapMonth + '-й месяц. Обеспечьте резерв.</div>';
-            }
-            if (p.paybackPeriod >= 0) {
-                conclusion += '<div>✓ Срок окупаемости: ' + p.paybackPeriod + ' месяцев.</div>';
+                conclusion += '<div>⚠ Макс. кассовый разрыв: ' + formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽ на ' + p.maxGapMonth + '-й месяц.</div>';
             }
             document.getElementById('project-conclusion').innerHTML = conclusion;
         }
