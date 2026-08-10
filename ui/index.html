@@ -5067,43 +5067,90 @@
             document.getElementById('project-empty').style.display = 'none';
 
             var p = currentProject;
-            var metricsHtml = '';
+            var revIncrease = parseFloat(document.getElementById('pj-rev-increase').value) || 1;
+            var tbuRevenue = Math.round(p.breakevenRevenue * revIncrease);
 
-            function metricCard(label, value, color) {
-                return '<div style="padding:10px;background:var(--bg-input);border:1px solid var(--border);text-align:center;">' +
-                    '<div style="font-size:9px;color:var(--text-hint);margin-bottom:4px;">' + label + '</div>' +
-                    '<div style="font-size:16px;font-weight:700;color:' + (color || 'var(--text-primary)') + ';">' + value + '</div>' +
-                    '</div>';
-            }
+            var metrics = [
+                {
+                    label: 'NPV',
+                    value: (p.npv >= 0 ? '+' : '') + formatValue(Math.round(p.npv)) + ' ₽',
+                    color: p.npv >= 0 ? 'var(--ok)' : 'var(--critical)',
+                    hint: 'Чистая приведённая стоимость. Сколько денег принесёт проект сверх затрат с учётом ставки дисконтирования. NPV > 0 — проект создаёт ценность.'
+                },
+                {
+                    label: 'IRR',
+                    value: (p.irr * 100).toFixed(1) + '%',
+                    color: p.irr > p.wacc ? 'var(--ok)' : 'var(--warning)',
+                    hint: 'Внутренняя норма доходности. При какой ставке дисконтирования NPV = 0. IRR > WACC — проект выгоден.'
+                },
+                {
+                    label: 'MIRR',
+                    value: (p.mirr * 100).toFixed(1) + '%',
+                    color: 'var(--text-primary)',
+                    hint: 'Модифицированная IRR. Учитывает реинвестирование промежуточных доходов по ставке ' + ((p.reinvestmentRate || 0.15) * 100).toFixed(0) + '%.'
+                },
+                {
+                    label: 'Срок окуп.',
+                    value: p.paybackPeriod >= 0 ? p.paybackPeriod + ' мес' : '> ' + p.horizon + ' мес',
+                    color: p.paybackPeriod >= 0 && p.paybackPeriod < p.horizon / 2 ? 'var(--ok)' : 'var(--warning)',
+                    hint: 'Простой срок окупаемости. Через сколько месяцев накопленный денежный поток станет положительным.'
+                },
+                {
+                    label: 'ROI',
+                    value: p.roi.toFixed(1) + '%',
+                    color: p.roi > 20 ? 'var(--ok)' : 'var(--warning)',
+                    hint: 'Рентабельность инвестиций. Отношение прибыли к вложенным средствам. ROI > 20% — хорошо.'
+                },
+                {
+                    label: 'PI',
+                    value: p.pi.toFixed(2),
+                    color: p.pi > 1 ? 'var(--ok)' : 'var(--critical)',
+                    hint: 'Индекс прибыльности. Сколько рублей NPV приходится на 1 рубль инвестиций. PI > 1 — проект выгоден.'
+                },
+                {
+                    label: 'DSCR',
+                    value: p.dscr ? p.dscr.toFixed(2) : '—',
+                    color: p.dscr && p.dscr > 1.2 ? 'var(--ok)' : 'var(--warning)',
+                    hint: 'Коэффициент покрытия долга. Отношение операционного дохода к платежам по кредиту. DSCR > 1.2 — комфортно для банка.'
+                },
+                {
+                    label: 'Точка безубыт.',
+                    value: p.breakevenRevenue > 0 ? formatValue(tbuRevenue) + ' ₽/мес' : '—',
+                    color: p.breakevenRevenue <= 1 ? 'var(--ok)' : 'var(--warning)',
+                    hint: 'Минимальная ежемесячная выручка, при которой NPV = 0. Сейчас план: ' + formatValue(Math.round(revIncrease)) + ' ₽/мес.'
+                }
+            ];
 
-            metricsHtml += metricCard('NPV', p.npv >= 0 ? '+' + formatValue(Math.round(p.npv)) : formatValue(Math.round(p.npv)), p.npv >= 0 ? 'var(--ok)' : 'var(--critical)');
-            metricsHtml += metricCard('IRR', (p.irr * 100).toFixed(1) + '%', p.irr > p.wacc ? 'var(--ok)' : 'var(--warning)');
-            metricsHtml += metricCard('MIRR', (p.mirr * 100).toFixed(1) + '%');
-            metricsHtml += metricCard('Срок окуп.', p.paybackPeriod >= 0 ? p.paybackPeriod + ' мес' : '> ' + p.horizon + ' мес');
-            metricsHtml += metricCard('ROI', p.roi.toFixed(1) + '%');
-            metricsHtml += metricCard('PI', p.pi.toFixed(2));
-            metricsHtml += metricCard('DSCR', p.dscr ? p.dscr.toFixed(2) : '—');
-            metricsHtml += metricCard('ТБУ', p.breakevenRevenue > 0 ? (p.breakevenRevenue * 100).toFixed(1) + '%' : '—');
+            var html = '';
+            metrics.forEach(function (m) {
+                html += '<div style="padding:10px;background:var(--bg-input);border:1px solid var(--border);text-align:center;cursor:help;" title="' + m.hint + '">';
+                html += '<div style="font-size:9px;color:var(--text-hint);margin-bottom:4px;">' + m.label + '</div>';
+                html += '<div style="font-size:14px;font-weight:700;color:' + m.color + ';">' + m.value + '</div>';
+                html += '</div>';
+            });
 
-            document.getElementById('project-metrics').innerHTML = metricsHtml;
+            document.getElementById('project-metrics').innerHTML = html;
 
-            // График
+            // Графики
             renderProjectChart();
 
             // Вывод
             var conclusion = '';
             if (p.npv > 0 && p.irr > p.wacc) {
-                conclusion = '<div style="font-weight:600;color:var(--ok);margin-bottom:4px;">● ПРОЕКТ ВЫГОДЕН</div>';
-                conclusion += '<div>NPV положительный, IRR выше ставки дисконтирования.</div>';
+                conclusion = '<div style="font-weight:600;color:var(--ok);margin-bottom:4px;">● ПРОЕКТ РЕКОМЕНДУЕТСЯ</div>';
+                conclusion += '<div>NPV положительный (' + formatValue(Math.round(p.npv)) + ' ₽), IRR (' + (p.irr * 100).toFixed(1) + '%) выше WACC (' + (p.wacc * 100).toFixed(1) + '%).</div>';
             } else if (p.npv > 0) {
                 conclusion = '<div style="font-weight:600;color:var(--warning);margin-bottom:4px;">● ПРОЕКТ НА ГРАНИ</div>';
-                conclusion += '<div>NPV положительный, но IRR ниже WACC.</div>';
+                conclusion += '<div>NPV положительный, но IRR (' + (p.irr * 100).toFixed(1) + '%) ниже WACC (' + (p.wacc * 100).toFixed(1) + '%).</div>';
             } else {
-                conclusion = '<div style="font-weight:600;color:var(--critical);margin-bottom:4px;">● ПРОЕКТ НЕВЫГОДЕН</div>';
-                conclusion += '<div>NPV отрицательный. Проект не окупается.</div>';
+                conclusion = '<div style="font-weight:600;color:var(--critical);margin-bottom:4px;">● ПРОЕКТ НЕ ОКУПАЕТСЯ</div>';
+                conclusion += '<div>NPV отрицательный (' + formatValue(Math.round(p.npv)) + ' ₽). Для окупаемости нужна выручка ' + formatValue(tbuRevenue) + ' ₽/мес.</div>';
             }
             if (p.maxCashGap < 0) {
-                conclusion += '<div style="margin-top:4px;">⚠ Максимальный кассовый разрыв: ' + formatValue(Math.abs(Math.round(p.maxCashGap))) + ' на ' + p.maxGapMonth + '-й месяц. Обеспечьте резерв.</div>';
+                conclusion += '<div style="margin-top:4px;">⚠ Максимальный кассовый разрыв: <span style="color:var(--critical);">' + formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽</span> на ' + p.maxGapMonth + '-й месяц. Обеспечьте резерв.</div>';
+            }
+            if (p.paybackPeriod >= 0) {
+                conclusion += '<div>✓ Срок окупаемости: ' + p.paybackPeriod + ' месяцев.</div>';
             }
             document.getElementById('project-conclusion').innerHTML = conclusion;
         }
@@ -5115,35 +5162,85 @@
 
             var p = currentProject;
             var width = container.clientWidth;
-            var height = 300;
+            var totalHeight = 550;
             if (width === 0) return;
 
-            var margin = { top: 20, right: 30, bottom: 40, left: 70 };
-            var w = width - margin.left - margin.right;
-            var h = height - margin.top - margin.bottom;
+            var svg = d3.select('#project-chart').append('svg').attr('width', width).attr('height', totalHeight);
 
-            var svg = d3.select('#project-chart').append('svg').attr('width', width).attr('height', height);
-            var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+            // ========== ГРАФИК 1: ЕЖЕМЕСЯЧНЫЕ ПОТОКИ ==========
+            var margin1 = { top: 20, right: 30, bottom: 30, left: 70 };
+            var h1 = 200;
+            var w1 = width - margin1.left - margin1.right;
+            var g1 = svg.append('g').attr('transform', 'translate(' + margin1.left + ',' + margin1.top + ')');
 
-            var xScale = d3.scaleLinear().domain([0, p.horizon - 1]).range([0, w]);
-            var maxVal = Math.max.apply(null, p.cumulativeFlow.map(Math.abs));
-            var minVal = Math.min.apply(null, p.cumulativeFlow.concat([0]));
-            var yScale = d3.scaleLinear().domain([minVal, maxVal * 1.1]).range([h, 0]);
+            var xScale1 = d3.scaleLinear().domain([0, p.horizon - 1]).range([0, w1]);
+            var maxFlow = Math.max.apply(null, p.netFlow.map(Math.abs));
+            var yScale1 = d3.scaleLinear().domain([-maxFlow, maxFlow]).range([h1, 0]);
 
-            // Оси
-            g.append('g').attr('transform', 'translate(0,' + h + ')').call(d3.axisBottom(xScale).ticks(Math.min(p.horizon, 12))).attr('font-size', '9px');
-            g.append('g').call(d3.axisLeft(yScale).ticks(6).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '9px');
+            g1.append('g').attr('transform', 'translate(0,' + h1 + ')').call(d3.axisBottom(xScale1).ticks(Math.min(p.horizon, 12))).attr('font-size', '9px');
+            g1.append('g').call(d3.axisLeft(yScale1).ticks(5).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '9px');
+            g1.append('line').attr('x1', 0).attr('x2', w1).attr('y1', yScale1(0)).attr('y2', yScale1(0)).attr('stroke', '#2A3040');
 
-            // Нулевая линия
-            g.append('line').attr('x1', 0).attr('x2', w).attr('y1', yScale(0)).attr('y2', yScale(0)).attr('stroke', '#2A3040').attr('stroke-width', 1);
+            // Столбцы
+            g1.selectAll('rect').data(p.netFlow).enter().append('rect')
+                .attr('x', function (d, i) { return xScale1(i); })
+                .attr('y', function (d) { return d >= 0 ? yScale1(d) : yScale1(0); })
+                .attr('width', w1 / p.horizon - 1)
+                .attr('height', function (d) { return Math.abs(yScale1(d) - yScale1(0)); })
+                .attr('fill', function (d) { return d >= 0 ? 'rgba(75,140,90,0.6)' : 'rgba(212,75,60,0.6)'; });
 
-            // Кумулятивный поток
-            var line = d3.line().x(function (d, i) { return xScale(i); }).y(function (d) { return yScale(d); });
-            g.append('path').datum(p.cumulativeFlow).attr('fill', 'none').attr('stroke', '#5A9FD4').attr('stroke-width', 2).attr('d', line);
+            g1.append('text').attr('x', 0).attr('y', -5).attr('fill', '#C8CCD4').attr('font-size', '10px').text('Ежемесячный денежный поток');
 
-            // NPV в конце
-            g.append('circle').attr('cx', xScale(p.horizon - 1)).attr('cy', yScale(p.npv + p.totalInvestment)).attr('r', 4).attr('fill', p.npv >= 0 ? '#4B8C5A' : '#D44B3C');
-            g.append('text').attr('x', xScale(p.horizon - 1) + 6).attr('y', yScale(p.npv + p.totalInvestment) + 4).attr('fill', '#C8CCD4').attr('font-size', '9px').text('NPV');
+            // ========== ГРАФИК 2: КУМУЛЯТИВНЫЙ ПОТОК ==========
+            var margin2 = { top: 20, right: 30, bottom: 30, left: 70 };
+            var h2 = 150;
+            var w2 = width - margin2.left - margin2.right;
+            var g2 = svg.append('g').attr('transform', 'translate(' + margin2.left + ',' + (margin1.top + h1 + margin1.bottom + margin2.top) + ')');
+
+            var xScale2 = d3.scaleLinear().domain([0, p.horizon - 1]).range([0, w2]);
+            var maxCum = Math.max.apply(null, p.cumulativeFlow.map(Math.abs));
+            var minCum = Math.min.apply(null, p.cumulativeFlow.concat([0]));
+            var yScale2 = d3.scaleLinear().domain([minCum, maxCum]).range([h2, 0]);
+
+            g2.append('g').attr('transform', 'translate(0,' + h2 + ')').call(d3.axisBottom(xScale2).ticks(Math.min(p.horizon, 12))).attr('font-size', '9px');
+            g2.append('g').call(d3.axisLeft(yScale2).ticks(4).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '9px');
+            g2.append('line').attr('x1', 0).attr('x2', w2).attr('y1', yScale2(0)).attr('y2', yScale2(0)).attr('stroke', '#2A3040');
+
+            var lineCum = d3.line().x(function (d, i) { return xScale2(i); }).y(function (d) { return yScale2(d); });
+            g2.append('path').datum(p.cumulativeFlow).attr('fill', 'none').attr('stroke', '#5A9FD4').attr('stroke-width', 2).attr('d', lineCum);
+
+            // Точка окупаемости
+            if (p.paybackPeriod >= 0) {
+                g2.append('circle').attr('cx', xScale2(p.paybackPeriod)).attr('cy', yScale2(0)).attr('r', 5).attr('fill', '#D4A843');
+                g2.append('text').attr('x', xScale2(p.paybackPeriod) + 6).attr('y', yScale2(0) - 8).attr('fill', '#D4A843').attr('font-size', '9px').text('Окуп: ' + p.paybackPeriod + ' мес');
+            }
+
+            g2.append('text').attr('x', 0).attr('y', -5).attr('fill', '#C8CCD4').attr('font-size', '10px').text('Накопленный денежный поток');
+
+            // ========== ГРАФИК 3: NPV ПРИ РАЗНЫХ СТАВКАХ ==========
+            var margin3 = { top: 20, right: 30, bottom: 30, left: 70 };
+            var h3 = 120;
+            var w3 = width - margin3.left - margin3.right;
+            var g3 = svg.append('g').attr('transform', 'translate(' + margin3.left + ',' + (margin2.top + h1 + margin1.bottom + margin2.top + h2 + margin2.bottom + margin3.top) + ')');
+
+            var rates = [0, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50];
+            var npvData = rates.map(function (r) { return { rate: r, npv: p._calculateNPV_at_rate(r) }; });
+            var xScale3 = d3.scaleLinear().domain([0, 0.5]).range([0, w3]);
+            var maxNpv = Math.max.apply(null, npvData.map(function (d) { return d.npv; }));
+            var minNpv = Math.min.apply(null, npvData.map(function (d) { return d.npv; }));
+            var yScale3 = d3.scaleLinear().domain([minNpv, maxNpv]).range([h3, 0]);
+
+            g3.append('g').attr('transform', 'translate(0,' + h3 + ')').call(d3.axisBottom(xScale3).ticks(5).tickFormat(function (d) { return (d * 100) + '%'; })).attr('font-size', '9px');
+            g3.append('g').call(d3.axisLeft(yScale3).ticks(4).tickFormat(function (d) { return formatValue(d); })).attr('font-size', '9px');
+            g3.append('line').attr('x1', 0).attr('x2', w3).attr('y1', yScale3(0)).attr('y2', yScale3(0)).attr('stroke', '#2A3040');
+
+            var lineNpv = d3.line().x(function (d) { return xScale3(d.rate); }).y(function (d) { return yScale3(d.npv); });
+            g3.append('path').datum(npvData).attr('fill', 'none').attr('stroke', '#D4A843').attr('stroke-width', 2).attr('d', lineNpv);
+            g3.selectAll('circle.npv').data(npvData).enter().append('circle')
+                .attr('cx', function (d) { return xScale3(d.rate); }).attr('cy', function (d) { return yScale3(d.npv); })
+                .attr('r', 3).attr('fill', '#D4A843');
+
+            g3.append('text').attr('x', 0).attr('y', -5).attr('fill', '#C8CCD4').attr('font-size', '10px').text('NPV при разных ставках дисконтирования');
         }
 
         // Сохранение проектов
