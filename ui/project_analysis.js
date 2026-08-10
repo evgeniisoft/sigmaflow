@@ -195,7 +195,7 @@ Project.prototype.calculate = function () {
     self.maxGapMonth = self.cumulativeFlow.indexOf(self.maxCashGap);
 
     // === АНАЛИЗ ЧУВСТВИТЕЛЬНОСТИ ===
-    self.sensitivity = self._calculateSensitivity();
+   // === self.sensitivity = self._calculateSensitivity(); ===
 };
 
 // IRR методом Ньютона-Рафсона
