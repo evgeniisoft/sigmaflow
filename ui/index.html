@@ -715,68 +715,32 @@
             <div style="display:flex;height:100%;">
                 <!-- ЛЕВАЯ ПАНЕЛЬ — ФОРМА -->
                 <div
-                    style="width:450px;padding:16px;overflow-y:auto;background:var(--bg-panel);border-right:1px solid var(--border);flex-shrink:0;">
+                    style="width:480px;padding:16px;overflow-y:auto;background:var(--bg-panel);border-right:1px solid var(--border);flex-shrink:0;">
                     <h3 style="margin:0 0 16px;">НОВЫЙ ПРОЕКТ</h3>
 
                     <div class="form-group">
                         <label>НАЗВАНИЕ ПРОЕКТА</label>
-                        <input type="text" id="pj-name" placeholder="Например: Покупка станка">
+                        <input type="text" id="pj-name" placeholder="Например: Покупка станка ЧПУ">
                     </div>
 
                     <div class="form-group">
                         <label>ТИП ПРОЕКТА</label>
-                        <select id="pj-type" style="width:100%;" onchange="renderProjectForm()">
-                            <option value="equipment">Оборудование — покупка станка, машины, IT-системы</option>
-                            <option value="product">Продукт/Услуга — запуск нового направления</option>
-                            <option value="branch">Филиал/Точка — открытие офиса, склада, магазина</option>
+                        <select id="pj-type" style="width:100%;" onchange="renderProjectTypeForm()">
+                            <option value="equipment">Оборудование — покупка станка, машины, IT</option>
+                            <option value="product">Продукт / Направление — запуск нового</option>
+                            <option value="branch">Филиал / Точка — открытие офиса, магазина</option>
                             <option value="channel">Канал продаж — маркетплейс, дилеры</option>
                             <option value="integration">Интеграция — покупка бизнеса, слияние</option>
                         </select>
+                        <div id="pj-type-hint" style="font-size:9px;color:var(--text-hint);margin-top:2px;"></div>
                     </div>
 
-                    <div id="project-specific-fields"></div>
+                    <div id="project-type-form"></div>
 
                     <div class="form-group">
                         <label>ГОРИЗОНТ ПЛАНИРОВАНИЯ (МЕС)</label>
-                        <input type="number" id="pj-horizon" value="36" min="6" max="120">
-                    </div>
-
-                    <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ФИНАНСИРОВАНИЕ</div>
-                    <div class="form-group">
-                        <label>СВОИ СРЕДСТВА</label>
-                        <input type="number" id="pj-own-funds" value="0" step="100000">
-                    </div>
-                    <div class="form-group">
-                        <label>КРЕДИТ (СУММА)</label>
-                        <input type="number" id="pj-credit-amount" value="0" step="100000">
-                    </div>
-                    <div class="form-group">
-                        <label>СТАВКА ПО КРЕДИТУ (%)</label>
-                        <input type="number" id="pj-credit-rate" value="22" step="0.5" min="0" max="50">
-                    </div>
-                    <div class="form-group">
-                        <label>СРОК КРЕДИТА (МЕС)</label>
-                        <input type="number" id="pj-credit-term" value="36" step="6" min="1" max="120">
-                    </div>
-
-                    <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАСТРОЙКИ РАСЧЁТА</div>
-                    <div class="form-group">
-                        <label>СТАВКА ДИСКОНТИРОВАНИЯ (%)</label>
-                        <input type="number" id="pj-discount" value="21" step="0.5" min="0" max="100">
-                    </div>
-                    <div class="form-group">
-                        <label>СТАВКА РЕИНВЕСТИРОВАНИЯ (%)</label>
-                        <input type="number" id="pj-reinvest" value="15" step="0.5" min="0" max="100">
-                    </div>
-                    <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАЛОГИ</div>
-                    <label><input type="checkbox" id="pj-use-company-tax" checked onchange="toggleProjectTax()">
-                        Использовать настройки
-                        компании</label>
-                    <div id="pj-tax-settings" style="display:none;">
-                        <div class="form-group"><label>НАЛОГ НА ПРИБЫЛЬ (%)</label><input type="number" id="pj-tax-rate"
-                                value="25" step="0.5"></div>
-                        <div class="form-group"><label>НДС (%)</label><input type="number" id="pj-nds-rate" value="22"
-                                step="0.5"></div>
+                        <input type="number" id="pj-horizon" value="36" min="6" max="120" style="width:100px;">
+                        <div style="font-size:9px;color:var(--text-hint);">На какой срок считаем проект</div>
                     </div>
 
                     <button id="btn-calculate-project" class="primary" style="width:100%;margin-top:12px;">▶ РАССЧИТАТЬ
@@ -4992,86 +4956,310 @@
         var currentProject = null;
         var savedProjects = [];
 
-        function renderProjectForm() {
+        // ============================================================
+        // ФОРМЫ ПРОЕКТОВ ПО ТИПАМ
+        // ============================================================
+
+        var projectFormData = {}; // хранилище данных формы
+
+        function renderProjectTypeForm() {
             var type = document.getElementById('pj-type').value;
-            var container = document.getElementById('project-specific-fields');
-            var html = '';
+            var container = document.getElementById('project-type-form');
+            var hints = {
+                equipment: 'Покупка станка, грузовика, сервера, кассового оборудования.',
+                product: 'Запуск нового продукта, услуги или бизнес-направления.',
+                branch: 'Открытие нового офиса, магазина, склада, филиала.',
+                channel: 'Выход на маркетплейс, запуск дилерской сети, онлайн-продажи.',
+                integration: 'Покупка готового бизнеса, слияние, поглощение.'
+            };
+            document.getElementById('pj-type-hint').textContent = hints[type] || '';
 
-            // === ИНВЕСТИЦИИ ===
-            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ИНВЕСТИЦИИ</div>';
-            html += '<div id="investment-rows">';
-            html += '<div class="inv-row" style="display:flex;gap:4px;margin-bottom:4px;align-items:center;">';
-            html += '<input type="text" class="inv-name" placeholder="Название" style="flex:1;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="Оборудование">';
-            html += '<input type="text" class="inv-amount" placeholder="Сумма" style="width:100px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" value="5000000">';
-            html += '<input type="number" class="inv-month" placeholder="Месяц" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="0" min="0">';
-            html += '<select class="inv-type" style="width:90px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px;"><option value="capex">CAPEX</option><option value="old_sale">Продажа старого</option></select>';
-            html += '<input type="number" class="inv-life" placeholder="Срок" style="width:50px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="60" min="0">';
-            html += '<input type="text" class="inv-salvage" placeholder="Ликв." style="width:70px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" value="0">';
-            html += '<label style="font-size:9px;white-space:nowrap;"><input type="checkbox" class="inv-nds" checked> НДС</label>';
-            html += '</div></div>';
-            html += '<button onclick="addInvestmentRow()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ ТРАНШ</button>';
+            switch (type) {
+                case 'equipment': renderEquipmentForm(container); break;
+                case 'product': renderProductForm(container); break;
+                case 'branch': renderBranchForm(container); break;
+                case 'channel': renderChannelForm(container); break;
+                case 'integration': renderIntegrationForm(container); break;
+            }
+        }
 
-            // === ДОХОДЫ ===
-            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ДОХОДЫ</div>';
-            html += '<div id="revenue-rows">';
-            html += '<div class="rev-row" style="display:flex;gap:4px;margin-bottom:4px;align-items:center;">';
-            html += '<input type="text" class="rev-name" placeholder="Название" style="flex:1;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="Выручка">';
-            html += '<input type="text" class="rev-amount" placeholder="Сумма/мес" style="width:100px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" value="250000">';
-            html += '<input type="number" class="rev-start" placeholder="Старт" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="3" min="0">';
-            html += '<input type="number" class="rev-ramp" placeholder="Ramp" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="4" min="0">';
-            html += '</div></div>';
-            html += '<button onclick="addRevenueRow()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ ДОХОД</button>';
+        // ==================== ОБОРУДОВАНИЕ ====================
+        function renderEquipmentForm(container) {
+            container.innerHTML = `
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 1: ВЛОЖЕНИЯ</div>
+        <div id="eq-investments"></div>
+        <button onclick="addEquipmentInvestment()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ ТРАНШ</button>
 
-            // === РАСХОДЫ ===
-            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">РАСХОДЫ</div>';
-            html += '<div class="form-group"><label>СТАРТ РАСХОДОВ (МЕС)</label><input type="number" id="pj-costs-start" value="0" min="0" style="width:80px;"></div>';
-            html += '<div id="cost-rows">';
-            html += '<div class="cost-row" style="display:flex;gap:4px;margin-bottom:4px;align-items:center;">';
-            html += '<input type="text" class="cost-name" placeholder="Название" style="flex:1;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="Доп. расходы">';
-            html += '<input type="text" class="cost-amount" placeholder="Сумма/мес" style="width:100px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;text-align:right;" value="150000">';
-            html += '<select class="cost-type" style="width:80px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px;"><option value="fixed">Пост.</option><option value="variable">Перем.</option></select>';
-            html += '<input type="number" class="cost-ramp" placeholder="Ramp" style="width:55px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;" value="0" min="0">';
-            html += '<label style="font-size:9px;white-space:nowrap;"><input type="checkbox" class="cost-nds" checked> НДС</label>';
-            html += '</div></div>';
-            html += '<button onclick="addCostRow()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ РАСХОД</button>';
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 2: ЧТО ДАЁТ ОБОРУДОВАНИЕ</div>
+        <div class="form-group">
+            <label>РОСТ ВЫРУЧКИ (₽/МЕС)</label>
+            <input type="text" id="pj-rev-increase" value="250 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)'">
+            <div style="font-size:9px;color:var(--text-hint);">Больше продукции / клиентов / скорость</div>
+        </div>
+        <div class="form-group">
+            <label>СНИЖЕНИЕ РАСХОДОВ (₽/МЕС)</label>
+            <input type="text" id="pj-cost-decrease" value="0" style="width:100%;" onfocus="this.style.color='var(--text-primary)'">
+            <div style="font-size:9px;color:var(--text-hint);">Меньше ремонта, брака, энергии</div>
+        </div>
+        <div class="form-group">
+            <label>ДОП. РАСХОДЫ (₽/МЕС)</label>
+            <input type="text" id="pj-cost-increase" value="35 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)'">
+            <div style="font-size:9px;color:var(--text-hint);">Обслуживание, энергия, персонал</div>
+        </div>
+        <div class="form-group">
+            <label>СТАРТ ВЫРУЧКИ (МЕС)</label>
+            <input type="number" id="pj-rev-start" value="3" min="0" style="width:80px;">
+            <span style="font-size:9px;color:var(--text-hint);margin-left:8px;">RAMP-UP:</span>
+            <input type="number" id="pj-rev-ramp" value="4" min="0" style="width:60px;">
+            <div style="font-size:9px;color:var(--text-hint);">Выручка растёт постепенно: 25→50→75→100%</div>
+        </div>
 
-            // === ФИНАНСИРОВАНИЕ ===
-            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ФИНАНСИРОВАНИЕ</div>';
-            html += '<div class="form-group"><label>СВОИ СРЕДСТВА</label><input type="text" id="pj-own-funds" value="0" style="width:100%;"></div>';
-            html += '<div class="form-group"><label>КРЕДИТ (СУММА)</label><input type="text" id="pj-credit-amount" value="0" style="width:100%;"></div>';
-            html += '<div class="form-group"><label>СТАВКА (%)</label><input type="number" id="pj-credit-rate" value="21" step="0.5" style="width:100px;"></div>';
-            html += '<div class="form-group"><label>СРОК (МЕС)</label><input type="number" id="pj-credit-term" value="36" style="width:80px;"></div>';
-            html += '<div class="form-group"><label>ТИП ПЛАТЕЖЕЙ</label><select id="pj-credit-type" style="width:100%;"><option value="annuity">Аннуитет</option><option value="differential">Дифференцированный</option><option value="deferred">С отсрочкой</option></select></div>';
-            html += '<div class="form-group" id="deferred-months-group" style="display:none;"><label>ОТСРОЧКА (МЕС)</label><input type="number" id="pj-deferred-months" value="6" style="width:80px;"></div>';
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 3: РАСХОДЫ</div>
+        <div class="form-group">
+            <label>СТАРТ РАСХОДОВ (МЕС)</label>
+            <input type="number" id="pj-costs-start" value="0" min="0" style="width:80px;">
+            <div style="font-size:9px;color:var(--text-hint);">0 = расходы с первого месяца (подготовка)</div>
+        </div>
 
-            // === НАСТРОЙКИ ===
-            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ДИСКОНТИРОВАНИЕ</div>';
-            html += '<div id="discount-rows">';
-            html += '<div class="disc-row" style="display:flex;gap:4px;margin-bottom:4px;"><input type="number" class="disc-months" value="12" style="width:55px;" placeholder="Мес"><input type="number" class="disc-rate" value="21" step="0.5" style="width:60px;" placeholder="Ставка %"></div>';
-            html += '<div class="disc-row" style="display:flex;gap:4px;margin-bottom:4px;"><input type="number" class="disc-months" value="12" style="width:55px;"><input type="number" class="disc-rate" value="18" step="0.5" style="width:60px;"></div>';
-            html += '<div class="disc-row" style="display:flex;gap:4px;margin-bottom:4px;"><input type="number" class="disc-months" value="12" style="width:55px;"><input type="number" class="disc-rate" value="15" step="0.5" style="width:60px;"></div>';
-            html += '</div>';
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 4: ФИНАНСИРОВАНИЕ</div>
+        ${renderFinancingBlock()}
 
-            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ИНФЛЯЦИЯ ПО ГОДАМ (%)</div>';
-            html += '<div style="display:flex;gap:4px;"><input type="number" id="pj-infl-y1" value="7" step="0.5" style="width:60px;" placeholder="Год1"><input type="number" id="pj-infl-y2" value="6" step="0.5" style="width:60px;" placeholder="Год2"><input type="number" id="pj-infl-y3" value="5" step="0.5" style="width:60px;" placeholder="Год3"></div>';
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАСТРОЙКИ</div>
+        ${renderSettingsBlock()}
+    `;
+            addEquipmentInvestment(); // первый транш по умолчанию
+        }
 
-            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">АМОРТИЗАЦИЯ</div>';
-            html += '<select id="pj-amort-type" style="width:100%;"><option value="linear">Линейная</option><option value="accelerated">Ускоренная (×2 первые 2 года)</option></select>';
-            html += '<div class="form-group"><label>АМОРТИЗАЦИОННАЯ ПРЕМИЯ (%)</label><input type="number" id="pj-amort-premium" value="10" step="5" style="width:80px;"></div>';
+        function addEquipmentInvestment() {
+            var div = document.createElement('div');
+            div.style.cssText = 'padding:8px;margin-bottom:6px;background:var(--bg-input);border:1px solid var(--border);';
+            div.innerHTML = `
+        <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">
+            <span style="font-size:10px;color:var(--text-hint);min-width:80px;">НАЗВАНИЕ:</span>
+            <input type="text" class="eq-inv-name" value="Оборудование" style="flex:1;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px 6px;">
+        </div>
+        <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">
+            <span style="font-size:10px;color:var(--text-hint);min-width:80px;">СТОИМОСТЬ:</span>
+            <input type="text" class="eq-inv-amount" value="6 500 000" style="width:140px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px 6px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
+            <span style="font-size:10px;color:var(--text-hint);">₽</span>
+            <span style="font-size:10px;color:var(--text-hint);margin-left:8px;">МЕСЯЦ:</span>
+            <input type="number" class="eq-inv-month" value="0" min="0" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;font-size:10px;">
+            <label><input type="radio" name="eq-type-\${Date.now()}" class="eq-inv-type" value="capex" checked> CAPEX (амортизируется)</label>
+            <label><input type="radio" name="eq-type-\${Date.now()}" class="eq-inv-type" value="old_sale"> Продажа старого</label>
+            <span style="margin-left:auto;font-size:10px;color:var(--text-hint);">Срок:</span>
+            <input type="number" class="eq-inv-life" value="60" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;">
+            <span style="font-size:10px;color:var(--text-hint);">мес</span>
+            <span style="font-size:10px;color:var(--text-hint);">Ликв.:</span>
+            <input type="text" class="eq-inv-salvage" value="0" style="width:80px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
+            <label><input type="checkbox" class="eq-inv-nds" checked> НДС</label>
+            <button onclick="this.parentElement.parentElement.remove()" style="font-size:9px;padding:1px 6px;color:var(--critical);">✕</button>
+        </div>
+    `;
+            document.getElementById('eq-investments').appendChild(div);
+        }
 
-            // === НАЛОГИ ===
-            html += '<div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАЛОГИ</div>';
-            html += '<label><input type="checkbox" id="pj-use-company-tax" checked onchange="toggleProjectTax()"> Использовать настройки компании</label>';
-            html += '<div id="pj-tax-settings" style="display:none;"><div class="form-group"><label>НАЛОГ НА ПРИБЫЛЬ (%)</label><input type="number" id="pj-tax-rate" value="25" style="width:80px;"></div><div class="form-group"><label>НДС (%)</label><input type="number" id="pj-nds-rate" value="22" style="width:80px;"></div></div>';
+        // ==================== ПРОДУКТ ====================
+        function renderProductForm(container) {
+            container.innerHTML = `
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 1: ВЛОЖЕНИЯ В ЗАПУСК</div>
+        <div id="prod-investments"></div>
+        <button onclick="addGenericInvestment('prod-investments')" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ ТРАНШ</button>
 
-            html += '<div class="form-group"><label>СТАВКА РЕИНВЕСТИРОВАНИЯ (%)</label><input type="number" id="pj-reinvest" value="15" step="0.5" style="width:80px;"></div>';
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 2: ДОХОДЫ ПРОДУКТА</div>
+        <div class="form-group">
+            <label>ЦЕНА ПРОДУКТА (₽)</label>
+            <input type="text" id="pj-prod-price" value="5 000" style="width:120px;" onfocus="this.style.color='var(--text-primary)'">
+        </div>
+        <div class="form-group">
+            <label>ОБЪЁМ ПРОДАЖ (ЕД/МЕС)</label>
+            <input type="text" id="pj-prod-volume" value="100" style="width:100px;" onfocus="this.style.color='var(--text-primary)'">
+        </div>
+        <div style="font-size:9px;color:var(--text-hint);margin-bottom:8px;">Плановая выручка: <span id="prod-revenue-preview">500 000</span> ₽/мес</div>
+        <div class="form-group">
+            <label>СТАРТ ПРОДАЖ (МЕС)</label>
+            <input type="number" id="pj-rev-start" value="6" min="0" style="width:80px;">
+            <span style="font-size:9px;color:var(--text-hint);margin-left:8px;">RAMP-UP:</span>
+            <input type="number" id="pj-rev-ramp" value="6" min="0" style="width:60px;">
+        </div>
 
-            container.innerHTML = html;
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 3: РАСХОДЫ</div>
+        <div class="form-group">
+            <label>СТАРТ РАСХОДОВ (МЕС)</label>
+            <input type="number" id="pj-costs-start" value="0" min="0" style="width:80px;">
+        </div>
 
-            // Показать/скрыть отсрочку
-            document.getElementById('pj-credit-type').addEventListener('change', function () {
-                document.getElementById('deferred-months-group').style.display = this.value === 'deferred' ? 'block' : 'none';
-            });
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 4: ФИНАНСИРОВАНИЕ</div>
+        ${renderFinancingBlock()}
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАСТРОЙКИ</div>
+        ${renderSettingsBlock()}
+    `;
+            addGenericInvestment('prod-investments');
+        }
+
+        // ==================== ФИЛИАЛ ====================
+        function renderBranchForm(container) {
+            container.innerHTML = `
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 1: ЗАТРАТЫ НА ОТКРЫТИЕ</div>
+        <div id="branch-investments"></div>
+        <button onclick="addGenericInvestment('branch-investments')" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ</button>
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 2: ПЛАН ПРОДАЖ ТОЧКИ</div>
+        <div class="form-group">
+            <label>ТРАФИК (ПОСЕТИТЕЛЕЙ/МЕС)</label>
+            <input type="text" id="pj-branch-traffic" value="800" style="width:100px;" onfocus="this.style.color='var(--text-primary)'">
+        </div>
+        <div class="form-group">
+            <label>КОНВЕРСИЯ В ПОКУПАТЕЛЯ (%)</label>
+            <input type="number" id="pj-branch-conv" value="25" style="width:80px;">
+        </div>
+        <div class="form-group">
+            <label>СРЕДНИЙ ЧЕК (₽)</label>
+            <input type="text" id="pj-branch-check" value="3 500" style="width:120px;" onfocus="this.style.color='var(--text-primary)'">
+        </div>
+        <div style="font-size:9px;color:var(--text-hint);margin-bottom:8px;">Плановая выручка: <span id="branch-revenue-preview">700 000</span> ₽/мес</div>
+        <div class="form-group">
+            <label>КАННИБАЛИЗАЦИЯ (%)</label>
+            <input type="number" id="pj-branch-cannib" value="15" style="width:80px;">
+            <div style="font-size:9px;color:var(--text-hint);">Какой % клиентов перетечёт из существующих точек</div>
+        </div>
+        <div class="form-group">
+            <label>СТАРТ (МЕС)</label>
+            <input type="number" id="pj-rev-start" value="4" min="0" style="width:80px;">
+            <span style="font-size:9px;color:var(--text-hint);margin-left:8px;">RAMP-UP:</span>
+            <input type="number" id="pj-rev-ramp" value="8" min="0" style="width:60px;">
+        </div>
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 3: РАСХОДЫ ТОЧКИ</div>
+        <div class="form-group"><label>АРЕНДА (₽/МЕС)</label><input type="text" id="pj-branch-rent" value="250 000" style="width:100%;"></div>
+        <div class="form-group"><label>ПЕРСОНАЛ (ЧЕЛ)</label><input type="number" id="pj-branch-staff" value="4" style="width:60px;"> × <input type="text" id="pj-branch-staff-sal" value="65 000" style="width:100px;"> ₽</div>
+        <div class="form-group"><label>КОММУНАЛЬНЫЕ (₽/МЕС)</label><input type="text" id="pj-branch-util" value="35 000" style="width:100%;"></div>
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 4: ФИНАНСИРОВАНИЕ</div>
+        ${renderFinancingBlock()}
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАСТРОЙКИ</div>
+        ${renderSettingsBlock()}
+    `;
+            addGenericInvestment('branch-investments');
+        }
+
+        // ==================== КАНАЛ ====================
+        function renderChannelForm(container) {
+            container.innerHTML = `
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 1: ЗАТРАТЫ НА ЗАПУСК</div>
+        <div id="chan-investments"></div>
+        <button onclick="addGenericInvestment('chan-investments')" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ</button>
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 2: МЕТРИКИ КАНАЛА</div>
+        <div class="form-group"><label>ПРОДАЖ/МЕС</label><input type="text" id="pj-chan-sales" value="50" style="width:100px;"></div>
+        <div class="form-group"><label>СРЕДНИЙ ЧЕК (₽)</label><input type="text" id="pj-chan-check" value="5 000" style="width:120px;"></div>
+        <div style="font-size:9px;color:var(--text-hint);margin-bottom:8px;">Выручка: <span id="chan-revenue-preview">250 000</span> ₽/мес</div>
+        <div class="form-group"><label>САС (₽/КЛИЕНТ)</label><input type="text" id="pj-chan-cac" value="4 000" style="width:120px;"></div>
+        <div class="form-group"><label>LTV (₽)</label><input type="text" id="pj-chan-ltv" value="40 000" style="width:120px;"></div>
+        <div class="form-group"><label>КОМИССИЯ ПЛОЩАДКИ (%)</label><input type="number" id="pj-chan-comm" value="15" style="width:80px;"></div>
+        <div class="form-group">
+            <label>СТАРТ (МЕС)</label>
+            <input type="number" id="pj-rev-start" value="3" min="0" style="width:80px;">
+            <span style="font-size:9px;color:var(--text-hint);margin-left:8px;">RAMP-UP:</span>
+            <input type="number" id="pj-rev-ramp" value="4" min="0" style="width:60px;">
+        </div>
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 3: РАСХОДЫ</div>
+        <div class="form-group"><label>МАРКЕТИНГ (₽/МЕС)</label><input type="text" id="pj-chan-marketing" value="80 000" style="width:100%;"></div>
+        <div class="form-group"><label>МЕНЕДЖЕР (ЧЕЛ)</label><input type="number" id="pj-chan-mgr" value="1" style="width:60px;"> × <input type="text" id="pj-chan-mgr-sal" value="85 000" style="width:100px;"> ₽</div>
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 4: ФИНАНСИРОВАНИЕ</div>
+        ${renderFinancingBlock()}
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАСТРОЙКИ</div>
+        ${renderSettingsBlock()}
+    `;
+            addGenericInvestment('chan-investments');
+        }
+
+        // ==================== ИНТЕГРАЦИЯ ====================
+        function renderIntegrationForm(container) {
+            container.innerHTML = `
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 1: СТОИМОСТЬ СДЕЛКИ</div>
+        <div class="form-group"><label>ЦЕНА ПОКУПКИ (₽)</label><input type="text" id="pj-int-price" value="15 000 000" style="width:100%;"></div>
+        <div class="form-group"><label>ЮРИДИЧЕСКИЕ / DUE DIL (₽)</label><input type="text" id="pj-int-legal" value="500 000" style="width:100%;"></div>
+        <div class="form-group"><label>ИНТЕГРАЦИЯ (₽)</label><input type="text" id="pj-int-integration" value="1 000 000" style="width:100%;"></div>
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 2: СИНЕРГИЯ</div>
+        <div class="form-group"><label>ДОП. ВЫРУЧКА (₽/МЕС)</label><input type="text" id="pj-int-rev" value="300 000" style="width:100%;"></div>
+        <div class="form-group"><label>ЭКОНОМИЯ НА ЗАКУПКАХ (₽/МЕС)</label><input type="text" id="pj-int-costs" value="120 000" style="width:100%;"></div>
+        <div class="form-group"><label>ЭКОНОМИЯ НА АУП (₽/МЕС)</label><input type="text" id="pj-int-aup" value="80 000" style="width:100%;"></div>
+        <div class="form-group"><label>ПОТЕРЯ КЛИЕНТОВ (%)</label><input type="number" id="pj-int-loss" value="15" style="width:80px;"></div>
+        <div class="form-group"><label>СТАРТ СИНЕРГИИ (МЕС)</label><input type="number" id="pj-rev-start" value="6" min="0" style="width:80px;"></div>
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 3: ФИНАНСИРОВАНИЕ</div>
+        ${renderFinancingBlock()}
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАСТРОЙКИ</div>
+        ${renderSettingsBlock()}
+    `;
+        }
+
+        // ==================== ОБЩИЕ БЛОКИ ====================
+        function renderFinancingBlock() {
+            return `
+        <div class="form-group"><label>СВОИ СРЕДСТВА (₽)</label><input type="text" id="pj-own-funds" value="0" style="width:100%;"></div>
+        <div class="form-group"><label>КРЕДИТ (СУММА)</label><input type="text" id="pj-credit-amount" value="0" style="width:100%;"></div>
+        <div class="form-group"><label>СТАВКА (%)</label><input type="number" id="pj-credit-rate" value="21" step="0.5" style="width:80px;"></div>
+        <div class="form-group"><label>СРОК (МЕС)</label><input type="number" id="pj-credit-term" value="36" style="width:80px;"></div>
+        <div class="form-group"><label>ТИП ПЛАТЕЖЕЙ</label>
+            <select id="pj-credit-type" style="width:100%;" onchange="document.getElementById('def-months-grp').style.display=this.value==='deferred'?'block':'none'">
+                <option value="annuity">Аннуитет</option>
+                <option value="differential">Дифференцированный</option>
+                <option value="deferred">С отсрочкой</option>
+            </select>
+        </div>
+        <div class="form-group" id="def-months-grp" style="display:none;"><label>ОТСРОЧКА (МЕС)</label><input type="number" id="pj-deferred-months" value="6" style="width:80px;"></div>
+    `;
+        }
+
+        function renderSettingsBlock() {
+            return `
+        <div class="form-group"><label>СТАВКА РЕИНВЕСТИРОВАНИЯ (%)</label><input type="number" id="pj-reinvest" value="15" step="0.5" style="width:80px;"></div>
+        <div class="form-group"><label>АМОРТИЗАЦИЯ</label>
+            <select id="pj-amort-type" style="width:100%;"><option value="linear">Линейная</option><option value="accelerated">Ускоренная</option></select>
+        </div>
+        <div class="form-group"><label>АМОРТ. ПРЕМИЯ (%)</label><input type="number" id="pj-amort-premium" value="10" step="5" style="width:80px;"></div>
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ДИСКОНТИРОВАНИЕ</div>
+        <div id="discount-rows">
+            <div class="disc-row" style="display:flex;gap:4px;margin-bottom:2px;"><input type="number" class="disc-months" value="12" style="width:55px;"> мес <input type="number" class="disc-rate" value="21" step="0.5" style="width:60px;"> %</div>
+            <div class="disc-row" style="display:flex;gap:4px;margin-bottom:2px;"><input type="number" class="disc-months" value="12" style="width:55px;"> мес <input type="number" class="disc-rate" value="18" step="0.5" style="width:60px;"> %</div>
+            <div class="disc-row" style="display:flex;gap:4px;margin-bottom:2px;"><input type="number" class="disc-months" value="12" style="width:55px;"> мес <input type="number" class="disc-rate" value="15" step="0.5" style="width:60px;"> %</div>
+        </div>
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ИНФЛЯЦИЯ ПО ГОДАМ (%)</div>
+        <div style="display:flex;gap:4px;"><input type="number" id="pj-infl-y1" value="7" step="0.5" style="width:60px;"><input type="number" id="pj-infl-y2" value="6" step="0.5" style="width:60px;"><input type="number" id="pj-infl-y3" value="5" step="0.5" style="width:60px;"></div>
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАЛОГИ</div>
+        <label><input type="checkbox" id="pj-use-company-tax" checked onchange="document.getElementById('pj-tax-settings').style.display=this.checked?'none':'block'"> Из настроек компании</label>
+        <div id="pj-tax-settings" style="display:none;"><div class="form-group"><label>НАЛОГ НА ПРИБЫЛЬ (%)</label><input type="number" id="pj-tax-rate" value="25" style="width:80px;"></div><div class="form-group"><label>НДС (%)</label><input type="number" id="pj-nds-rate" value="22" style="width:80px;"></div></div>
+    `;
+        }
+
+        function addGenericInvestment(containerId) {
+            var div = document.createElement('div');
+            div.style.cssText = 'padding:8px;margin-bottom:4px;background:var(--bg-input);border:1px solid var(--border);';
+            div.innerHTML = `
+        <input type="text" class="gi-name" value="Вложение" style="width:100%;font-size:10px;margin-bottom:4px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px 6px;">
+        <div style="display:flex;gap:4px;align-items:center;">
+            <input type="text" class="gi-amount" value="1 000 000" style="width:120px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px 6px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)"> ₽
+            <span style="font-size:10px;color:var(--text-hint);margin-left:8px;">Месяц:</span>
+            <input type="number" class="gi-month" value="0" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;">
+            <button onclick="this.parentElement.parentElement.remove()" style="font-size:9px;padding:1px 6px;color:var(--critical);margin-left:auto;">✕</button>
+        </div>
+    `;
+            document.getElementById(containerId).appendChild(div);
+        }
+
+        function formatMoneyInput(el) {
+            var val = parseFloat(el.value.replace(/\s/g, ''));
+            if (!isNaN(val)) el.value = val.toLocaleString('ru-RU');
         }
 
         // Добавление строк
@@ -5126,64 +5314,111 @@
             var type = document.getElementById('pj-type').value;
             var horizon = parseInt(document.getElementById('pj-horizon').value) || 36;
 
-            // Инвестиции
+            // Сбор инвестиций в зависимости от типа
             var investments = [];
-            document.querySelectorAll('.inv-row').forEach(function (row) {
-                var amt = parseFloat(row.querySelector('.inv-amount').value.replace(/\s/g, '')) || 0;
-                if (amt === 0) return;
-                investments.push({
-                    name: row.querySelector('.inv-name').value,
-                    month: parseInt(row.querySelector('.inv-month').value) || 0,
-                    amount: amt,
-                    type: row.querySelector('.inv-type').value,
-                    usefulLife: parseInt(row.querySelector('.inv-life').value) || 0,
-                    salvageValue: parseFloat(row.querySelector('.inv-salvage').value.replace(/\s/g, '')) || 0,
-                    includesNDS: row.querySelector('.inv-nds').checked
+            if (type === 'equipment') {
+                document.querySelectorAll('#eq-investments > div').forEach(function (row) {
+                    var amt = parseFloat(row.querySelector('.eq-inv-amount').value.replace(/\s/g, '')) || 0;
+                    if (amt === 0) return;
+                    investments.push({
+                        name: row.querySelector('.eq-inv-name').value,
+                        amount: amt,
+                        month: parseInt(row.querySelector('.eq-inv-month').value) || 0,
+                        type: row.querySelector('.eq-inv-type:checked')?.value || 'capex',
+                        usefulLife: parseInt(row.querySelector('.eq-inv-life').value) || 0,
+                        salvageValue: parseFloat(row.querySelector('.eq-inv-salvage').value.replace(/\s/g, '')) || 0,
+                        includesNDS: row.querySelector('.eq-inv-nds')?.checked || false
+                    });
                 });
-            });
+            } else {
+                document.querySelectorAll('.gi-amount').forEach(function (el, idx) {
+                    var amt = parseFloat(el.value.replace(/\s/g, '')) || 0;
+                    if (amt === 0) return;
+                    var row = el.parentElement.parentElement;
+                    investments.push({
+                        name: row.querySelector('.gi-name')?.value || '',
+                        amount: amt,
+                        month: parseInt(row.querySelector('.gi-month')?.value) || 0,
+                        type: 'capex',
+                        usefulLife: 0,
+                        salvageValue: 0,
+                        includesNDS: false
+                    });
+                });
+            }
 
-            // Доходы
+            // Доходы — в зависимости от типа
             var revenues = [];
-            document.querySelectorAll('.rev-row').forEach(function (row) {
-                var amt = parseFloat(row.querySelector('.rev-amount').value.replace(/\s/g, '')) || 0;
-                if (amt === 0) return;
-                revenues.push({
-                    name: row.querySelector('.rev-name').value,
-                    month: parseInt(row.querySelector('.rev-start').value) || 0,
-                    baseAmount: amt,
-                    rampUpMonths: parseInt(row.querySelector('.rev-ramp').value) || 0
-                });
-            });
+            var revStart = parseInt(document.getElementById('pj-rev-start')?.value) || 0;
+            var revRamp = parseInt(document.getElementById('pj-rev-ramp')?.value) || 0;
+
+            if (type === 'equipment') {
+                var revAmt = parseFloat(document.getElementById('pj-rev-increase')?.value.replace(/\s/g, '')) || 0;
+                if (revAmt > 0) revenues.push({ name: 'Выручка', baseAmount: revAmt, month: revStart, rampUpMonths: revRamp });
+                var costDec = parseFloat(document.getElementById('pj-cost-decrease')?.value.replace(/\s/g, '')) || 0;
+                if (costDec > 0) revenues.push({ name: 'Экономия', baseAmount: costDec, month: revStart, rampUpMonths: revRamp });
+            } else if (type === 'product') {
+                var price = parseFloat(document.getElementById('pj-prod-price')?.value.replace(/\s/g, '')) || 0;
+                var vol = parseFloat(document.getElementById('pj-prod-volume')?.value.replace(/\s/g, '')) || 0;
+                if (price > 0 && vol > 0) revenues.push({ name: 'Продажи', baseAmount: price * vol, month: revStart, rampUpMonths: revRamp });
+            } else if (type === 'branch') {
+                var traffic = parseFloat(document.getElementById('pj-branch-traffic')?.value.replace(/\s/g, '')) || 0;
+                var conv = parseFloat(document.getElementById('pj-branch-conv')?.value) || 0;
+                var check = parseFloat(document.getElementById('pj-branch-check')?.value.replace(/\s/g, '')) || 0;
+                var cann = parseFloat(document.getElementById('pj-branch-cannib')?.value) || 0;
+                var rev = traffic * conv / 100 * check * (1 - cann / 100);
+                if (rev > 0) revenues.push({ name: 'Продажи', baseAmount: rev, month: revStart, rampUpMonths: revRamp });
+            } else if (type === 'channel') {
+                var sales = parseFloat(document.getElementById('pj-chan-sales')?.value.replace(/\s/g, '')) || 0;
+                var chanCheck = parseFloat(document.getElementById('pj-chan-check')?.value.replace(/\s/g, '')) || 0;
+                if (sales > 0 && chanCheck > 0) revenues.push({ name: 'Продажи', baseAmount: sales * chanCheck, month: revStart, rampUpMonths: revRamp });
+            } else if (type === 'integration') {
+                var intRev = parseFloat(document.getElementById('pj-int-rev')?.value.replace(/\s/g, '')) || 0;
+                var intCost = parseFloat(document.getElementById('pj-int-costs')?.value.replace(/\s/g, '')) || 0;
+                var intAup = parseFloat(document.getElementById('pj-int-aup')?.value.replace(/\s/g, '')) || 0;
+                if (intRev > 0) revenues.push({ name: 'Доп. выручка', baseAmount: intRev, month: revStart, rampUpMonths: 0 });
+                if (intCost > 0) revenues.push({ name: 'Экономия закупки', baseAmount: intCost, month: revStart, rampUpMonths: 0 });
+                if (intAup > 0) revenues.push({ name: 'Экономия АУП', baseAmount: intAup, month: revStart, rampUpMonths: 0 });
+            }
 
             // Расходы
             var costs = [];
-            document.querySelectorAll('.cost-row').forEach(function (row) {
-                var amt = parseFloat(row.querySelector('.cost-amount').value.replace(/\s/g, '')) || 0;
-                if (amt === 0) return;
-                costs.push({
-                    name: row.querySelector('.cost-name').value,
-                    baseAmount: amt,
-                    type: row.querySelector('.cost-type').value,
-                    rampUpMonths: parseInt(row.querySelector('.cost-ramp').value) || 0,
-                    includesNDS: row.querySelector('.cost-nds').checked
-                });
-            });
-            var costsStart = parseInt(document.getElementById('pj-costs-start').value) || 0;
+            var costsStart = parseInt(document.getElementById('pj-costs-start')?.value) || 0;
 
-            // Кредит
+            if (type === 'equipment') {
+                var costInc = parseFloat(document.getElementById('pj-cost-increase')?.value.replace(/\s/g, '')) || 0;
+                if (costInc > 0) costs.push({ name: 'Доп. расходы', baseAmount: costInc, type: 'fixed', rampUpMonths: 0, includesNDS: true });
+            } else if (type === 'branch') {
+                var rent = parseFloat(document.getElementById('pj-branch-rent')?.value.replace(/\s/g, '')) || 0;
+                var staff = parseInt(document.getElementById('pj-branch-staff')?.value) || 0;
+                var staffSal = parseFloat(document.getElementById('pj-branch-staff-sal')?.value.replace(/\s/g, '')) || 0;
+                var util = parseFloat(document.getElementById('pj-branch-util')?.value.replace(/\s/g, '')) || 0;
+                if (rent > 0) costs.push({ name: 'Аренда', baseAmount: rent, type: 'fixed', rampUpMonths: 0 });
+                if (staff > 0 && staffSal > 0) costs.push({ name: 'Персонал', baseAmount: staff * staffSal, type: 'fixed', rampUpMonths: 0 });
+                if (util > 0) costs.push({ name: 'Коммунальные', baseAmount: util, type: 'fixed', rampUpMonths: 0 });
+            } else if (type === 'channel') {
+                var mkt = parseFloat(document.getElementById('pj-chan-marketing')?.value.replace(/\s/g, '')) || 0;
+                var mgr = parseInt(document.getElementById('pj-chan-mgr')?.value) || 0;
+                var mgrSal = parseFloat(document.getElementById('pj-chan-mgr-sal')?.value.replace(/\s/g, '')) || 0;
+                if (mkt > 0) costs.push({ name: 'Маркетинг', baseAmount: mkt, type: 'fixed', rampUpMonths: 0 });
+                if (mgr > 0 && mgrSal > 0) costs.push({ name: 'Менеджер', baseAmount: mgr * mgrSal, type: 'fixed', rampUpMonths: 0 });
+            }
+
+            // Финансирование
+            var ownFunds = parseFloat(document.getElementById('pj-own-funds').value.replace(/\s/g, '')) || 0;
             var creditAmount = parseFloat(document.getElementById('pj-credit-amount').value.replace(/\s/g, '')) || 0;
             var credit = creditAmount > 0 ? {
                 amount: creditAmount,
                 rate: parseFloat(document.getElementById('pj-credit-rate').value) / 100,
                 term: parseInt(document.getElementById('pj-credit-term').value) || 36,
                 type: document.getElementById('pj-credit-type').value,
-                deferredMonths: parseInt(document.getElementById('pj-deferred-months').value) || 0
+                deferredMonths: parseInt(document.getElementById('pj-deferred-months')?.value) || 0
             } : null;
 
             // Налоги
-            var useCompanyTax = document.getElementById('pj-use-company-tax').checked;
-            var taxRate = useCompanyTax ? (graph?.company?.profit_tax_rate || 0.25) : parseFloat(document.getElementById('pj-tax-rate').value || 25) / 100;
-            var ndsRate = useCompanyTax ? (graph?.company?.nds_rate || 0.22) : parseFloat(document.getElementById('pj-nds-rate').value || 22) / 100;
+            var useCompanyTax = document.getElementById('pj-use-company-tax')?.checked;
+            var taxRate = useCompanyTax ? (graph?.company?.profit_tax_rate || 0.25) : parseFloat(document.getElementById('pj-tax-rate')?.value || 25) / 100;
+            var ndsRate = useCompanyTax ? (graph?.company?.nds_rate || 0.22) : parseFloat(document.getElementById('pj-nds-rate')?.value || 22) / 100;
 
             // Дисконтирование
             var discSchedule = [];
@@ -5196,30 +5431,24 @@
 
             // Инфляция
             var inflRates = [
-                parseFloat(document.getElementById('pj-infl-y1').value || 7) / 100,
-                parseFloat(document.getElementById('pj-infl-y2').value || 6) / 100,
-                parseFloat(document.getElementById('pj-infl-y3').value || 5) / 100
+                parseFloat(document.getElementById('pj-infl-y1')?.value || 7) / 100,
+                parseFloat(document.getElementById('pj-infl-y2')?.value || 6) / 100,
+                parseFloat(document.getElementById('pj-infl-y3')?.value || 5) / 100
             ];
 
             currentProject = new Project({
-                name: name,
-                type: type,
-                horizon: horizon,
+                name: name, type: type, horizon: horizon,
                 investments: investments,
                 revenues: revenues,
                 costs: costs,
                 costsStartMonth: costsStart,
-                financing: {
-                    ownFunds: parseFloat(document.getElementById('pj-own-funds').value.replace(/\s/g, '')) || 0,
-                    credit: credit
-                },
-                taxRate: taxRate,
-                ndsRate: ndsRate,
+                financing: { ownFunds: ownFunds, credit: credit },
+                taxRate: taxRate, ndsRate: ndsRate,
                 discountSchedule: discSchedule,
-                reinvestmentRate: parseFloat(document.getElementById('pj-reinvest').value) / 100,
+                reinvestmentRate: parseFloat(document.getElementById('pj-reinvest')?.value || 15) / 100,
                 inflationRates: inflRates,
-                amortizationType: document.getElementById('pj-amort-type').value,
-                amortizationPremium: parseFloat(document.getElementById('pj-amort-premium').value || 0) / 100
+                amortizationType: document.getElementById('pj-amort-type')?.value || 'linear',
+                amortizationPremium: parseFloat(document.getElementById('pj-amort-premium')?.value || 10) / 100
             });
 
             renderProjectResults();
@@ -5457,11 +5686,11 @@
             renderSavedProjects();
         });
 
-        // Инициализация
         document.querySelector('[data-panel="projects"]')?.addEventListener('click', function () {
-            renderProjectForm();
+            renderProjectTypeForm();
             var saved = localStorage.getItem('sigmaflow_projects');
             if (saved) savedProjects = JSON.parse(saved);
+            renderSavedProjects();
         });
 
         document.getElementById('btn-calculate-project')?.addEventListener('click', calculateProject);
