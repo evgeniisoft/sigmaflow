@@ -787,22 +787,21 @@
                 <div style="flex:1;padding:16px;overflow-y:auto;">
                     <div id="project-results" style="display:none;">
                         <div id="project-metrics"
-                            style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;"></div>
-                        <div id="project-chart"
-                            style="height:300px;background:var(--bg-primary);border:1px solid var(--border);margin-bottom:16px;">
+                            style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
                         </div>
-                        <div id="project-sensitivity" style="margin-bottom:16px;"></div>
+                        <div id="project-chart"
+                            style="min-height:300px;background:var(--bg-primary);border:1px solid var(--border);margin-bottom:8px;padding-bottom:8px;">
+                        </div>
+                        <div id="project-table" style="overflow-x:auto;margin-bottom:16px;"></div>
                         <div id="project-conclusion"
                             style="padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
                         </div>
-                        <div id="project-table" style="overflow-x:auto;margin-top:16px;"></div>
                         <button id="btn-save-project" class="primary" style="margin-right:8px;">СОХРАНИТЬ
                             ПРОЕКТ</button>
                         <button id="btn-export-project">ЭКСПОРТ</button>
                     </div>
                     <div id="project-empty" style="color:var(--text-hint);text-align:center;padding-top:60px;">Заполните
-                        форму
-                        слева и нажмите «РАССЧИТАТЬ ПРОЕКТ»</div>
+                        форму слева и нажмите «РАССЧИТАТЬ ПРОЕКТ»</div>
                     <div id="saved-projects-list"
                         style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px;"></div>
                 </div>
