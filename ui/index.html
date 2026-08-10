@@ -5721,16 +5721,39 @@
         // Сохранение проектов
         document.getElementById('btn-save-project')?.addEventListener('click', function () {
             if (!currentProject) return;
-            savedProjects.push({
-                name: currentProject.name,
-                type: currentProject.type,
-                npv: currentProject.npv,
-                irr: currentProject.irr,
-                paybackPeriod: currentProject.paybackPeriod
-            });
+
+            // Собираем все данные формы
+            var data = {
+                name: document.getElementById('pj-name').value,
+                type: document.getElementById('pj-type').value,
+                horizon: parseInt(document.getElementById('pj-horizon').value) || 36,
+                config: {
+                    ownFunds: document.getElementById('pj-own-funds').value,
+                    creditAmount: document.getElementById('pj-credit-amount').value,
+                    creditRate: document.getElementById('pj-credit-rate').value,
+                    creditTerm: document.getElementById('pj-credit-term').value,
+                    creditType: document.getElementById('pj-credit-type').value,
+                    reinvest: document.getElementById('pj-reinvest').value,
+                    amortType: document.getElementById('pj-amort-type').value,
+                    amortPremium: document.getElementById('pj-amort-premium').value,
+                    useCompanyTax: document.getElementById('pj-use-company-tax').checked
+                },
+                results: {
+                    operatingNPV: currentProject.operatingNPV,
+                    financedNPV: currentProject.financedNPV,
+                    operatingIRR: currentProject.operatingIRR,
+                    mirr: currentProject.mirr,
+                    paybackPeriod: currentProject.paybackPeriod,
+                    roi: currentProject.roi,
+                    dscr: currentProject.dscr,
+                    breakevenFactor: currentProject.breakevenFactor
+                }
+            };
+
+            savedProjects.push(data);
             localStorage.setItem('sigmaflow_projects', JSON.stringify(savedProjects));
-            notify('Проект сохранён');
             renderSavedProjects();
+            notify('Проект сохранён');
         });
 
         document.querySelector('[data-panel="projects"]')?.addEventListener('click', function () {
@@ -5746,17 +5769,17 @@
             var container = document.getElementById('saved-projects-list');
             if (!container) return;
             if (savedProjects.length === 0) {
-                container.innerHTML = '<div style="color:var(--text-hint);padding:8px;">Нет сохранённых проектов</div>';
+                container.innerHTML = '<div style="color:var(--text-hint);padding:8px;font-size:10px;">Нет сохранённых проектов</div>';
                 return;
             }
-            var html = '<table style="font-size:10px;"><thead><tr><th>НАЗВАНИЕ</th><th>NPV</th><th>IRR</th><th>СРОК</th></tr></thead><tbody>';
+            var html = '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">СОХРАНЁННЫЕ ПРОЕКТЫ</div>';
+            html += '<table style="font-size:9px;width:100%;"><tbody>';
             savedProjects.forEach(function (proj, idx) {
+                var npv = proj.results?.operatingNPV || proj.npv || 0;
                 html += '<tr style="cursor:pointer;" onclick="loadProject(' + idx + ')">';
-                html += '<td>' + proj.name + '</td>';
-                html += '<td class="value-cell" style="color:' + (proj.npv >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(Math.round(proj.npv)) + '</td>';
-                html += '<td class="value-cell">' + (proj.irr * 100).toFixed(1) + '%</td>';
-                html += '<td class="value-cell">' + (proj.paybackPeriod >= 0 ? proj.paybackPeriod + 'м' : '—') + '</td>';
-                html += '<td><button onclick="event.stopPropagation(); deleteProject(' + idx + ')" style="font-size:9px;">✕</button></td>';
+                html += '<td>' + (proj.name || 'Проект #' + (idx + 1)) + '</td>';
+                html += '<td class="value-cell" style="color:' + (npv >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(Math.round(npv)) + '</td>';
+                html += '<td><button onclick="event.stopPropagation(); deleteProject(' + idx + ')" style="font-size:8px;padding:1px 4px;color:var(--critical);">✕</button></td>';
                 html += '</tr>';
             });
             html += '</tbody></table>';
@@ -5766,13 +5789,53 @@
         function loadProject(idx) {
             var proj = savedProjects[idx];
             if (!proj) return;
-            // Заполняем форму (сохраняем только базовые поля)
+
+            // Восстанавливаем имя и тип
             document.getElementById('pj-name').value = proj.name || '';
-            // Восстанавливаем что можем — но не все поля сохранены
-            notify('Проект «' + proj.name + '» загружен. Проверьте параметры.');
+            document.getElementById('pj-type').value = proj.type || 'equipment';
+            document.getElementById('pj-horizon').value = proj.horizon || 36;
+
+            // Перестраиваем форму нужного типа
+            renderProjectTypeForm();
+
+            // Восстанавливаем финансирование и настройки
+            if (proj.config) {
+                document.getElementById('pj-own-funds').value = proj.config.ownFunds || '0';
+                document.getElementById('pj-credit-amount').value = proj.config.creditAmount || '0';
+                document.getElementById('pj-credit-rate').value = proj.config.creditRate || '21';
+                document.getElementById('pj-credit-term').value = proj.config.creditTerm || '36';
+                document.getElementById('pj-credit-type').value = proj.config.creditType || 'annuity';
+                document.getElementById('pj-reinvest').value = proj.config.reinvest || '15';
+                document.getElementById('pj-amort-type').value = proj.config.amortType || 'linear';
+                document.getElementById('pj-amort-premium').value = proj.config.amortPremium || '10';
+                document.getElementById('pj-use-company-tax').checked = proj.config.useCompanyTax !== false;
+            }
+
+            // Показываем сохранённые результаты
+            if (proj.results) {
+                document.getElementById('project-results').style.display = 'block';
+                document.getElementById('project-empty').style.display = 'none';
+                var html = '';
+                var metrics = [
+                    { label: 'Опер. NPV', value: formatValue(Math.round(proj.results.operatingNPV)) + ' ₽' },
+                    { label: 'NPV с фин.', value: formatValue(Math.round(proj.results.financedNPV)) + ' ₽' },
+                    { label: 'IRR', value: (proj.results.operatingIRR * 100).toFixed(1) + '%' },
+                    { label: 'Срок окуп.', value: proj.results.paybackPeriod >= 0 ? proj.results.paybackPeriod + ' мес' : '—' }
+                ];
+                metrics.forEach(function (m) {
+                    html += '<div style="padding:8px;background:var(--bg-input);border:1px solid var(--border);text-align:center;">' +
+                        '<div style="font-size:8px;color:var(--text-hint);">' + m.label + '</div>' +
+                        '<div style="font-size:13px;font-weight:700;">' + m.value + '</div></div>';
+                });
+                document.getElementById('project-metrics').innerHTML = html;
+                document.getElementById('project-metrics').style.display = 'grid';
+            }
+
+            notify('Проект «' + proj.name + '» загружен. Нажмите «РАССЧИТАТЬ» для полного анализа.');
         }
 
         function deleteProject(idx) {
+            if (!confirm('Удалить проект «' + (savedProjects[idx]?.name || '') + '»?')) return;
             savedProjects.splice(idx, 1);
             localStorage.setItem('sigmaflow_projects', JSON.stringify(savedProjects));
             renderSavedProjects();
