@@ -5849,8 +5849,8 @@
             }
 
             var opexFlow = new Array(h).fill(0);
-            if (p.costs) {
-                p.costs.forEach(function (c) {
+            if (p.costs || []) {
+                p.costs || [].forEach(function (c) {
                     if (c.month !== undefined && c.month < h && c.name !== 'Предстартовые расходы') {
                         opexFlow[c.month] += c.baseAmount || 0;
                     }
