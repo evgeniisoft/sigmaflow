@@ -4991,9 +4991,27 @@
         // ==================== ОБОРУДОВАНИЕ ====================
         function renderEquipmentForm(container) {
             container.innerHTML = `
-        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 1: ВЛОЖЕНИЯ</div>
-        <div id="eq-investments"></div>
-        <button onclick="addEquipmentInvestment()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ ТРАНШ</button>
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 1: ВЛОЖЕНИЯ В ПРОЕКТ</div>
+
+        <!-- КАТЕГОРИЯ А: CAPEX -->
+        <div style="font-size:10px;color:var(--accent);margin:8px 0 4px;">🔹 ПОКУПКА АКТИВОВ (CAPEX)</div>
+        <div style="font-size:9px;color:var(--text-hint);margin-bottom:4px;">Оборудование, машины, недвижимость — всё что служит больше года</div>
+        <div id="eq-capex"></div>
+        <button onclick="addCapexRow()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ АКТИВ</button>
+
+        <!-- КАТЕГОРИЯ Б: OPEX -->
+        <div style="font-size:10px;color:var(--warning);margin:12px 0 4px;">🔸 РАЗОВЫЕ СТАРТОВЫЕ РАСХОДЫ (OPEX)</div>
+        <div style="font-size:9px;color:var(--text-hint);margin-bottom:4px;">Лицензии, ПО, обучение, ЗИП — списываются сразу в указанном месяце</div>
+        <div id="eq-opex"></div>
+        <button onclick="addOpexRow()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ РАСХОД</button>
+
+        <!-- КАТЕГОРИЯ В: ПРОДАЖА СТАРОГО -->
+        <div style="font-size:10px;color:var(--ok);margin:12px 0 4px;">🟢 ПРОДАЖА СТАРЫХ АКТИВОВ (Приток денег)</div>
+        <div style="font-size:9px;color:var(--text-hint);margin-bottom:4px;">Продажа старого оборудования, которое заменит новый проект</div>
+        <div id="eq-sales"></div>
+        <button onclick="addSaleRow()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ ПРОДАЖУ</button>
+
+        <!-- ПРЕДСТАРТОВЫЕ И ОБОРОТНЫЙ КАПИТАЛ -->
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ПРЕДСТАРТОВЫЕ РАСХОДЫ</div>
         <div class="form-group">
             <label>ПОДГОТОВКА И ЗАПУСК (₽)</label>
@@ -5002,39 +5020,38 @@
         </div>
         <div class="form-group">
             <label>ОБОРОТНЫЙ КАПИТАЛ (₽)</label>
-            <input type="text" id="pj-working-capital" value="0" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)">
+            <input type="text" id="pj-working-capital" value="0" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)" onchange="validateProjectInputs()">
             <div style="font-size:9px;color:var(--text-hint);">Сырьё, товарный запас, дебиторка до первой выручки. Высвобождается в конце проекта.</div>
         </div>
-        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 2: ЧТО ДАЁТ ОБОРУДОВАНИЕ</div>
+
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 2: ДОХОДЫ И РАЗГОН (RAMP-UP)</div>
         <div class="form-group">
-            <label>РОСТ ВЫРУЧКИ (₽/МЕС)</label>
+            <label>ПЛАНОВАЯ ВЫРУЧКА (₽/МЕС)</label>
             <input type="text" id="pj-rev-increase" value="250 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)">
-            <div style="font-size:9px;color:var(--text-hint);">Больше продукции / клиентов / скорость</div>
-        </div>
-        <div class="form-group">
-            <label>СНИЖЕНИЕ РАСХОДОВ (₽/МЕС)</label>
-            <input type="text" id="pj-cost-decrease" value="0" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)">
-            <div style="font-size:9px;color:var(--text-hint);">Меньше ремонта, брака, энергии</div>
-        </div>
-        <div class="form-group">
-            <label>ДОП. РАСХОДЫ (₽/МЕС)</label>
-            <input type="text" id="pj-cost-increase" value="35 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)">
-            <div style="font-size:9px;color:var(--text-hint);">Обслуживание, энергия, персонал</div>
+            <div style="font-size:9px;color:var(--text-hint);">В текущих ценах, без учёта инфляции</div>
         </div>
         <div class="form-group">
             <label>СТАРТ ВЫРУЧКИ (МЕС)</label>
-            <input type="number" id="pj-rev-start" value="3" min="0" style="width:80px;">
+            <input type="number" id="pj-rev-start" value="3" min="0" style="width:80px;" onchange="updateRampUpPreview()">
             <span style="font-size:9px;color:var(--text-hint);margin-left:8px;">RAMP-UP:</span>
-            <input type="number" id="pj-rev-ramp" value="4" min="0" style="width:60px;">
-            <div style="font-size:9px;color:var(--text-hint);">Выручка растёт постепенно: 25→50→75→100%</div>
+            <input type="number" id="pj-rev-ramp" value="4" min="0" style="width:60px;" onchange="updateRampUpPreview()">
+            <div style="font-size:9px;color:var(--text-hint);">Выручка растёт постепенно</div>
         </div>
+        <div id="rampup-preview" style="font-size:9px;color:var(--accent);margin-top:4px;"></div>
 
-        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 3: РАСХОДЫ</div>
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 3: РЕГУЛЯРНЫЕ РАСХОДЫ</div>
+        <div class="form-group">
+            <label>ДОП. РАСХОДЫ (₽/МЕС)</label>
+            <input type="text" id="pj-cost-increase" value="35 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)">
+            <div style="font-size:9px;color:var(--text-hint);">Зарплаты, топливо, ТО, страховка</div>
+        </div>
         <div class="form-group">
             <label>СТАРТ РАСХОДОВ (МЕС)</label>
-            <input type="number" id="pj-costs-start" value="0" min="0" style="width:80px;">
-            <div style="font-size:9px;color:var(--text-hint);">0 = расходы с первого месяца (подготовка)</div>
+            <input type="number" id="pj-costs-start" value="0" min="0" style="width:80px;" onchange="validateProjectInputs()">
+            <div style="font-size:9px;color:var(--text-hint);">Расходы могут начаться раньше выручки (подготовка)</div>
         </div>
+
+        <div id="ui-validation-alerts" style="margin-top:8px;"></div>
 
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 4: ФИНАНСИРОВАНИЕ</div>
         ${renderFinancingBlock()}
@@ -5043,15 +5060,18 @@
         ${renderSettingsBlock()}
     `;
 
-            if (window._loadingProject && window._loadingProject.investments && window._loadingProject.investments.length > 0) {
+            // Инициализация
+            if (window._loadingProject && window._loadingProject.investments) {
                 window._loadingProject.investments.forEach(function (inv) {
-                    addEquipmentInvestment(inv);
+                    if (inv.type === 'capex') addCapexRow(inv);
+                    else if (inv.type === 'opex' || inv.type === 'materials') addOpexRow(inv);
+                    else if (inv.type === 'old_sale') addSaleRow(inv);
                 });
             } else {
-                addEquipmentInvestment();
+                addCapexRow();
             }
-
-            addFinancingTranch();
+            updateRampUpPreview();
+            validateProjectInputs();
         }
 
         function toggleInvFields(selectEl) {
@@ -5059,6 +5079,134 @@
             if (capexFields) {
                 capexFields.style.display = selectEl.value === 'capex' ? 'inline' : 'none';
             }
+        }
+
+        function addCapexRow(data) {
+            var container = document.getElementById('eq-capex');
+            var div = document.createElement('div');
+            div.style.cssText = 'padding:6px;margin-bottom:4px;background:var(--bg-input);border:1px solid var(--border);';
+            div.innerHTML = `
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+            <input type="text" class="capex-name" value="${data?.name || 'Оборудование'}" placeholder="Название" style="flex:1;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px 6px;">
+            <input type="text" class="capex-cost" value="${data?.amount || '6 500 000'}" placeholder="Стоимость" style="width:120px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px 6px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this);validateProjectInputs()" onchange="validateProjectInputs()">
+            <span style="font-size:10px;">₽</span>
+            <span style="font-size:10px;color:var(--text-hint);">Месяц:</span>
+            <input type="number" class="capex-month" value="${data?.month || '0'}" min="0" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;" onchange="validateProjectInputs()">
+            <span style="font-size:10px;color:var(--text-hint);">Срок службы:</span>
+            <input type="number" class="capex-life" value="${data?.usefulLife || '60'}" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;">
+            <span style="font-size:10px;color:var(--text-hint);">мес</span>
+            <span style="font-size:10px;color:var(--text-hint);">Ликв. ст-ть:</span>
+            <input type="text" class="capex-salvage" value="${data?.salvageValue || '0'}" style="width:80px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
+            <label><input type="checkbox" class="capex-nds" ${data?.includesNDS !== false ? 'checked' : ''}> НДС</label>
+            <button onclick="this.parentElement.parentElement.remove();validateProjectInputs()" style="font-size:9px;padding:1px 4px;color:var(--critical);">✕</button>
+        </div>
+    `;
+            container.appendChild(div);
+        }
+
+        function updateRampUpPreview() {
+            var rev = parseFloat(document.getElementById('pj-rev-increase')?.value.replace(/\s/g, '')) || 0;
+            var start = parseInt(document.getElementById('pj-rev-start')?.value) || 0;
+            var ramp = parseInt(document.getElementById('pj-rev-ramp')?.value) || 0;
+            var html = '';
+            if (rev > 0 && ramp > 0) {
+                for (var i = 0; i < ramp; i++) {
+                    var pct = Math.round((i + 1) / ramp * 100);
+                    html += 'Месяц ' + (start + i) + ': ' + pct + '% = ' + formatValue(Math.round(rev * (i + 1) / ramp)) + ' ₽<br>';
+                }
+                html += 'Месяц ' + (start + ramp) + ' и далее: 100% = ' + formatValue(rev) + ' ₽';
+            }
+            document.getElementById('rampup-preview').innerHTML = html;
+        }
+
+        function validateProjectInputs() {
+            var horizon = parseInt(document.getElementById('pj-horizon')?.value) || 36;
+            var alerts = '';
+            var hasError = false;
+
+            // Собираем притоки
+            var capitalIn = new Array(horizon).fill(0);
+            var ownFunds = parseFloat(document.getElementById('pj-own-funds')?.value.replace(/\s/g, '')) || 0;
+            var ownMonth = parseInt(document.getElementById('pj-own-month')?.value) || 0;
+            var creditAmt = parseFloat(document.getElementById('pj-credit-amount')?.value.replace(/\s/g, '')) || 0;
+            var creditMonth = parseInt(document.getElementById('pj-credit-month')?.value) || 0;
+            if (ownMonth < horizon) capitalIn[ownMonth] += ownFunds;
+            if (creditMonth < horizon) capitalIn[creditMonth] += creditAmt;
+
+            // Продажи
+            document.querySelectorAll('#eq-sales > div').forEach(function (row) {
+                var amt = parseFloat(row.querySelector('.sale-amount')?.value.replace(/\s/g, '')) || 0;
+                var month = parseInt(row.querySelector('.sale-month')?.value) || 0;
+                if (month < horizon) capitalIn[month] += amt;
+            });
+
+            // Собираем оттоки
+            var capitalOut = new Array(horizon).fill(0);
+            var preprod = parseFloat(document.getElementById('pj-preprod-costs')?.value.replace(/\s/g, '')) || 0;
+            var nwc = parseFloat(document.getElementById('pj-working-capital')?.value.replace(/\s/g, '')) || 0;
+            capitalOut[0] += preprod + nwc;
+
+            document.querySelectorAll('#eq-capex > div').forEach(function (row) {
+                var cost = parseFloat(row.querySelector('.capex-cost')?.value.replace(/\s/g, '')) || 0;
+                var month = parseInt(row.querySelector('.capex-month')?.value) || 0;
+                if (month < horizon) capitalOut[month] += cost;
+            });
+
+            document.querySelectorAll('#eq-opex > div').forEach(function (row) {
+                var cost = parseFloat(row.querySelector('.opex-cost')?.value.replace(/\s/g, '')) || 0;
+                var month = parseInt(row.querySelector('.opex-month')?.value) || 0;
+                if (month < horizon) capitalOut[month] += cost;
+            });
+
+            // Проверка баланса
+            var buffer = 0;
+            for (var m = 0; m < horizon; m++) {
+                buffer += capitalIn[m] - capitalOut[m];
+                if (buffer < 0) {
+                    hasError = true;
+                    alerts += '<div style="color:var(--critical);font-size:10px;padding:2px 0;">⚠ Месяц ' + m + ': не хватает ' + formatValue(Math.abs(buffer)) + ' ₽</div>';
+                    buffer = 0;
+                }
+            }
+
+            document.getElementById('ui-validation-alerts').innerHTML = alerts;
+            var btn = document.getElementById('btn-calculate-project');
+            if (btn) btn.disabled = hasError;
+        }
+
+        function addOpexRow(data) {
+            var container = document.getElementById('eq-opex');
+            var div = document.createElement('div');
+            div.style.cssText = 'padding:6px;margin-bottom:4px;background:var(--bg-input);border:1px solid var(--border);';
+            div.innerHTML = `
+        <div style="display:flex;gap:4px;align-items:center;">
+            <input type="text" class="opex-name" value="${data?.name || ''}" placeholder="Название" style="flex:1;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px 6px;">
+            <input type="text" class="opex-cost" value="${data?.amount || '0'}" placeholder="Стоимость" style="width:120px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px 6px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this);validateProjectInputs()" onchange="validateProjectInputs()">
+            <span style="font-size:10px;">₽</span>
+            <span style="font-size:10px;color:var(--text-hint);">Месяц:</span>
+            <input type="number" class="opex-month" value="${data?.month || '0'}" min="0" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;" onchange="validateProjectInputs()">
+            <label><input type="checkbox" class="opex-nds" ${data?.includesNDS !== false ? 'checked' : ''}> НДС</label>
+            <button onclick="this.parentElement.parentElement.remove();validateProjectInputs()" style="font-size:9px;padding:1px 4px;color:var(--critical);">✕</button>
+        </div>
+    `;
+            container.appendChild(div);
+        }
+
+        function addSaleRow(data) {
+            var container = document.getElementById('eq-sales');
+            var div = document.createElement('div');
+            div.style.cssText = 'padding:6px;margin-bottom:4px;background:var(--bg-input);border:1px solid var(--border);';
+            div.innerHTML = `
+        <div style="display:flex;gap:4px;align-items:center;">
+            <input type="text" class="sale-name" value="${data?.name || ''}" placeholder="Название" style="flex:1;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px 6px;">
+            <input type="text" class="sale-amount" value="${data?.amount ? Math.abs(data.amount) : '0'}" placeholder="Сумма" style="width:120px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px 6px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this);validateProjectInputs()">
+            <span style="font-size:10px;">₽</span>
+            <span style="font-size:10px;color:var(--text-hint);">Месяц:</span>
+            <input type="number" class="sale-month" value="${data?.month || '0'}" min="0" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;" onchange="validateProjectInputs()">
+            <button onclick="this.parentElement.parentElement.remove();validateProjectInputs()" style="font-size:9px;padding:1px 4px;color:var(--critical);">✕</button>
+        </div>
+    `;
+            container.appendChild(div);
         }
 
 
