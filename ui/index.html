@@ -761,6 +761,7 @@
                             style="min-height:300px;background:var(--bg-primary);border:1px solid var(--border);margin-bottom:8px;padding-bottom:8px;">
                         </div>
                         <div id="project-table" style="overflow-x:auto;margin-bottom:16px;"></div>
+                        <div id="project-sensitivity" style="margin-bottom:16px;"></div>
                         <div id="project-conclusion"
                             style="padding:12px;background:var(--bg-input);border:1px solid var(--border);margin-bottom:16px;">
                         </div>
@@ -5710,6 +5711,7 @@
 
             renderProjectChart();
             renderProjectTable();
+            renderProjectSensitivity();
 
             var conclusion = '';
             if (p.operatingNPV > 0) {
@@ -5724,6 +5726,31 @@
                 conclusion += '<div>⚠ Макс. кассовый разрыв: ' + formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽ на ' + p.maxGapMonth + '-й месяц.</div>';
             }
             document.getElementById('project-conclusion').innerHTML = conclusion;
+        }
+
+
+        function renderProjectSensitivity() {
+            if (!currentProject || !currentProject.sensitivity) return;
+            var sens = currentProject.sensitivity;
+            var html = '<div style="font-size:10px;font-weight:600;margin-top:16px;">АНАЛИЗ ЧУВСТВИТЕЛЬНОСТИ (NPV)</div>';
+            html += '<table style="font-size:9px;min-width:100%;margin-top:4px;"><thead><tr>';
+            html += '<th>ПАРАМЕТР</th><th>-30%</th><th>-15%</th><th>БАЗА</th><th>+15%</th><th>+30%</th>';
+            html += '</tr></thead><tbody>';
+
+            sens.forEach(function (row) {
+                html += '<tr>';
+                html += '<td>' + row.name + '</td>';
+                [-0.3, -0.15, 0, 0.15, 0.3].forEach(function (pct) {
+                    var val = row.values[pct];
+                    var color = val >= 0 ? 'var(--ok)' : 'var(--critical)';
+                    html += '<td class="value-cell" style="color:' + color + ';">' + formatValue(Math.round(val)) + '</td>';
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            html += '<div style="font-size:8px;color:var(--text-hint);margin-top:4px;">Как меняется NPV при изменении параметров на ±15% и ±30%</div>';
+            document.getElementById('project-sensitivity').innerHTML = html;
         }
 
         function renderProjectChart() {
