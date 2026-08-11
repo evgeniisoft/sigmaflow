@@ -17,7 +17,7 @@ function Project(config) {
 
     // Расходы: [{name, month, baseAmount, type, rampUpMonths}]
     this.costs = config.costs || [];
-    this.costsStartMonth = config.costsStartMonth || 0;
+    this.costsStartMonth = config.costsStartMonth !== undefined ? config.costsStartMonth : 0;
 
     // Финансирование
     this.financing = config.financing || { ownFunds: 0 };
