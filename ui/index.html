@@ -5431,7 +5431,7 @@
             // Расходы
             var costsStartEl = document.getElementById('pj-costs-start');
             var costsStart = costsStartEl ? (parseInt(costsStartEl.value) || 0) : 0;
-           
+
             if (type === 'equipment') {
                 var costInc = parseFloat(document.getElementById('pj-cost-increase')?.value.replace(/\s/g, '')) || 0;
                 if (costInc > 0) costs.push({ name: 'Доп. расходы', baseAmount: costInc, type: 'fixed', rampUpMonths: 0, includesNDS: true });
@@ -5821,6 +5821,35 @@
                     else projectJSON.formValues[el.id] = el.value;
                 }
             });
+            // Сохраняем инвестиции
+            projectJSON.investments = [];
+            document.querySelectorAll('#eq-investments > div').forEach(function (row) {
+                projectJSON.investments.push({
+                    name: row.querySelector('.eq-inv-name')?.value || '',
+                    amount: row.querySelector('.eq-inv-amount')?.value || '',
+                    month: row.querySelector('.eq-inv-month')?.value || '0',
+                    type: row.querySelector('.eq-inv-type')?.value || 'capex',
+                    life: row.querySelector('.eq-inv-life')?.value || '60',
+                    salvage: row.querySelector('.eq-inv-salvage')?.value || '0',
+                    nds: row.querySelector('.eq-inv-nds')?.checked || false
+                });
+            });
+
+            // Сохраняем дисконтирование
+            projectJSON.discountRates = [];
+            document.querySelectorAll('.disc-row').forEach(function (row) {
+                projectJSON.discountRates.push({
+                    months: parseInt(row.querySelector('.disc-months')?.value) || 12,
+                    rate: parseFloat(row.querySelector('.disc-rate')?.value) || 21
+                });
+            });
+
+            // Сохраняем инфляцию
+            projectJSON.inflationRates = [
+                parseFloat(document.getElementById('pj-infl-y1')?.value) || 7,
+                parseFloat(document.getElementById('pj-infl-y2')?.value) || 6,
+                parseFloat(document.getElementById('pj-infl-y3')?.value) || 5
+            ];
             var blob = new Blob([JSON.stringify(projectJSON, null, 2)], { type: 'application/json' });
             var a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
@@ -5882,6 +5911,37 @@
                 }
             });
 
+
+            // Сохраняем инвестиции
+            projectJSON.investments = [];
+            document.querySelectorAll('#eq-investments > div').forEach(function (row) {
+                projectJSON.investments.push({
+                    name: row.querySelector('.eq-inv-name')?.value || '',
+                    amount: row.querySelector('.eq-inv-amount')?.value || '',
+                    month: row.querySelector('.eq-inv-month')?.value || '0',
+                    type: row.querySelector('.eq-inv-type')?.value || 'capex',
+                    life: row.querySelector('.eq-inv-life')?.value || '60',
+                    salvage: row.querySelector('.eq-inv-salvage')?.value || '0',
+                    nds: row.querySelector('.eq-inv-nds')?.checked || false
+                });
+            });
+
+            // Сохраняем дисконтирование
+            projectJSON.discountRates = [];
+            document.querySelectorAll('.disc-row').forEach(function (row) {
+                projectJSON.discountRates.push({
+                    months: parseInt(row.querySelector('.disc-months')?.value) || 12,
+                    rate: parseFloat(row.querySelector('.disc-rate')?.value) || 21
+                });
+            });
+
+            // Сохраняем инфляцию
+            projectJSON.inflationRates = [
+                parseFloat(document.getElementById('pj-infl-y1')?.value) || 7,
+                parseFloat(document.getElementById('pj-infl-y2')?.value) || 6,
+                parseFloat(document.getElementById('pj-infl-y3')?.value) || 5
+            ];
+
             savedProjects.push(projectJSON);
             localStorage.setItem('sigmaflow_projects', JSON.stringify(savedProjects));
             renderSavedProjects();
@@ -5915,27 +5975,87 @@
             var proj = savedProjects[idx];
             if (!proj) return;
 
+            // Базовые поля
             document.getElementById('pj-name').value = proj.name || '';
             document.getElementById('pj-type').value = proj.type || 'equipment';
             document.getElementById('pj-horizon').value = proj.horizon || 36;
 
+            // Пересоздаём форму нужного типа
             renderProjectTypeForm();
 
-            // Восстанавливаем HTML динамических блоков
+            // Ждём отрисовки формы, затем заполняем
             setTimeout(function () {
-                
-                // Восстанавливаем значения полей
+                // Восстанавливаем значения полей из formValues
                 if (proj.formValues) {
-                    Object.keys(proj.formValues).forEach(function (key) {
-                        var el = document.getElementById(key);
+                    Object.keys(proj.formValues).forEach(function (id) {
+                        var el = document.getElementById(id);
                         if (el) {
-                            if (el.type === 'checkbox') el.checked = proj.formValues[key];
-                            else if (el.type === 'radio') el.checked = (el.value === proj.formValues[key]);
-                            else el.value = proj.formValues[key];
+                            if (el.type === 'checkbox') el.checked = proj.formValues[id];
+                            else if (el.type === 'radio') {
+                                if (el.value === proj.formValues[id]) el.checked = true;
+                            } else {
+                                el.value = proj.formValues[id];
+                            }
                         }
                     });
                 }
-            }, 100);
+
+                // Восстанавливаем инвестиции
+                if (proj.investments && proj.type === 'equipment') {
+                    var container = document.getElementById('eq-investments');
+                    if (container) {
+                        container.innerHTML = ''; // очищаем дефолтный транш
+                        proj.investments.forEach(function (inv) {
+                            addEquipmentInvestment();
+                            var rows = container.querySelectorAll('> div');
+                            var row = rows[rows.length - 1];
+                            if (row) {
+                                var nameEl = row.querySelector('.eq-inv-name');
+                                var amountEl = row.querySelector('.eq-inv-amount');
+                                var monthEl = row.querySelector('.eq-inv-month');
+                                var typeEl = row.querySelector('.eq-inv-type');
+                                var lifeEl = row.querySelector('.eq-inv-life');
+                                var salvageEl = row.querySelector('.eq-inv-salvage');
+                                var ndsEl = row.querySelector('.eq-inv-nds');
+
+                                if (nameEl) nameEl.value = inv.name || '';
+                                if (amountEl) amountEl.value = inv.amount || '';
+                                if (monthEl) monthEl.value = inv.month || '0';
+                                if (typeEl) typeEl.value = inv.type || 'capex';
+                                if (lifeEl) lifeEl.value = inv.life || '60';
+                                if (salvageEl) salvageEl.value = inv.salvage || '0';
+                                if (ndsEl) ndsEl.checked = inv.nds || false;
+
+                                // Показать/скрыть поля CAPEX
+                                if (typeEl) toggleInvFields(typeEl);
+                            }
+                        });
+                    }
+                }
+
+                // Восстанавливаем дисконтирование
+                if (proj.discountRates && proj.discountRates.length > 0) {
+                    var discRows = document.querySelectorAll('.disc-row');
+                    proj.discountRates.forEach(function (dr, i) {
+                        if (discRows[i]) {
+                            var monthsEl = discRows[i].querySelector('.disc-months');
+                            var rateEl = discRows[i].querySelector('.disc-rate');
+                            if (monthsEl) monthsEl.value = dr.months || 12;
+                            if (rateEl) rateEl.value = dr.rate || 21;
+                        }
+                    });
+                }
+
+                // Восстанавливаем инфляцию
+                if (proj.inflationRates) {
+                    ['pj-infl-y1', 'pj-infl-y2', 'pj-infl-y3'].forEach(function (id, i) {
+                        var el = document.getElementById(id);
+                        if (el && proj.inflationRates[i] !== undefined) {
+                            el.value = proj.inflationRates[i];
+                        }
+                    });
+                }
+            }, 150);
 
             // Показываем сохранённые результаты
             if (proj.results) {
@@ -5956,11 +6076,6 @@
                 document.getElementById('project-metrics').innerHTML = html;
                 document.getElementById('project-metrics').style.display = 'grid';
             }
-
-            // Автопересчёт при загрузке
-            setTimeout(function () {
-                calculateProject();
-            }, 300);
 
             notify('Проект «' + proj.name + '» загружен. Нажмите «РАССЧИТАТЬ» для полного анализа.');
         }
