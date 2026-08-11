@@ -5539,15 +5539,6 @@
             var preprodCosts = parseFloat(document.getElementById('pj-preprod-costs')?.value.replace(/\s/g, '')) || 0;
             var workingCapital = parseFloat(document.getElementById('pj-working-capital')?.value.replace(/\s/g, '')) || 0;
 
-            if (preprodCosts > 0) {
-                costs.push({
-                    name: 'Предстартовые расходы',
-                    baseAmount: preprodCosts,
-                    type: 'fixed',
-                    rampUpMonths: 0,
-                    month: 0
-                });
-            }
 
             if (workingCapital > 0) {
                 investments.push({
@@ -5644,6 +5635,34 @@
 
 
             var ownMonth = flexFinancing ? 0 : (parseInt(document.getElementById('pj-own-month')?.value) || 0);
+            // Проверка достаточности финансирования по месяцам
+            var cumFinancing = 0;
+            var cumInvestment = 0;
+            var financingWarnings = [];
+            for (var m = 0; m < horizon; m++) {
+                // Приток финансирования в этом месяце
+                if (m === ownMonth) cumFinancing += ownFunds;
+                if (m === creditMonth) cumFinancing += creditAmount;
+
+                // Отток инвестиций в этом месяце
+                investments.forEach(function (inv) {
+                    if (inv.month === m) cumInvestment += Math.abs(inv.amount || 0);
+                });
+                if (m === 0) cumInvestment += preprodCosts + workingCapital;
+
+                if (cumInvestment > cumFinancing + 0.01) {
+                    financingWarnings.push('Месяц ' + m + ': затраты (' + formatValue(Math.round(cumInvestment)) +
+                        ' ₽) превышают доступный капитал (' + formatValue(Math.round(cumFinancing)) + ' ₽)');
+                }
+            }
+            if (financingWarnings.length > 0 && totalFinancing >= totalInvestment) {
+                var warnHtml = '<div style="color:var(--warning);font-size:10px;margin:8px 0;padding:8px;border:1px solid var(--warning);background:rgba(212,168,67,0.1);">' +
+                    '<div style="font-weight:600;margin-bottom:4px;">⚠ ГРАФИК ФИНАНСИРОВАНИЯ НЕ ОПТИМАЛЕН</div>' +
+                    financingWarnings.slice(0, 3).join('<br>') +
+                    '<div style="margin-top:4px;">Перенесите поступление средств на более ранние месяцы.</div></div>';
+                // Показываем предупреждение, но не блокируем расчёт
+                document.getElementById('project-conclusion')?.insertAdjacentHTML('beforebegin', warnHtml);
+            }
 
 
             currentProject = new Project({
