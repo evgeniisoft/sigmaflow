@@ -5833,44 +5833,82 @@
             var p = currentProject;
             var h = Math.min(p.horizon, 36);
 
-            var html = '<div style="font-size:10px;font-weight:600;margin-top:16px;">ПОМЕСЯЧНЫЕ ДАННЫЕ</div>';
+            // Собираем данные для подстрок
+            var ownInflow = new Array(h).fill(0);
+            if (p.financing.ownFunds > 0 && (p.financing.ownMonth || 0) < h) {
+                ownInflow[p.financing.ownMonth || 0] = p.financing.ownFunds;
+            }
+
+            var saleInflow = new Array(h).fill(0);
+            if (p.investments) {
+                p.investments.forEach(function (inv) {
+                    if (inv.type === 'old_sale' && inv.month < h) {
+                        saleInflow[inv.month] += Math.abs(inv.amount || 0);
+                    }
+                });
+            }
+
+            var opexFlow = new Array(h).fill(0);
+            if (p.costs) {
+                p.costs.forEach(function (c) {
+                    if (c.month !== undefined && c.month < h && c.name !== 'Предстартовые расходы') {
+                        opexFlow[c.month] += c.baseAmount || 0;
+                    }
+                });
+            }
+
+            var preprodFlow = new Array(h).fill(0);
+            if (p.preprodCosts > 0) preprodFlow[0] = p.preprodCosts;
+
+            var nwcFlow = new Array(h).fill(0);
+            var nwcInv = p.investments ? p.investments.filter(function (inv) { return inv.type === 'working_capital'; }) : [];
+            nwcInv.forEach(function (inv) {
+                if (inv.month < h) nwcFlow[inv.month] -= inv.amount || 0;
+                var rel = inv.releaseMonth || (h - 1);
+                if (rel < h) nwcFlow[rel] += inv.amount || 0;
+            });
+
+            var html = '<div style="font-size:10px;font-weight:600;margin-top:16px;">ПОМЕСЯЧНЫЕ ДАННЫЕ (UNIDO)</div>';
             html += '<table style="font-size:9px;min-width:100%;margin-top:4px;" class="project-table">';
             html += '<thead><tr><th>ПОКАЗАТЕЛЬ</th>';
             for (var i = 0; i < h; i++) html += '<th>МЕС ' + i + '</th>';
             html += '</tr></thead><tbody>';
 
-            function row(label, data, cls, invert) {
-                html += '<tr class="' + (cls || '') + '"><td>' + label + '</td>';
+            function row(label, data, cls, bold) {
+                html += '<tr class="' + (cls || '') + '"><td style="' + (bold ? 'font-weight:600;' : '') + (cls === 'row-child' ? 'padding-left:20px;' : '') + '">' + label + '</td>';
                 for (var i = 0; i < h; i++) {
                     var v = data[i] || 0;
-                    if (invert) v = -v;
                     var c = v >= 0 ? 'var(--ok)' : 'var(--critical)';
                     html += '<td class="value-cell" style="color:' + c + ';">' + formatValue(Math.round(v)) + '</td>';
                 }
                 html += '</tr>';
             }
 
-            // 1. Операционный поток
+            // 1. ОПЕРАЦИОННЫЙ ПОТОК
             html += '<tr class="row-parent"><td colspan="' + (h + 1) + '">1. ОПЕРАЦИОННЫЙ ПОТОК</td></tr>';
-            row('  Выручка', p.revenueFlow, 'row-child');
-            row('  Регулярные расходы', p.costFlow, 'row-child', true);
-            row('  Налог на прибыль', p.taxFlow, 'row-child', true);
-            row('  НДС', p.ndsFlow, 'row-child', true);
+            row('↳ Выручка от продаж', p.revenueFlow, 'row-child');
+            row('↳ Регулярные расходы (OPEX)', p.costFlow.map(function (v, i) { return -(v - (opexFlow[i] || 0) - (preprodFlow[i] || 0) - (nwcFlow[i] || 0)); }), 'row-child');
+            row('↳ Разовые стартовые расходы', opexFlow.map(function (v) { return -v; }), 'row-child');
+            row('↳ Предстартовые расходы', preprodFlow.map(function (v) { return -v; }), 'row-child');
+            row('↳ Налог на прибыль', p.taxFlow.map(function (v) { return -v; }), 'row-child');
+            row('↳ НДС к уплате / возврату', p.ndsFlow.map(function (v) { return -v; }), 'row-child');
 
-            // 2. Инвестиционный поток
+            // 2. ИНВЕСТИЦИОННЫЙ ПОТОК
             html += '<tr class="row-parent"><td colspan="' + (h + 1) + '">2. ИНВЕСТИЦИОННЫЙ ПОТОК</td></tr>';
-            row('  CAPEX + OPEX + Оборотка', p.investmentFlow, 'row-child', true);
-            row('  Продажа активов', new Array(h).fill(0), 'row-child');
-
-            // 3. Финансовый поток
-            html += '<tr class="row-parent"><td colspan="' + (h + 1) + '">3. ФИНАНСОВЫЙ ПОТОК</td></tr>';
-            row('  Поступления (свои + кредит)', p.creditFlow.map(function (v, i) {
-                return v + ((p.financing.ownFunds > 0 && i === (p.financing.ownMonth || 0)) ? p.financing.ownFunds : 0);
+            row('↳ Покупка оборудования (CAPEX)', p.investmentFlow.map(function (v, i) {
+                return -(v - (nwcFlow[i] || 0) + (saleInflow[i] || 0));
             }), 'row-child');
-            row('  Погашение тела кредита', p.creditRepayment, 'row-child', true);
-            row('  Проценты', p.interestFlow, 'row-child', true);
+            row('↳ Изменение оборотного капитала', nwcFlow, 'row-child');
+            row('↳ Продажа активов / Ликвидация', saleInflow, 'row-child');
 
-            // Итоги
+            // 3. ФИНАНСОВЫЙ ПОТОК
+            html += '<tr class="row-parent"><td colspan="' + (h + 1) + '">3. ФИНАНСОВЫЙ ПОТОК</td></tr>';
+            row('↳ Собственные средства', ownInflow, 'row-child');
+            row('↳ Получение кредита (Приток)', p.creditFlow, 'row-child');
+            row('↳ Погашение тела кредита', p.creditRepayment.map(function (v) { return -v; }), 'row-child');
+            row('↳ Выплата процентов', p.interestFlow.map(function (v) { return -v; }), 'row-child');
+
+            // ИТОГИ
             html += '<tr class="row-total"><td>📊 ЧИСТЫЙ ПОТОК (FCFE)</td>';
             for (var i = 0; i < h; i++) {
                 var v = p.financedFlow[i] || 0;
@@ -5897,80 +5935,51 @@
             document.getElementById('project-empty').style.display = 'none';
 
             var p = currentProject;
-            var revBase = p.revenues.reduce(function (s, r) { return s + (r.baseAmount || 0); }, 0);
-            var tbuRevenue = Math.round(p.breakevenFactor * revBase);
 
+            // Вердикт
+            var verdict = '';
+            if (p.operatingNPV > 0 && p.operatingIRR > p.wacc) {
+                verdict = '<div style="font-weight:600;color:var(--ok);font-size:14px;margin-bottom:8px;">🔥 ПРОЕКТ РЕКОМЕНДОВАН К РЕАЛИЗАЦИИ</div>';
+                verdict += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:12px;">Проект окупается, генерирует прибыль и имеет достаточный запас прочности.</div>';
+            } else if (p.operatingNPV > 0) {
+                verdict = '<div style="font-weight:600;color:var(--warning);font-size:14px;margin-bottom:8px;">⚠ ПРОЕКТ НА ГРАНИ ОКУПАЕМОСТИ</div>';
+            } else {
+                verdict = '<div style="font-weight:600;color:var(--critical);font-size:14px;margin-bottom:8px;">❌ ПРОЕКТ НЕ ОКУПАЕТСЯ</div>';
+                verdict += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:12px;">Для окупаемости нужна выручка от ' + formatValue(Math.round(p.breakevenFactor * (p.revenues[0]?.baseAmount || 0))) + ' ₽/мес.</div>';
+            }
+
+            // Метрики
             var metrics = [
-                {
-                    label: 'Опер. NPV', value: (p.operatingNPV >= 0 ? '+' : '') + formatValue(Math.round(p.operatingNPV)) + ' ₽',
-                    color: p.operatingNPV >= 0 ? 'var(--ok)' : 'var(--critical)',
-                    hint: 'Чистая приведённая стоимость без учёта кредита. Только доходы − расходы − инвестиции.'
-                },
-                {
-                    label: 'NPV с финанс.', value: (p.financedNPV >= 0 ? '+' : '') + formatValue(Math.round(p.financedNPV)) + ' ₽',
-                    color: p.financedNPV >= 0 ? 'var(--ok)' : 'var(--critical)',
-                    hint: 'NPV с учётом кредита (поступления − погашение − проценты).'
-                },
-                {
-                    label: 'IRR (опер.)', value: p.operatingIRR > -0.9 ? (p.operatingIRR * 100).toFixed(1) + '%' : 'убыток',
-                    color: p.operatingIRR > p.wacc ? 'var(--ok)' : 'var(--warning)',
-                    hint: 'Внутренняя норма доходности операционного потока.'
-                },
-                {
-                    label: 'MIRR', value: (p.mirr * 100).toFixed(1) + '%',
-                    hint: 'Модифицированная IRR с учётом реинвестирования.'
-                },
-                {
-                    label: 'Срок окуп.', value: p.paybackPeriod >= 0 ? p.paybackPeriod + ' мес' : '> ' + p.horizon + ' мес',
-                    hint: 'Простой срок окупаемости операционных затрат.'
-                },
-                {
-                    label: 'ROI', value: p.roi.toFixed(1) + '%',
-                    hint: 'Рентабельность инвестиций.'
-                },
-                {
-                    label: 'DSCR', value: p.dscr ? p.dscr.toFixed(2) : '—',
-                    hint: 'Коэффициент покрытия долга.'
-                },
-                {
-                    label: 'ТБУ', value: p.breakevenFactor > 0 ? formatValue(tbuRevenue) + ' ₽/мес' : '—',
-                    hint: 'Минимальная выручка для NPV=0. Сейчас план: ' + formatValue(Math.round(revBase)) + ' ₽/мес.'
-                }
+                { label: 'NPV', value: formatValue(Math.round(p.operatingNPV)) + ' ₽', hint: 'Чистый дисконтированный доход' },
+                { label: 'IRR', value: p.operatingIRR > -0.9 ? (p.operatingIRR * 100).toFixed(1) + '%' : 'убыток', hint: 'Внутренняя норма доходности' },
+                { label: 'MIRR', value: (p.mirr * 100).toFixed(1) + '%', hint: 'Модифицированная IRR' },
+                { label: 'Срок окуп.', value: p.paybackPeriod >= 0 ? p.paybackPeriod + ' мес' : '> ' + p.horizon + ' мес', hint: 'Простой срок окупаемости' },
+                { label: 'DSCR', value: p.dscr ? p.dscr.toFixed(2) : '—', hint: 'Покрытие долга (>1.25 хорошо)' },
+                { label: 'PI', value: p.pi.toFixed(2), hint: 'Индекс прибыльности (>1 выгодно)' },
+                { label: 'ТБУ', value: formatValue(Math.round(p.breakevenFactor * (p.revenues[0]?.baseAmount || 0))) + ' ₽/мес', hint: 'Минимальная выручка для окупаемости' },
+                { label: 'Макс. разрыв', value: p.maxCashGap < 0 ? formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽' : 'нет', hint: 'Максимальный кассовый разрыв' }
             ];
 
-            var html = '';
+            var mHtml = verdict + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">';
             metrics.forEach(function (m) {
-                html += '<div style="padding:8px;background:var(--bg-input);border:1px solid var(--border);text-align:center;cursor:help;" title="' + m.hint + '">';
-                html += '<div style="font-size:8px;color:var(--text-hint);margin-bottom:3px;">' + m.label + '</div>';
-                html += '<div style="font-size:13px;font-weight:700;color:' + m.color + ';">' + m.value + '</div>';
-                html += '</div>';
+                mHtml += '<div style="padding:8px;background:var(--bg-input);border:1px solid var(--border);text-align:center;cursor:help;" title="' + m.hint + '">' +
+                    '<div style="font-size:8px;color:var(--text-hint);">' + m.label + '</div>' +
+                    '<div style="font-size:13px;font-weight:700;">' + m.value + '</div></div>';
             });
-            document.getElementById('project-metrics').innerHTML = html;
+            mHtml += '</div>';
+            document.getElementById('project-metrics').innerHTML = mHtml;
 
-            // Валидация
-            var validationHtml = '';
-            if (p.creditExcess > 0) {
-                validationHtml += '<div style="color:var(--warning);font-size:10px;margin-top:4px;">⚠ Кредит превышает потребность на ' + formatValue(Math.round(p.creditExcess)) + ' ₽</div>';
+            // Рекомендации
+            var rec = '';
+            if (p.dscr && p.dscr < 1.25) rec += '<div>⚠ DSCR ниже 1.25 — проект рискован для банка.</div>';
+            if (p.maxCashGap < 0) rec += '<div>⚠ Кассовый разрыв ' + formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽ на ' + p.maxGapMonth + '-й месяц. Увеличьте оборотный капитал.</div>';
+            if (p.financing.credit && p.financing.credit.amount > 0 && p.creditExcess > 0) {
+                rec += '<div>💡 Кредит превышает потребность на ' + formatValue(Math.round(p.creditExcess)) + ' ₽. Уменьшите сумму кредита для экономии на процентах.</div>';
             }
-            document.getElementById('project-metrics').insertAdjacentHTML('afterend', validationHtml);
+            document.getElementById('project-conclusion').innerHTML = rec || '<div style="color:var(--ok);">✅ Проект сбалансирован.</div>';
 
             renderProjectChart();
             renderProjectTable();
-            renderProjectSensitivity();
-
-            var conclusion = '';
-            if (p.operatingNPV > 0) {
-                conclusion = '<div style="font-weight:600;color:var(--ok);">● ПРОЕКТ ОКУПАЕТСЯ</div>';
-            } else if (p.financedNPV > 0) {
-                conclusion = '<div style="font-weight:600;color:var(--warning);">● ОКУПАЕТСЯ ЗА СЧЁТ КРЕДИТА</div>';
-                conclusion += '<div>Операционный NPV отрицательный. Проект выходит в плюс только благодаря кредитному плечу.</div>';
-            } else {
-                conclusion = '<div style="font-weight:600;color:var(--critical);">● ПРОЕКТ НЕ ОКУПАЕТСЯ</div>';
-            }
-            if (p.maxCashGap < 0) {
-                conclusion += '<div>⚠ Макс. кассовый разрыв: ' + formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽ на ' + p.maxGapMonth + '-й месяц.</div>';
-            }
-            document.getElementById('project-conclusion').innerHTML = conclusion;
         }
 
 
@@ -6163,15 +6172,32 @@
             });
 
             projectJSON.investments = [];
-            document.querySelectorAll('#eq-investments > div').forEach(function (row) {
+            document.querySelectorAll('#eq-capex > div').forEach(function (row) {
                 projectJSON.investments.push({
-                    name: row.querySelector('.eq-inv-name')?.value || '',
-                    amount: row.querySelector('.eq-inv-amount')?.value || '',
-                    month: row.querySelector('.eq-inv-month')?.value || '0',
-                    type: row.querySelector('.eq-inv-type')?.value || 'capex',
-                    life: row.querySelector('.eq-inv-life')?.value || '60',
-                    salvage: row.querySelector('.eq-inv-salvage')?.value || '0',
-                    nds: row.querySelector('.eq-inv-nds')?.checked || false
+                    name: row.querySelector('.capex-name')?.value || '',
+                    amount: row.querySelector('.capex-cost')?.value || '',
+                    month: row.querySelector('.capex-month')?.value || '0',
+                    type: 'capex',
+                    usefulLife: row.querySelector('.capex-life')?.value || '60',
+                    salvageValue: row.querySelector('.capex-salvage')?.value || '0',
+                    includesNDS: row.querySelector('.capex-nds')?.checked || false
+                });
+            });
+            document.querySelectorAll('#eq-opex > div').forEach(function (row) {
+                projectJSON.investments.push({
+                    name: row.querySelector('.opex-name')?.value || '',
+                    amount: row.querySelector('.opex-cost')?.value || '',
+                    month: row.querySelector('.opex-month')?.value || '0',
+                    type: 'opex',
+                    includesNDS: row.querySelector('.opex-nds')?.checked || false
+                });
+            });
+            document.querySelectorAll('#eq-sales > div').forEach(function (row) {
+                projectJSON.investments.push({
+                    name: row.querySelector('.sale-name')?.value || '',
+                    amount: row.querySelector('.sale-amount')?.value || '',
+                    month: row.querySelector('.sale-month')?.value || '0',
+                    type: 'old_sale'
                 });
             });
 
@@ -6236,15 +6262,32 @@
             });
 
             projectJSON.investments = [];
-            document.querySelectorAll('#eq-investments > div').forEach(function (row) {
+            document.querySelectorAll('#eq-capex > div').forEach(function (row) {
                 projectJSON.investments.push({
-                    name: row.querySelector('.eq-inv-name')?.value || '',
-                    amount: row.querySelector('.eq-inv-amount')?.value || '',
-                    month: row.querySelector('.eq-inv-month')?.value || '0',
-                    type: row.querySelector('.eq-inv-type')?.value || 'capex',
-                    life: row.querySelector('.eq-inv-life')?.value || '60',
-                    salvage: row.querySelector('.eq-inv-salvage')?.value || '0',
-                    nds: row.querySelector('.eq-inv-nds')?.checked || false
+                    name: row.querySelector('.capex-name')?.value || '',
+                    amount: row.querySelector('.capex-cost')?.value || '',
+                    month: row.querySelector('.capex-month')?.value || '0',
+                    type: 'capex',
+                    usefulLife: row.querySelector('.capex-life')?.value || '60',
+                    salvageValue: row.querySelector('.capex-salvage')?.value || '0',
+                    includesNDS: row.querySelector('.capex-nds')?.checked || false
+                });
+            });
+            document.querySelectorAll('#eq-opex > div').forEach(function (row) {
+                projectJSON.investments.push({
+                    name: row.querySelector('.opex-name')?.value || '',
+                    amount: row.querySelector('.opex-cost')?.value || '',
+                    month: row.querySelector('.opex-month')?.value || '0',
+                    type: 'opex',
+                    includesNDS: row.querySelector('.opex-nds')?.checked || false
+                });
+            });
+            document.querySelectorAll('#eq-sales > div').forEach(function (row) {
+                projectJSON.investments.push({
+                    name: row.querySelector('.sale-name')?.value || '',
+                    amount: row.querySelector('.sale-amount')?.value || '',
+                    month: row.querySelector('.sale-month')?.value || '0',
+                    type: 'old_sale'
                 });
             });
 
@@ -6309,17 +6352,20 @@
 
             window._loadingProject = proj;
             renderProjectTypeForm();
-            if (proj.discountRates && proj.discountRates.length > 0) {
-                var discRows = document.querySelectorAll('.disc-row');
-                proj.discountRates.forEach(function (dr, i) {
-                    if (discRows[i]) {
-                        var mEl = discRows[i].querySelector('.disc-months');
-                        var rEl = discRows[i].querySelector('.disc-rate');
-                        if (mEl) mEl.value = dr.months || 12;
-                        if (rEl) rEl.value = dr.rate || 21;
-                    }
+
+            // Восстановление траншей
+            if (proj.investments && document.getElementById('eq-capex')) {
+                document.getElementById('eq-capex').innerHTML = '';
+                document.getElementById('eq-opex').innerHTML = '';
+                document.getElementById('eq-sales').innerHTML = '';
+                proj.investments.forEach(function (inv) {
+                    if (inv.type === 'capex') addCapexRow(inv);
+                    else if (inv.type === 'opex' || inv.type === 'materials') addOpexRow(inv);
+                    else if (inv.type === 'old_sale') addSaleRow(inv);
                 });
             }
+
+            window._loadingProject = null;
 
             if (proj.formValues && proj.formValues['pj-use-company-tax'] === false) {
                 var taxCheck = document.getElementById('pj-use-company-tax');
