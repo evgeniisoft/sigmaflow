@@ -5037,7 +5037,6 @@
 
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 4: ФИНАНСИРОВАНИЕ</div>
         ${renderFinancingBlock()}
-        setTimeout(function() { addFinancingTranch(); }, 50);
 
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАСТРОЙКИ</div>
         ${renderSettingsBlock()}
@@ -5050,6 +5049,8 @@
             } else {
                 addEquipmentInvestment();
             }
+
+            addFinancingTranch();
         }
 
         function toggleInvFields(selectEl) {
