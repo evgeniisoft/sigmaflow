@@ -5002,12 +5002,12 @@
         </div>
         <div class="form-group">
             <label>СНИЖЕНИЕ РАСХОДОВ (₽/МЕС)</label>
-            <input type="text" id="pj-rev-increase" value="250 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)">
+            <input type="text" id="pj-cost-decrease" value="0" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)">
             <div style="font-size:9px;color:var(--text-hint);">Меньше ремонта, брака, энергии</div>
         </div>
         <div class="form-group">
             <label>ДОП. РАСХОДЫ (₽/МЕС)</label>
-            <input type="text" id="pj-rev-increase" value="250 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)">
+            <input type="text" id="pj-cost-increase" value="35 000" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)">
             <div style="font-size:9px;color:var(--text-hint);">Обслуживание, энергия, персонал</div>
         </div>
         <div class="form-group">
@@ -5032,13 +5032,12 @@
         ${renderSettingsBlock()}
     `;
 
-            // После создания контейнера — добавляем транши
             if (window._loadingProject && window._loadingProject.investments && window._loadingProject.investments.length > 0) {
                 window._loadingProject.investments.forEach(function (inv) {
                     addEquipmentInvestment(inv);
                 });
             } else {
-                addEquipmentInvestment(); // дефолтный
+                addEquipmentInvestment();
             }
         }
 
