@@ -5031,9 +5031,16 @@
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАСТРОЙКИ</div>
         ${renderSettingsBlock()}
     `;
-            addEquipmentInvestment(); // первый транш по умолчанию
-        }
 
+            // После создания контейнера — добавляем транши
+            if (window._loadingProject && window._loadingProject.investments && window._loadingProject.investments.length > 0) {
+                window._loadingProject.investments.forEach(function (inv) {
+                    addEquipmentInvestment(inv);
+                });
+            } else {
+                addEquipmentInvestment(); // дефолтный
+            }
+        }
 
         function toggleInvFields(selectEl) {
             var capexFields = selectEl.parentElement.querySelector('.capex-fields');
@@ -5042,45 +5049,52 @@
             }
         }
 
-        function addEquipmentInvestment() {
+        function addEquipmentInvestment(data) {
+            var container = document.getElementById('eq-investments');
+            if (!container) return;
+
             var div = document.createElement('div');
             div.style.cssText = 'padding:8px;margin-bottom:6px;background:var(--bg-input);border:1px solid var(--border);position:relative;';
             var uid = Date.now() + Math.random();
+
+            // Значения: из data или дефолтные
+            var vals = data || {};
+
             div.innerHTML = `
         <button onclick="this.parentElement.remove()" style="position:absolute;top:4px;right:4px;font-size:9px;padding:1px 6px;color:var(--critical);background:transparent;border:1px solid var(--critical);">✕</button>
         <div style="margin-bottom:4px;">
             <span style="font-size:10px;color:var(--text-hint);">НАЗВАНИЕ</span>
-            <input type="text" class="eq-inv-name" value="Оборудование" style="width:100%;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px 6px;margin-top:2px;">
+            <input type="text" class="eq-inv-name" value="${vals.name || 'Оборудование'}" style="width:100%;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px 6px;margin-top:2px;">
         </div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
             <div>
                 <span style="font-size:10px;color:var(--text-hint);">СТОИМОСТЬ (₽)</span>
-                <input type="text" class="eq-inv-amount" value="6 500 000" style="width:130px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px 6px;text-align:right;display:block;margin-top:2px;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
+                <input type="text" class="eq-inv-amount" value="${vals.amount || '6 500 000'}" style="width:130px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px 6px;text-align:right;display:block;margin-top:2px;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
             </div>
             <div>
                 <span style="font-size:10px;color:var(--text-hint);">МЕСЯЦ ОПЛАТЫ</span>
-                <input type="number" class="eq-inv-month" value="0" min="0" style="width:60px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;display:block;margin-top:2px;">
+                <input type="number" class="eq-inv-month" value="${vals.month || '0'}" min="0" style="width:60px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;display:block;margin-top:2px;">
                 <span style="font-size:8px;color:var(--text-hint);">0 = начало проекта</span>
             </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:10px;">
             <select class="eq-inv-type" style="font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;" onchange="toggleInvFields(this)">
-                 <option value="capex">CAPEX — оборудование (амортизируется)</option>
-                 <option value="opex">OPEX — ПО, лицензии, обучение</option>
-                 <option value="materials">Материалы / ЗИП / сырьё</option>
-                 <option value="old_sale">Продажа старого оборудования</option>
+                <option value="capex" ${(vals.type || 'capex') === 'capex' ? 'selected' : ''}>CAPEX — оборудование (амортизируется)</option>
+                <option value="opex" ${vals.type === 'opex' ? 'selected' : ''}>OPEX — ПО, лицензии, обучение</option>
+                <option value="materials" ${vals.type === 'materials' ? 'selected' : ''}>Материалы / ЗИП / сырьё</option>
+                <option value="old_sale" ${vals.type === 'old_sale' ? 'selected' : ''}>Продажа старого оборудования</option>
             </select>
-            <span class="capex-fields">
-                 <span style="color:var(--text-hint);">Срок службы:</span>
-                 <input type="number" class="eq-inv-life" value="60" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;">
-                 <span style="color:var(--text-hint);">мес</span>
-                 <span style="color:var(--text-hint);margin-left:4px;">Ликв. ст-ть:</span>
-                  <input type="text" class="eq-inv-salvage" value="0" style="width:80px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
+            <span class="capex-fields" style="display:${(vals.type || 'capex') === 'capex' ? 'inline' : 'none'};">
+                <span style="color:var(--text-hint);">Срок службы:</span>
+                <input type="number" class="eq-inv-life" value="${vals.life || '60'}" style="width:50px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;">
+                <span style="color:var(--text-hint);">мес</span>
+                <span style="color:var(--text-hint);margin-left:4px;">Ликв. ст-ть:</span>
+                <input type="text" class="eq-inv-salvage" value="${vals.salvage || '0'}" style="width:80px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
             </span>
-            <label style="margin-left:4px;"><input type="checkbox" class="eq-inv-nds" checked> Включает НДС</label>
+            <label style="margin-left:4px;"><input type="checkbox" class="eq-inv-nds" ${vals.nds !== false ? 'checked' : ''}> Включает НДС</label>
         </div>
     `;
-            document.getElementById('eq-investments').appendChild(div);
+            container.appendChild(div);
         }
 
         // ==================== ПРОДУКТ ====================
@@ -5922,87 +5936,18 @@
             var proj = savedProjects[idx];
             if (!proj) return;
 
-            // Базовые поля
             document.getElementById('pj-name').value = proj.name || '';
             document.getElementById('pj-type').value = proj.type || 'equipment';
             document.getElementById('pj-horizon').value = proj.horizon || 36;
 
-            // Пересоздаём форму нужного типа
+            // Сохраняем данные для формы
+            window._loadingProject = proj;
+
+            // Пересоздаём форму — она сама подхватит данные из _loadingProject
             renderProjectTypeForm();
 
-            // Ждём отрисовки формы, затем заполняем
-            setTimeout(function () {
-                // Восстанавливаем значения полей из formValues
-                if (proj.formValues) {
-                    Object.keys(proj.formValues).forEach(function (id) {
-                        var el = document.getElementById(id);
-                        if (el) {
-                            if (el.type === 'checkbox') el.checked = proj.formValues[id];
-                            else if (el.type === 'radio') {
-                                if (el.value === proj.formValues[id]) el.checked = true;
-                            } else {
-                                el.value = proj.formValues[id];
-                            }
-                        }
-                    });
-                }
-
-                // Восстанавливаем инвестиции
-                if (proj.investments && proj.type === 'equipment') {
-                    var container = document.getElementById('eq-investments');
-                    if (container) {
-                        container.innerHTML = ''; // очищаем дефолтный транш
-                        proj.investments.forEach(function (inv) {
-                            addEquipmentInvestment();
-                            var rows = container.querySelectorAll('div');
-                            var row = rows[rows.length - 1];
-                            if (row) {
-                                var nameEl = row.querySelector('.eq-inv-name');
-                                var amountEl = row.querySelector('.eq-inv-amount');
-                                var monthEl = row.querySelector('.eq-inv-month');
-                                var typeEl = row.querySelector('.eq-inv-type');
-                                var lifeEl = row.querySelector('.eq-inv-life');
-                                var salvageEl = row.querySelector('.eq-inv-salvage');
-                                var ndsEl = row.querySelector('.eq-inv-nds');
-
-                                if (nameEl) nameEl.value = inv.name || '';
-                                if (amountEl) amountEl.value = inv.amount || '';
-                                if (monthEl) monthEl.value = inv.month || '0';
-                                if (typeEl) typeEl.value = inv.type || 'capex';
-                                if (lifeEl) lifeEl.value = inv.life || '60';
-                                if (salvageEl) salvageEl.value = inv.salvage || '0';
-                                if (ndsEl) ndsEl.checked = inv.nds || false;
-
-                                // Показать/скрыть поля CAPEX
-                                if (typeEl) toggleInvFields(typeEl);
-                            }
-                        });
-                    }
-                }
-
-                // Восстанавливаем дисконтирование
-                if (proj.discountRates && proj.discountRates.length > 0) {
-                    var discRows = document.querySelectorAll('.disc-row');
-                    proj.discountRates.forEach(function (dr, i) {
-                        if (discRows[i]) {
-                            var monthsEl = discRows[i].querySelector('.disc-months');
-                            var rateEl = discRows[i].querySelector('.disc-rate');
-                            if (monthsEl) monthsEl.value = dr.months || 12;
-                            if (rateEl) rateEl.value = dr.rate || 21;
-                        }
-                    });
-                }
-
-                // Восстанавливаем инфляцию
-                if (proj.inflationRates) {
-                    ['pj-infl-y1', 'pj-infl-y2', 'pj-infl-y3'].forEach(function (id, i) {
-                        var el = document.getElementById(id);
-                        if (el && proj.inflationRates[i] !== undefined) {
-                            el.value = proj.inflationRates[i];
-                        }
-                    });
-                }
-            }, 150);
+            // Очищаем временную переменную
+            setTimeout(function () { window._loadingProject = null; }, 100);
 
             // Показываем сохранённые результаты
             if (proj.results) {
