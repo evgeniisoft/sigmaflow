@@ -5940,14 +5940,24 @@
             document.getElementById('pj-type').value = proj.type || 'equipment';
             document.getElementById('pj-horizon').value = proj.horizon || 36;
 
-            // Сохраняем данные для формы
             window._loadingProject = proj;
-
-            // Пересоздаём форму — она сама подхватит данные из _loadingProject
             renderProjectTypeForm();
+            window._loadingProject = null;
 
-            // Очищаем временную переменную
-            setTimeout(function () { window._loadingProject = null; }, 100);
+            // Применяем formValues
+            if (proj.formValues) {
+                Object.keys(proj.formValues).forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) {
+                        if (el.type === 'checkbox') el.checked = proj.formValues[id];
+                        else if (el.type === 'radio') {
+                            if (el.value === proj.formValues[id]) el.checked = true;
+                        } else {
+                            el.value = proj.formValues[id];
+                        }
+                    }
+                });
+            }
 
             // Показываем сохранённые результаты
             if (proj.results) {
@@ -5969,9 +5979,8 @@
                 document.getElementById('project-metrics').style.display = 'grid';
             }
 
-            notify('Проект «' + proj.name + '» загружен. Нажмите «РАССЧИТАТЬ» для полного анализа.');
+            notify('Проект «' + proj.name + '» загружен.');
         }
-
         function deleteProject(idx) {
             if (!confirm('Удалить проект «' + (savedProjects[idx]?.name || '') + '»?')) return;
             savedProjects.splice(idx, 1);
