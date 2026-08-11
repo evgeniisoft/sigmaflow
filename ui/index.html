@@ -5954,7 +5954,7 @@
                         container.innerHTML = ''; // очищаем дефолтный транш
                         proj.investments.forEach(function (inv) {
                             addEquipmentInvestment();
-                            var rows = container.querySelectorAll('> div');
+                            var rows = container.querySelectorAll('div');
                             var row = rows[rows.length - 1];
                             if (row) {
                                 var nameEl = row.querySelector('.eq-inv-name');
