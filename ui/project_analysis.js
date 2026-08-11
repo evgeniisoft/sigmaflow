@@ -158,15 +158,24 @@ Project.prototype._applyRevenues = function () {
 Project.prototype._applyCosts = function () {
     var self = this;
     self.costs.forEach(function (cost) {
-        var startM = Math.max(cost.month || 0, self.costsStartMonth);
         var base = cost.baseAmount || 0;
-        var ramp = cost.rampUpMonths || 0;
-        for (var m = startM; m < self.horizon; m++) {
-            var coef = 1;
-            if (ramp > 0 && cost.type === 'variable') {
-                coef = Math.min(1, (m - startM) / ramp);
+        if (cost.rampUpMonths && cost.rampUpMonths > 0) {
+            // Регулярные расходы с ramp-up
+            var startM = Math.max(cost.month || 0, self.costsStartMonth);
+            var ramp = cost.rampUpMonths || 0;
+            for (var m = startM; m < self.horizon; m++) {
+                var coef = 1;
+                if (ramp > 0 && cost.type === 'variable') {
+                    coef = Math.min(1, (m - startM) / ramp);
+                }
+                self.operating.opex[m] += base * coef;
             }
-            self.operating.opex[m] += base * coef;
+        } else {
+            // Единовременные затраты — только в указанном месяце
+            var m = cost.month || 0;
+            if (m < self.horizon) {
+                self.operating.opex[m] += base;
+            }
         }
     });
 };
@@ -268,17 +277,32 @@ Project.prototype._applyNDS = function () {
 // ==================== НАЛОГ НА ПРИБЫЛЬ ====================
 Project.prototype._applyTaxes = function () {
     var self = this;
-    var cumTaxable = 0;
+    var lossCarryForward = 0;
+    var taxAccum = 0;
     for (var m = 0; m < self.horizon; m++) {
-        var income = self.operating.revenue[m] - self.operating.opex[m] - self.financing.interest[m] - self.depreciation[m];
-        cumTaxable += income;
-        if (cumTaxable > 0 && (m + 1) % 3 === 0) {
-            self.operating.taxes[m] = cumTaxable * self.taxRate;
-            cumTaxable = 0;
+        var ebit = self.operating.revenue[m] - self.operating.opex[m] - self.depreciation[m] - self.financing.interest[m];
+        if (ebit < 0) {
+            lossCarryForward += Math.abs(ebit);
+            self.operating.taxes[m] = 0;
+        } else {
+            var taxableIncome = ebit - lossCarryForward;
+            if (taxableIncome < 0) {
+                lossCarryForward = Math.abs(taxableIncome);
+                taxableIncome = 0;
+            } else {
+                lossCarryForward = 0;
+            }
+            if (taxableIncome > 0) {
+                taxAccum += taxableIncome;
+                if ((m + 1) % 3 === 0) {
+                    self.operating.taxes[m] = taxAccum * self.taxRate;
+                    taxAccum = 0;
+                }
+            }
         }
     }
-    if (cumTaxable > 0) {
-        self.operating.taxes[self.horizon - 1] += cumTaxable * self.taxRate;
+    if (taxAccum > 0) {
+        self.operating.taxes[self.horizon - 1] += taxAccum * self.taxRate;
     }
 };
 
