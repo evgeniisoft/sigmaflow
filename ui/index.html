@@ -5663,7 +5663,8 @@
                 // Показываем предупреждение, но не блокируем расчёт
                 document.getElementById('project-conclusion')?.insertAdjacentHTML('beforebegin', warnHtml);
             }
-
+            ///логи для консоли браузера    
+            console.log('credit object:', JSON.stringify(credit));
 
             currentProject = new Project({
                 name: name, type: type, horizon: horizon,
