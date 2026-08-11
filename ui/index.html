@@ -5578,54 +5578,48 @@
 
             // Сбор инвестиций в зависимости от типа
             var investments = [];
-            if (type === 'equipment') {
-                document.querySelectorAll('#eq-investments > div').forEach(function (row) {
-                    var amt = parseFloat(row.querySelector('.eq-inv-amount').value.replace(/\s/g, '')) || 0;
-                    if (amt === 0) return;
-                    var invType = row.querySelector('.eq-inv-type')?.value || 'capex';
-                    var invName = row.querySelector('.eq-inv-name').value;
-                    var invMonth = parseInt(row.querySelector('.eq-inv-month').value) || 0;
-                    var invNDS = row.querySelector('.eq-inv-nds')?.checked || false;
+            var costs = [];
 
-                    if (invType === 'opex' || invType === 'materials') {
-                        // OPEX и материалы — добавляем в расходы
-                        costs.push({
-                            name: invName,
-                            baseAmount: amt,
-                            type: 'fixed',
-                            rampUpMonths: 0,
-                            month: invMonth,
-                            includesNDS: invNDS
-                        });
-                    } else {
-                        // CAPEX и old_sale — добавляем в инвестиции
-                        investments.push({
-                            name: invName,
-                            amount: invType === 'old_sale' ? -amt : amt,
-                            month: invMonth,
-                            type: invType,
-                            usefulLife: parseInt(row.querySelector('.eq-inv-life')?.value) || 0,
-                            salvageValue: parseFloat(row.querySelector('.eq-inv-salvage')?.value.replace(/\s/g, '')) || 0,
-                            includesNDS: invNDS
-                        });
-                    }
+            // CAPEX
+            document.querySelectorAll('#eq-capex > div').forEach(function (row) {
+                var amt = parseFloat(row.querySelector('.capex-cost')?.value.replace(/\s/g, '')) || 0;
+                if (amt === 0) return;
+                investments.push({
+                    name: row.querySelector('.capex-name')?.value || '',
+                    amount: amt,
+                    month: parseInt(row.querySelector('.capex-month')?.value) || 0,
+                    type: 'capex',
+                    usefulLife: parseInt(row.querySelector('.capex-life')?.value) || 60,
+                    salvageValue: parseFloat(row.querySelector('.capex-salvage')?.value.replace(/\s/g, '')) || 0,
+                    includesNDS: row.querySelector('.capex-nds')?.checked || false
                 });
-            } else {
-                document.querySelectorAll('.gi-amount').forEach(function (el, idx) {
-                    var amt = parseFloat(el.value.replace(/\s/g, '')) || 0;
-                    if (amt === 0) return;
-                    var row = el.parentElement.parentElement;
-                    investments.push({
-                        name: row.querySelector('.gi-name')?.value || '',
-                        amount: amt,
-                        month: parseInt(row.querySelector('.gi-month')?.value) || 0,
-                        type: 'capex',
-                        usefulLife: 0,
-                        salvageValue: 0,
-                        includesNDS: false
-                    });
+            });
+
+            // OPEX разовые
+            document.querySelectorAll('#eq-opex > div').forEach(function (row) {
+                var amt = parseFloat(row.querySelector('.opex-cost')?.value.replace(/\s/g, '')) || 0;
+                if (amt === 0) return;
+                costs.push({
+                    name: row.querySelector('.opex-name')?.value || '',
+                    baseAmount: amt,
+                    type: 'fixed',
+                    rampUpMonths: 0,
+                    month: parseInt(row.querySelector('.opex-month')?.value) || 0,
+                    includesNDS: row.querySelector('.opex-nds')?.checked || false
                 });
-            }
+            });
+
+            // Продажа старого
+            document.querySelectorAll('#eq-sales > div').forEach(function (row) {
+                var amt = parseFloat(row.querySelector('.sale-amount')?.value.replace(/\s/g, '')) || 0;
+                if (amt === 0) return;
+                investments.push({
+                    name: row.querySelector('.sale-name')?.value || '',
+                    amount: -amt,
+                    month: parseInt(row.querySelector('.sale-month')?.value) || 0,
+                    type: 'old_sale'
+                });
+            });
 
             // Доходы — в зависимости от типа
             var revenues = [];
@@ -5837,30 +5831,62 @@
         function renderProjectTable() {
             if (!currentProject) return;
             var p = currentProject;
-            var html = '<div style="margin-top:16px;font-size:10px;font-weight:600;">ПОМЕСЯЧНЫЕ ДАННЫЕ</div>';
-            html += '<table style="font-size:9px;min-width:100%;margin-top:4px;"><thead><tr>';
-            html += '<th>МЕС</th><th>ВЫРУЧКА</th><th>OPEX</th><th>ИНВЕСТИЦИИ</th><th>НАЛОГИ</th><th>ФИНАНС. ПРИТОК</th><th>ВЫПЛАТЫ ПО КРЕДИТУ</th><th>ЧИСТЫЙ ПОТОК</th><th>НАКОПЛ.</th>';
-            html += '</tr></thead><tbody>';
-            for (var i = 0; i < Math.min(p.horizon, 36); i++) {
-                var inflow = (p.financing.equity ? p.financing.equity[i] : 0) + (p.financing.creditInflow ? p.financing.creditInflow[i] : 0);
-                var debtPay = -(p.financing.creditRepayment ? p.financing.creditRepayment[i] : 0) - (p.financing.interest ? p.financing.interest[i] : 0);
-                var netFlow = p.flows ? p.flows.equityFCFE[i] : 0;
-                var cumFlow = p.flows ? p.flows.cumEquity[i] : 0;
-                var netColor = netFlow >= 0 ? 'var(--ok)' : 'var(--critical)';
-                var cumColor = cumFlow >= 0 ? 'var(--text-primary)' : 'var(--critical)';
+            var h = Math.min(p.horizon, 36);
 
-                html += '<tr>';
-                html += '<td>' + i + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(p.operating.revenue[i] || 0)) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(p.operating.opex[i] || 0)) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(p.investment.flow[i] || 0)) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round((p.operating.taxes[i] || 0) + (p.operating.vatNet[i] || 0))) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(inflow)) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(debtPay)) + '</td>';
-                html += '<td class="value-cell" style="color:' + netColor + ';">' + formatValue(Math.round(netFlow)) + '</td>';
-                html += '<td class="value-cell" style="color:' + cumColor + ';">' + formatValue(Math.round(cumFlow)) + '</td>';
+            var html = '<div style="font-size:10px;font-weight:600;margin-top:16px;">ПОМЕСЯЧНЫЕ ДАННЫЕ</div>';
+            html += '<table style="font-size:9px;min-width:100%;margin-top:4px;" class="project-table">';
+            html += '<thead><tr><th>ПОКАЗАТЕЛЬ</th>';
+            for (var i = 0; i < h; i++) html += '<th>МЕС ' + i + '</th>';
+            html += '</tr></thead><tbody>';
+
+            function row(label, data, cls, invert) {
+                html += '<tr class="' + (cls || '') + '"><td>' + label + '</td>';
+                for (var i = 0; i < h; i++) {
+                    var v = data[i] || 0;
+                    if (invert) v = -v;
+                    var c = v >= 0 ? 'var(--ok)' : 'var(--critical)';
+                    html += '<td class="value-cell" style="color:' + c + ';">' + formatValue(Math.round(v)) + '</td>';
+                }
                 html += '</tr>';
             }
+
+            // 1. Операционный поток
+            html += '<tr class="row-parent"><td colspan="' + (h + 1) + '">1. ОПЕРАЦИОННЫЙ ПОТОК</td></tr>';
+            row('  Выручка', p.revenueFlow, 'row-child');
+            row('  Регулярные расходы', p.costFlow, 'row-child', true);
+            row('  Налог на прибыль', p.taxFlow, 'row-child', true);
+            row('  НДС', p.ndsFlow, 'row-child', true);
+
+            // 2. Инвестиционный поток
+            html += '<tr class="row-parent"><td colspan="' + (h + 1) + '">2. ИНВЕСТИЦИОННЫЙ ПОТОК</td></tr>';
+            row('  CAPEX + OPEX + Оборотка', p.investmentFlow, 'row-child', true);
+            row('  Продажа активов', new Array(h).fill(0), 'row-child');
+
+            // 3. Финансовый поток
+            html += '<tr class="row-parent"><td colspan="' + (h + 1) + '">3. ФИНАНСОВЫЙ ПОТОК</td></tr>';
+            row('  Поступления (свои + кредит)', p.creditFlow.map(function (v, i) {
+                return v + ((p.financing.ownFunds > 0 && i === (p.financing.ownMonth || 0)) ? p.financing.ownFunds : 0);
+            }), 'row-child');
+            row('  Погашение тела кредита', p.creditRepayment, 'row-child', true);
+            row('  Проценты', p.interestFlow, 'row-child', true);
+
+            // Итоги
+            html += '<tr class="row-total"><td>📊 ЧИСТЫЙ ПОТОК (FCFE)</td>';
+            for (var i = 0; i < h; i++) {
+                var v = p.financedFlow[i] || 0;
+                var c = v >= 0 ? 'var(--ok)' : 'var(--critical)';
+                html += '<td class="value-cell" style="font-weight:700;color:' + c + ';">' + formatValue(Math.round(v)) + '</td>';
+            }
+            html += '</tr>';
+
+            html += '<tr class="row-total"><td>💰 НАКОПЛЕННЫЙ ОСТАТОК</td>';
+            for (var i = 0; i < h; i++) {
+                var v = p.cumFinanced[i] || 0;
+                var c = v >= 0 ? 'var(--ok)' : 'var(--critical)';
+                html += '<td class="value-cell" style="font-weight:700;color:' + c + ';">' + formatValue(Math.round(v)) + '</td>';
+            }
+            html += '</tr>';
+
             html += '</tbody></table>';
             document.getElementById('project-table').innerHTML = html;
         }
