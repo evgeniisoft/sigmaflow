@@ -5515,7 +5515,7 @@
 
             // Расходы
             var costsStartEl = document.getElementById('pj-costs-start');
-            var costsStart = 0; // расходы с 0-го месяца
+            var costsStart = costsStartEl ? (parseInt(costsStartEl.value) || 0) : 0;
 
             if (type === 'equipment') {
                 var costInc = parseFloat(document.getElementById('pj-cost-increase')?.value.replace(/\s/g, '')) || 0;
@@ -5642,13 +5642,16 @@
                 existingWarn.remove();
             }
 
+
+            var ownMonth = flexFinancing ? 0 : (parseInt(document.getElementById('pj-own-month')?.value) || 0);
+            
             currentProject = new Project({
                 name: name, type: type, horizon: horizon,
                 investments: investments,
                 revenues: revenues,
                 costs: costs,
                 costsStartMonth: costsStart,
-                financing: { ownFunds: ownFunds, credit: credit },
+                financing: { ownFunds: ownFunds, ownMonth: ownMonth, credit: credit },
                 taxRate: taxRate, ndsRate: ndsRate,
                 discountSchedule: discSchedule,
                 reinvestmentRate: parseFloat(document.getElementById('pj-reinvest')?.value || 15) / 100,
@@ -5666,15 +5669,17 @@
             var p = currentProject;
             var html = '<div style="margin-top:16px;font-size:10px;font-weight:600;">ПОМЕСЯЧНЫЕ ДАННЫЕ</div>';
             html += '<table style="font-size:9px;min-width:100%;margin-top:4px;"><thead><tr>';
-            html += '<th>МЕС</th><th>ВЫРУЧКА</th><th>РАСХОДЫ</th><th>КРЕДИТ</th><th>ПРОЦЕНТЫ</th><th>НАЛОГ</th><th>ПОТОК</th><th>НАКОПЛ.</th>';
+            html += '<th>МЕС</th><th>ВЫРУЧКА</th><th>РАСХОДЫ</th><th>ПОСТУПЛЕНИЯ</th><th>ПОГАШЕНИЕ</th><th>ПРОЦЕНТЫ</th><th>НАЛОГ</th><th>ПОТОК</th><th>НАКОПЛ.</th>';
             html += '</tr></thead><tbody>';
             for (var i = 0; i < Math.min(p.horizon, 36); i++) {
                 html += '<tr>';
                 html += '<td>' + i + '</td>';
                 html += '<td class="value-cell">' + formatValue(Math.round(p.revenueFlow[i])) + '</td>';
                 html += '<td class="value-cell">' + formatValue(Math.round(p.costFlow[i])) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(p.creditRepayment[i])) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(p.interestFlow[i])) + '</td>';
+                var inflow = (p.creditFlow[i] || 0) + ((p.financing.ownFunds > 0 && i === (p.financing.ownMonth || 0)) ? p.financing.ownFunds : 0);
+                html += '<td class="value-cell">' + formatValue(Math.round(inflow)) + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round(p.creditRepayment[i] || 0)) + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round(p.interestFlow[i] || 0)) + '</td>';
                 html += '<td class="value-cell">' + formatValue(Math.round(p.taxFlow[i])) + '</td>';
                 html += '<td class="value-cell" style="color:' + (p.netFlow[i] >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(Math.round(p.netFlow[i])) + '</td>';
                 html += '<td class="value-cell">' + formatValue(Math.round(p.cumulativeFlow[i])) + '</td>';
