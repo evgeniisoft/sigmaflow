@@ -10,6 +10,7 @@ function Project(config) {
 
     // Инвестиции — массив траншей: [{month, amount, type, usefulLife, salvageValue, includesNDS}]
     this.investments = config.investments || [];
+    this.preprodCosts = config.preprodCosts || 0;
 
     // Доходы: [{name, month, baseAmount, rampUpMonths}]
     this.revenues = config.revenues || [];
@@ -269,6 +270,9 @@ Project.prototype._applyNDS = function () {
 // ==================== ПОТОКИ ====================
 Project.prototype._calculateOperatingFlow = function () {
     var self = this;
+    if (self.preprodCosts > 0) {
+        self.costFlow[0] = (self.costFlow[0] || 0) + self.preprodCosts;
+    }
     var cum = 0;
     for (var m = 0; m < self.horizon; m++) {
         self.operatingFlow[m] = self.revenueFlow[m] - self.costFlow[m] - self.investmentFlow[m]
