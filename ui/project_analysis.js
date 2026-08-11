@@ -159,22 +159,22 @@ Project.prototype._applyCosts = function () {
     var self = this;
     self.costs.forEach(function (cost) {
         var base = cost.baseAmount || 0;
-        if (cost.rampUpMonths && cost.rampUpMonths > 0) {
-            // Регулярные расходы с ramp-up
-            var startM = Math.max(cost.month || 0, self.costsStartMonth);
-            var ramp = cost.rampUpMonths || 0;
+        var startM = Math.max(cost.month || 0, self.costsStartMonth);
+        var ramp = cost.rampUpMonths || 0;
+
+        if (cost.month !== undefined && ramp === 0 && cost.type === 'fixed') {
+            // Единовременная затрата (ЗИП, материалы) — только в указанном месяце
+            if (startM < self.horizon) {
+                self.operating.opex[startM] += base;
+            }
+        } else {
+            // Регулярные расходы — каждый месяц начиная со startM
             for (var m = startM; m < self.horizon; m++) {
                 var coef = 1;
                 if (ramp > 0 && cost.type === 'variable') {
                     coef = Math.min(1, (m - startM) / ramp);
                 }
                 self.operating.opex[m] += base * coef;
-            }
-        } else {
-            // Единовременные затраты — только в указанном месяце
-            var m = cost.month || 0;
-            if (m < self.horizon) {
-                self.operating.opex[m] += base;
             }
         }
     });
