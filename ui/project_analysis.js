@@ -74,13 +74,12 @@ Project.prototype._initArrays = function (h) {
         flow: zeros()
     };
 
-    self.financing = {
-        equity: zeros(),
-        creditInflow: zeros(),
-        creditRepayment: zeros(),
-        interest: zeros(),
-        flow: zeros()
-    };
+    if (!self.financing) self.financing = {};
+    self.financing.equity = zeros();
+    self.financing.creditInflow = zeros();
+    self.financing.creditRepayment = zeros();
+    self.financing.interest = zeros();
+    self.financing.flow = zeros();
 
     self.flows = {
         projectFCFF: zeros(),
