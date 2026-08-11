@@ -5037,6 +5037,7 @@
 
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 4: ФИНАНСИРОВАНИЕ</div>
         ${renderFinancingBlock()}
+        setTimeout(function() { addFinancingTranch(); }, 50);
 
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАСТРОЙКИ</div>
         ${renderSettingsBlock()}
@@ -5056,6 +5057,24 @@
             if (capexFields) {
                 capexFields.style.display = selectEl.value === 'capex' ? 'inline' : 'none';
             }
+        }
+
+
+        function addFinancingTranch() {
+            var container = document.getElementById('financing-schedule');
+            if (!container) return;
+            var div = document.createElement('div');
+            div.style.cssText = 'display:flex;gap:4px;align-items:center;margin-bottom:4px;';
+            div.innerHTML = `
+        <span style="font-size:10px;">Месяц:</span>
+        <input type="number" class="fin-month" value="0" style="width:55px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;">
+        <span style="font-size:10px;">Свои:</span>
+        <input type="text" class="fin-own" value="0" style="width:100px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
+        <span style="font-size:10px;">Кредит:</span>
+        <input type="text" class="fin-credit" value="0" style="width:100px;font-size:10px;background:var(--bg-primary);color:var(--text-hint);border:1px solid var(--border);padding:2px;text-align:right;" onfocus="this.style.color='var(--text-primary)'" onblur="formatMoneyInput(this)">
+        <button onclick="this.parentElement.remove()" style="font-size:9px;padding:1px 4px;color:var(--critical);">✕</button>
+    `;
+            container.appendChild(div);
         }
 
         function addEquipmentInvestment(data) {
@@ -5252,8 +5271,12 @@
         // ==================== ОБЩИЕ БЛОКИ ====================
         function renderFinancingBlock() {
             return `
-        <div class="form-group"><label>СВОИ СРЕДСТВА (₽)</label><input type="text" id="pj-own-funds" value="0" style="width:100%;" onfocus="this.value=this.value.replace(/\\s/g,'')" onblur="formatMoneyInput(this)"></div>
-        <div class="form-group"><label>КРЕДИТ (СУММА)</label><input type="text" id="pj-credit-amount" value="0" style="width:100%;" onfocus="this.value=this.value.replace(/\\s/g,'')" onblur="formatMoneyInput(this)"></div>
+        <div style="font-size:11px;color:var(--text-hint);margin-bottom:4px;">ГРАФИК ФИНАНСИРОВАНИЯ</div>
+        <div id="financing-schedule"></div>
+        <button onclick="addFinancingTranch()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ ТРАНШ</button>
+        <div style="font-size:9px;color:var(--text-hint);margin-top:4px;">Укажите когда и сколько поступает своих и заёмных средств</div>
+        
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">КРЕДИТ</div>
         <div class="form-group"><label>СТАВКА (%)</label><input type="number" id="pj-credit-rate" value="21" step="0.5" style="width:80px;"></div>
         <div class="form-group"><label>СРОК (МЕС)</label><input type="number" id="pj-credit-term" value="36" style="width:80px;"></div>
         <div class="form-group"><label>ТИП ПЛАТЕЖЕЙ</label>
@@ -5505,8 +5528,14 @@
                 });
             }
             // Финансирование
-            var ownFunds = parseFloat(document.getElementById('pj-own-funds').value.replace(/\s/g, '')) || 0;
-            var creditAmount = parseFloat(document.getElementById('pj-credit-amount').value.replace(/\s/g, '')) || 0;
+            var ownFunds = 0;
+            var creditAmount = 0;
+            document.querySelectorAll('#financing-schedule > div').forEach(function (row) {
+                var own = parseFloat(row.querySelector('.fin-own')?.value.replace(/\s/g, '')) || 0;
+                var cred = parseFloat(row.querySelector('.fin-credit')?.value.replace(/\s/g, '')) || 0;
+                ownFunds += own;
+                creditAmount += cred;
+            });
             var credit = creditAmount > 0 ? {
                 amount: creditAmount,
                 rate: parseFloat(document.getElementById('pj-credit-rate').value) / 100,
@@ -5534,61 +5563,61 @@
                 var singleRate = parseFloat(document.getElementById('pj-discount-rate')?.value || 21) / 100;
                 discSchedule = [{ months: 999, rate: singleRate }];
             }
-            
-        if (discSchedule.length === 0) discSchedule = [{ months: 999, rate: 0.21 }];
 
-        // Инфляция
-        var inflRates = [
-            parseFloat(document.getElementById('pj-infl-y1')?.value || 7) / 100,
-            parseFloat(document.getElementById('pj-infl-y2')?.value || 6) / 100,
-            parseFloat(document.getElementById('pj-infl-y3')?.value || 5) / 100
-        ];
+            if (discSchedule.length === 0) discSchedule = [{ months: 999, rate: 0.21 }];
 
-        // Проверка достаточности финансирования
-        var totalInvestment = investments.reduce(function (s, inv) { return s + (inv.amount || 0); }, 0);
-        var totalFinancing = ownFunds + creditAmount;
-        var financingGap = totalInvestment - totalFinancing;
+            // Инфляция
+            var inflRates = [
+                parseFloat(document.getElementById('pj-infl-y1')?.value || 7) / 100,
+                parseFloat(document.getElementById('pj-infl-y2')?.value || 6) / 100,
+                parseFloat(document.getElementById('pj-infl-y3')?.value || 5) / 100
+            ];
 
-        if (financingGap > 0) {
-            var warnHtml = '<div style="color:var(--critical);font-size:10px;margin:8px 0;padding:8px;border:1px solid var(--critical);background:rgba(212,75,60,0.1);">' +
-                '<div style="font-weight:600;margin-bottom:4px;">⚠ НЕДОСТАТОЧНО ФИНАНСИРОВАНИЯ</div>' +
-                '<div>Общие инвестиции: <b>' + formatValue(totalInvestment) + ' ₽</b></div>' +
-                '<div>Доступно средств: <b>' + formatValue(totalFinancing) + ' ₽</b> (свои: ' + formatValue(ownFunds) + ' ₽ + кредит: ' + formatValue(creditAmount) + ' ₽)</div>' +
-                '<div>Дефицит: <b>' + formatValue(financingGap) + ' ₽</b></div>' +
-                '<div style="margin-top:4px;">Проект не может быть профинансирован в полном объёме. Увеличьте свои средства или сумму кредита.</div>' +
-                '</div>';
+            // Проверка достаточности финансирования
+            var totalInvestment = investments.reduce(function (s, inv) { return s + (inv.amount || 0); }, 0);
+            var totalFinancing = ownFunds + creditAmount;
+            var financingGap = totalInvestment - totalFinancing;
 
-            document.getElementById('project-results').style.display = 'block';
-            document.getElementById('project-empty').style.display = 'none';
-            document.getElementById('project-metrics').innerHTML = warnHtml;
-            document.getElementById('project-chart').innerHTML = '';
-            document.getElementById('project-table').innerHTML = '';
-            document.getElementById('project-conclusion').innerHTML = '';
-            return;
-        }
+            if (financingGap > 0) {
+                var warnHtml = '<div style="color:var(--critical);font-size:10px;margin:8px 0;padding:8px;border:1px solid var(--critical);background:rgba(212,75,60,0.1);">' +
+                    '<div style="font-weight:600;margin-bottom:4px;">⚠ НЕДОСТАТОЧНО ФИНАНСИРОВАНИЯ</div>' +
+                    '<div>Общие инвестиции: <b>' + formatValue(totalInvestment) + ' ₽</b></div>' +
+                    '<div>Доступно средств: <b>' + formatValue(totalFinancing) + ' ₽</b> (свои: ' + formatValue(ownFunds) + ' ₽ + кредит: ' + formatValue(creditAmount) + ' ₽)</div>' +
+                    '<div>Дефицит: <b>' + formatValue(financingGap) + ' ₽</b></div>' +
+                    '<div style="margin-top:4px;">Проект не может быть профинансирован в полном объёме. Увеличьте свои средства или сумму кредита.</div>' +
+                    '</div>';
 
-        // Убираем предупреждение если было
-        var existingWarn = document.querySelector('#project-metrics + div');
-        if (existingWarn && existingWarn.style.color === 'var(--critical)') {
-            existingWarn.remove();
-        }
+                document.getElementById('project-results').style.display = 'block';
+                document.getElementById('project-empty').style.display = 'none';
+                document.getElementById('project-metrics').innerHTML = warnHtml;
+                document.getElementById('project-chart').innerHTML = '';
+                document.getElementById('project-table').innerHTML = '';
+                document.getElementById('project-conclusion').innerHTML = '';
+                return;
+            }
 
-        currentProject = new Project({
-            name: name, type: type, horizon: horizon,
-            investments: investments,
-            revenues: revenues,
-            costs: costs,
-            costsStartMonth: costsStart,
-            financing: { ownFunds: ownFunds, credit: credit },
-            taxRate: taxRate, ndsRate: ndsRate,
-            discountSchedule: discSchedule,
-            reinvestmentRate: parseFloat(document.getElementById('pj-reinvest')?.value || 15) / 100,
-            inflationRates: inflRates,
-            amortizationType: document.getElementById('pj-amort-type')?.value || 'linear',
-            amortizationPremium: parseFloat(document.getElementById('pj-amort-premium')?.value || 10) / 100
-        });
+            // Убираем предупреждение если было
+            var existingWarn = document.querySelector('#project-metrics + div');
+            if (existingWarn && existingWarn.style.color === 'var(--critical)') {
+                existingWarn.remove();
+            }
 
-        renderProjectResults();
+            currentProject = new Project({
+                name: name, type: type, horizon: horizon,
+                investments: investments,
+                revenues: revenues,
+                costs: costs,
+                costsStartMonth: costsStart,
+                financing: { ownFunds: ownFunds, credit: credit },
+                taxRate: taxRate, ndsRate: ndsRate,
+                discountSchedule: discSchedule,
+                reinvestmentRate: parseFloat(document.getElementById('pj-reinvest')?.value || 15) / 100,
+                inflationRates: inflRates,
+                amortizationType: document.getElementById('pj-amort-type')?.value || 'linear',
+                amortizationPremium: parseFloat(document.getElementById('pj-amort-premium')?.value || 10) / 100
+            });
+
+            renderProjectResults();
         }
 
 
@@ -5881,6 +5910,15 @@
                 });
             });
 
+            projectJSON.financingSchedule = [];
+            document.querySelectorAll('#financing-schedule > div').forEach(function (row) {
+                projectJSON.financingSchedule.push({
+                    month: row.querySelector('.fin-month')?.value || '0',
+                    own: row.querySelector('.fin-own')?.value || '0',
+                    credit: row.querySelector('.fin-credit')?.value || '0'
+                });
+            });
+
             projectJSON.inflationRates = [
                 parseFloat(document.getElementById('pj-infl-y1')?.value) || 7,
                 parseFloat(document.getElementById('pj-infl-y2')?.value) || 6,
@@ -5942,6 +5980,15 @@
                 projectJSON.discountRates.push({
                     months: parseInt(row.querySelector('.disc-months')?.value) || 12,
                     rate: parseFloat(row.querySelector('.disc-rate')?.value) || 21
+                });
+            });
+
+            projectJSON.financingSchedule = [];
+            document.querySelectorAll('#financing-schedule > div').forEach(function (row) {
+                projectJSON.financingSchedule.push({
+                    month: row.querySelector('.fin-month')?.value || '0',
+                    own: row.querySelector('.fin-own')?.value || '0',
+                    credit: row.querySelector('.fin-credit')?.value || '0'
                 });
             });
 
@@ -6009,6 +6056,20 @@
             }
             window._loadingProject = null;
 
+            if (proj.financingSchedule && proj.financingSchedule.length > 0) {
+                var finContainer = document.getElementById('financing-schedule');
+                if (finContainer) finContainer.innerHTML = '';
+                proj.financingSchedule.forEach(function (fs) {
+                    addFinancingTranch();
+                    var rows = document.querySelectorAll('#financing-schedule > div');
+                    var row = rows[rows.length - 1];
+                    if (row) {
+                        row.querySelector('.fin-month').value = fs.month || '0';
+                        row.querySelector('.fin-own').value = fs.own || '0';
+                        row.querySelector('.fin-credit').value = fs.credit || '0';
+                    }
+                });
+            }
             // Применяем formValues
             if (proj.formValues) {
                 Object.keys(proj.formValues).forEach(function (id) {
