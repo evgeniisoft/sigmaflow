@@ -5644,13 +5644,14 @@
 
 
             var ownMonth = flexFinancing ? 0 : (parseInt(document.getElementById('pj-own-month')?.value) || 0);
-            
+
             currentProject = new Project({
                 name: name, type: type, horizon: horizon,
                 investments: investments,
                 revenues: revenues,
                 costs: costs,
                 costsStartMonth: costsStart,
+                preprodCosts: preprodCosts,
                 financing: { ownFunds: ownFunds, ownMonth: ownMonth, credit: credit },
                 taxRate: taxRate, ndsRate: ndsRate,
                 discountSchedule: discSchedule,
