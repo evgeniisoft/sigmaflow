@@ -5269,17 +5269,19 @@
 
         function renderSettingsBlock() {
             return `
+        <div class="form-group"><label>СТАВКА ДИСКОНТИРОВАНИЯ (%)</label><input type="number" id="pj-discount-rate" value="21" step="0.5" style="width:80px;"></div>
+        <div style="font-size:9px;color:var(--text-hint);margin-bottom:8px;">Обычно равна ключевой ставке ЦБ или WACC</div>
+        <label><input type="checkbox" id="pj-discount-advanced" onchange="document.getElementById('discount-rows').style.display=this.checked?'block':'none'"> Разные ставки по периодам</label>
+        <div id="discount-rows" style="display:none;margin-top:4px;">
+            <div class="disc-row" style="display:flex;gap:4px;margin-bottom:2px;"><input type="number" class="disc-months" value="12" style="width:55px;"> мес <input type="number" class="disc-rate" value="21" step="0.5" style="width:60px;"> %</div>
+            <div class="disc-row" style="display:flex;gap:4px;margin-bottom:2px;"><input type="number" class="disc-months" value="12" style="width:55px;"> мес <input type="number" class="disc-rate" value="18" step="0.5" style="width:60px;"> %</div>
+            <div class="disc-row" style="display:flex;gap:4px;margin-bottom:2px;"><input type="number" class="disc-months" value="12" style="width:55px;"> мес <input type="number" class="disc-rate" value="15" step="0.5" style="width:60px;"> %</div>
+        </div>
         <div class="form-group"><label>СТАВКА РЕИНВЕСТИРОВАНИЯ (%)</label><input type="number" id="pj-reinvest" value="15" step="0.5" style="width:80px;"></div>
         <div class="form-group"><label>АМОРТИЗАЦИЯ</label>
             <select id="pj-amort-type" style="width:100%;"><option value="linear">Линейная</option><option value="accelerated">Ускоренная</option></select>
         </div>
         <div class="form-group"><label>АМОРТ. ПРЕМИЯ (%)</label><input type="number" id="pj-amort-premium" value="10" step="5" style="width:80px;"></div>
-        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ДИСКОНТИРОВАНИЕ</div>
-        <div id="discount-rows">
-            <div class="disc-row" style="display:flex;gap:4px;margin-bottom:2px;"><input type="number" class="disc-months" value="12" style="width:55px;"> мес <input type="number" class="disc-rate" value="21" step="0.5" style="width:60px;"> %</div>
-            <div class="disc-row" style="display:flex;gap:4px;margin-bottom:2px;"><input type="number" class="disc-months" value="12" style="width:55px;"> мес <input type="number" class="disc-rate" value="18" step="0.5" style="width:60px;"> %</div>
-            <div class="disc-row" style="display:flex;gap:4px;margin-bottom:2px;"><input type="number" class="disc-months" value="12" style="width:55px;"> мес <input type="number" class="disc-rate" value="15" step="0.5" style="width:60px;"> %</div>
-        </div>
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ИНФЛЯЦИЯ ПО ГОДАМ (%)</div>
         <div style="display:flex;gap:4px;"><input type="number" id="pj-infl-y1" value="7" step="0.5" style="width:60px;"><input type="number" id="pj-infl-y2" value="6" step="0.5" style="width:60px;"><input type="number" id="pj-infl-y3" value="5" step="0.5" style="width:60px;"></div>
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">НАЛОГИ</div>
@@ -5520,65 +5522,76 @@
 
             // Дисконтирование
             var discSchedule = [];
-            document.querySelectorAll('.disc-row').forEach(function (row) {
-                var months = parseInt(row.querySelector('.disc-months').value) || 0;
-                var rate = parseFloat(row.querySelector('.disc-rate').value) / 100;
-                if (months > 0) discSchedule.push({ months: months, rate: rate });
-            });
-            if (discSchedule.length === 0) discSchedule = [{ months: 999, rate: 0.21 }];
-
-            // Инфляция
-            var inflRates = [
-                parseFloat(document.getElementById('pj-infl-y1')?.value || 7) / 100,
-                parseFloat(document.getElementById('pj-infl-y2')?.value || 6) / 100,
-                parseFloat(document.getElementById('pj-infl-y3')?.value || 5) / 100
-            ];
-
-            // Проверка достаточности финансирования
-            var totalInvestment = investments.reduce(function (s, inv) { return s + (inv.amount || 0); }, 0);
-            var totalFinancing = ownFunds + creditAmount;
-            var financingGap = totalInvestment - totalFinancing;
-
-            if (financingGap > 0) {
-                var warnHtml = '<div style="color:var(--critical);font-size:10px;margin:8px 0;padding:8px;border:1px solid var(--critical);background:rgba(212,75,60,0.1);">' +
-                    '<div style="font-weight:600;margin-bottom:4px;">⚠ НЕДОСТАТОЧНО ФИНАНСИРОВАНИЯ</div>' +
-                    '<div>Общие инвестиции: <b>' + formatValue(totalInvestment) + ' ₽</b></div>' +
-                    '<div>Доступно средств: <b>' + formatValue(totalFinancing) + ' ₽</b> (свои: ' + formatValue(ownFunds) + ' ₽ + кредит: ' + formatValue(creditAmount) + ' ₽)</div>' +
-                    '<div>Дефицит: <b>' + formatValue(financingGap) + ' ₽</b></div>' +
-                    '<div style="margin-top:4px;">Проект не может быть профинансирован в полном объёме. Увеличьте свои средства или сумму кредита.</div>' +
-                    '</div>';
-
-                document.getElementById('project-results').style.display = 'block';
-                document.getElementById('project-empty').style.display = 'none';
-                document.getElementById('project-metrics').innerHTML = warnHtml;
-                document.getElementById('project-chart').innerHTML = '';
-                document.getElementById('project-table').innerHTML = '';
-                document.getElementById('project-conclusion').innerHTML = '';
-                return;
+            var discountAdvanced = document.getElementById('pj-discount-advanced')?.checked;
+            if (discountAdvanced) {
+                document.querySelectorAll('.disc-row').forEach(function (row) {
+                    var months = parseInt(row.querySelector('.disc-months').value) || 0;
+                    var rate = parseFloat(row.querySelector('.disc-rate').value) / 100;
+                    if (months > 0) discSchedule.push({ months: months, rate: rate });
+                });
             }
-
-            // Убираем предупреждение если было
-            var existingWarn = document.querySelector('#project-metrics + div');
-            if (existingWarn && existingWarn.style.color === 'var(--critical)') {
-                existingWarn.remove();
+            if (discSchedule.length === 0) {
+                var singleRate = parseFloat(document.getElementById('pj-discount-rate')?.value || 21) / 100;
+                discSchedule = [{ months: 999, rate: singleRate }];
             }
+            var months = parseInt(row.querySelector('.disc-months').value) || 0;
+            var rate = parseFloat(row.querySelector('.disc-rate').value) / 100;
+            if (months > 0) discSchedule.push({ months: months, rate: rate });
+        });
+        if (discSchedule.length === 0) discSchedule = [{ months: 999, rate: 0.21 }];
 
-            currentProject = new Project({
-                name: name, type: type, horizon: horizon,
-                investments: investments,
-                revenues: revenues,
-                costs: costs,
-                costsStartMonth: costsStart,
-                financing: { ownFunds: ownFunds, credit: credit },
-                taxRate: taxRate, ndsRate: ndsRate,
-                discountSchedule: discSchedule,
-                reinvestmentRate: parseFloat(document.getElementById('pj-reinvest')?.value || 15) / 100,
-                inflationRates: inflRates,
-                amortizationType: document.getElementById('pj-amort-type')?.value || 'linear',
-                amortizationPremium: parseFloat(document.getElementById('pj-amort-premium')?.value || 10) / 100
-            });
+        // Инфляция
+        var inflRates = [
+            parseFloat(document.getElementById('pj-infl-y1')?.value || 7) / 100,
+            parseFloat(document.getElementById('pj-infl-y2')?.value || 6) / 100,
+            parseFloat(document.getElementById('pj-infl-y3')?.value || 5) / 100
+        ];
 
-            renderProjectResults();
+        // Проверка достаточности финансирования
+        var totalInvestment = investments.reduce(function (s, inv) { return s + (inv.amount || 0); }, 0);
+        var totalFinancing = ownFunds + creditAmount;
+        var financingGap = totalInvestment - totalFinancing;
+
+        if (financingGap > 0) {
+            var warnHtml = '<div style="color:var(--critical);font-size:10px;margin:8px 0;padding:8px;border:1px solid var(--critical);background:rgba(212,75,60,0.1);">' +
+                '<div style="font-weight:600;margin-bottom:4px;">⚠ НЕДОСТАТОЧНО ФИНАНСИРОВАНИЯ</div>' +
+                '<div>Общие инвестиции: <b>' + formatValue(totalInvestment) + ' ₽</b></div>' +
+                '<div>Доступно средств: <b>' + formatValue(totalFinancing) + ' ₽</b> (свои: ' + formatValue(ownFunds) + ' ₽ + кредит: ' + formatValue(creditAmount) + ' ₽)</div>' +
+                '<div>Дефицит: <b>' + formatValue(financingGap) + ' ₽</b></div>' +
+                '<div style="margin-top:4px;">Проект не может быть профинансирован в полном объёме. Увеличьте свои средства или сумму кредита.</div>' +
+                '</div>';
+
+            document.getElementById('project-results').style.display = 'block';
+            document.getElementById('project-empty').style.display = 'none';
+            document.getElementById('project-metrics').innerHTML = warnHtml;
+            document.getElementById('project-chart').innerHTML = '';
+            document.getElementById('project-table').innerHTML = '';
+            document.getElementById('project-conclusion').innerHTML = '';
+            return;
+        }
+
+        // Убираем предупреждение если было
+        var existingWarn = document.querySelector('#project-metrics + div');
+        if (existingWarn && existingWarn.style.color === 'var(--critical)') {
+            existingWarn.remove();
+        }
+
+        currentProject = new Project({
+            name: name, type: type, horizon: horizon,
+            investments: investments,
+            revenues: revenues,
+            costs: costs,
+            costsStartMonth: costsStart,
+            financing: { ownFunds: ownFunds, credit: credit },
+            taxRate: taxRate, ndsRate: ndsRate,
+            discountSchedule: discSchedule,
+            reinvestmentRate: parseFloat(document.getElementById('pj-reinvest')?.value || 15) / 100,
+            inflationRates: inflRates,
+            amortizationType: document.getElementById('pj-amort-type')?.value || 'linear',
+            amortizationPremium: parseFloat(document.getElementById('pj-amort-premium')?.value || 10) / 100
+        });
+
+        renderProjectResults();
         }
 
 
