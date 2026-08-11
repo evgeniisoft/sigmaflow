@@ -5941,6 +5941,24 @@
 
             window._loadingProject = proj;
             renderProjectTypeForm();
+            if (proj.discountRates && proj.discountRates.length > 0) {
+                var discRows = document.querySelectorAll('.disc-row');
+                proj.discountRates.forEach(function (dr, i) {
+                    if (discRows[i]) {
+                        var mEl = discRows[i].querySelector('.disc-months');
+                        var rEl = discRows[i].querySelector('.disc-rate');
+                        if (mEl) mEl.value = dr.months || 12;
+                        if (rEl) rEl.value = dr.rate || 21;
+                    }
+                });
+            }
+
+            if (proj.formValues && proj.formValues['pj-use-company-tax'] === false) {
+                var taxCheck = document.getElementById('pj-use-company-tax');
+                if (taxCheck) taxCheck.checked = false;
+                var taxSettings = document.getElementById('pj-tax-settings');
+                if (taxSettings) taxSettings.style.display = 'block';
+            }
             window._loadingProject = null;
 
             // Применяем formValues
