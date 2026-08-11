@@ -5515,7 +5515,7 @@
 
             // Расходы
             var costsStartEl = document.getElementById('pj-costs-start');
-            var costsStart = costsStartEl ? (parseInt(costsStartEl.value) || 0) : 0;
+            var costsStart = 0; // расходы с 0-го месяца
 
             if (type === 'equipment') {
                 var costInc = parseFloat(document.getElementById('pj-cost-increase')?.value.replace(/\s/g, '')) || 0;
@@ -5547,12 +5547,6 @@
                     rampUpMonths: 0,
                     month: 0
                 });
-                investments.push({
-                    name: 'Предстартовые расходы',
-                    amount: preprodCosts,
-                    month: 0,
-                    type: 'opex'
-                });
             }
 
             if (workingCapital > 0) {
@@ -5579,11 +5573,14 @@
                 creditAmount = parseFloat(document.getElementById('pj-credit-amount')?.value.replace(/\s/g, '')) || 0;
             }
 
+            var creditMonth = flexFinancing ? 0 : (parseInt(document.getElementById('pj-credit-month')?.value) || 0);
+
             var credit = creditAmount > 0 ? {
                 amount: creditAmount,
                 rate: parseFloat(document.getElementById('pj-credit-rate').value) / 100,
                 term: parseInt(document.getElementById('pj-credit-term').value) || 36,
                 type: document.getElementById('pj-credit-type').value,
+                startMonth: creditMonth,
                 deferredMonths: 0
             } : null;
 
