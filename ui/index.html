@@ -5644,7 +5644,7 @@
 
 
             var ownMonth = flexFinancing ? 0 : (parseInt(document.getElementById('pj-own-month')?.value) || 0);
-            
+
 
             currentProject = new Project({
                 name: name, type: type, horizon: horizon,
@@ -5671,20 +5671,26 @@
             var p = currentProject;
             var html = '<div style="margin-top:16px;font-size:10px;font-weight:600;">ПОМЕСЯЧНЫЕ ДАННЫЕ</div>';
             html += '<table style="font-size:9px;min-width:100%;margin-top:4px;"><thead><tr>';
-            html += '<th>МЕС</th><th>ВЫРУЧКА</th><th>РАСХОДЫ</th><th>ПОСТУПЛЕНИЯ</th><th>ПОГАШЕНИЕ</th><th>ПРОЦЕНТЫ</th><th>НАЛОГ</th><th>ПОТОК</th><th>НАКОПЛ.</th>';
+            html += '<th>МЕС</th><th>ВЫРУЧКА</th><th>OPEX</th><th>ИНВЕСТИЦИИ</th><th>НАЛОГИ</th><th>ФИНАНС. ПРИТОК</th><th>ВЫПЛАТЫ ПО КРЕДИТУ</th><th>ЧИСТЫЙ ПОТОК</th><th>НАКОПЛ.</th>';
             html += '</tr></thead><tbody>';
             for (var i = 0; i < Math.min(p.horizon, 36); i++) {
+                var inflow = (p.financing.equity ? p.financing.equity[i] : 0) + (p.financing.creditInflow ? p.financing.creditInflow[i] : 0);
+                var debtPay = -(p.financing.creditRepayment ? p.financing.creditRepayment[i] : 0) - (p.financing.interest ? p.financing.interest[i] : 0);
+                var netFlow = p.flows ? p.flows.equityFCFE[i] : 0;
+                var cumFlow = p.flows ? p.flows.cumEquity[i] : 0;
+                var netColor = netFlow >= 0 ? 'var(--ok)' : 'var(--critical)';
+                var cumColor = cumFlow >= 0 ? 'var(--text-primary)' : 'var(--critical)';
+
                 html += '<tr>';
                 html += '<td>' + i + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(p.revenueFlow[i])) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(p.costFlow[i])) + '</td>';
-                var inflow = (p.creditFlow[i] || 0) + ((p.financing.ownFunds > 0 && i === (p.financing.ownMonth || 0)) ? p.financing.ownFunds : 0);
+                html += '<td class="value-cell">' + formatValue(Math.round(p.operating.revenue[i] || 0)) + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round(p.operating.opex[i] || 0)) + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round(p.investment.flow[i] || 0)) + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round((p.operating.taxes[i] || 0) + (p.operating.vatNet[i] || 0))) + '</td>';
                 html += '<td class="value-cell">' + formatValue(Math.round(inflow)) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(p.creditRepayment[i] || 0)) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(p.interestFlow[i] || 0)) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(p.taxFlow[i])) + '</td>';
-                html += '<td class="value-cell" style="color:' + (p.netFlow[i] >= 0 ? 'var(--ok)' : 'var(--critical)') + ';">' + formatValue(Math.round(p.netFlow[i])) + '</td>';
-                html += '<td class="value-cell">' + formatValue(Math.round(p.cumulativeFlow[i])) + '</td>';
+                html += '<td class="value-cell">' + formatValue(Math.round(debtPay)) + '</td>';
+                html += '<td class="value-cell" style="color:' + netColor + ';">' + formatValue(Math.round(netFlow)) + '</td>';
+                html += '<td class="value-cell" style="color:' + cumColor + ';">' + formatValue(Math.round(cumFlow)) + '</td>';
                 html += '</tr>';
             }
             html += '</tbody></table>';
@@ -5823,10 +5829,10 @@
                 '<div id="chart-npv" style="height:130px;"></div>';
 
             // График 1: Ежемесячные потоки
-            renderBarChart('chart-monthly', p.netFlow, 'Ежемесячный денежный поток');
+            renderBarChart('chart-monthly', p.flows.equityFCFE, 'Чистый поток (FCFE)');
 
             // График 2: Кумулятивный
-            renderCumulativeChart('chart-cumulative', p.cumulativeFlow, p.paybackPeriod, 'Накопленный поток');
+            renderCumulativeChart('chart-cumulative', p.flows.cumEquity, p.paybackPeriod, 'Накопленный поток (FCFE)');
 
             // График 3: NPV при разных ставках
             renderNPVCurve('chart-npv', p);
