@@ -4993,7 +4993,17 @@
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 1: ВЛОЖЕНИЯ</div>
         <div id="eq-investments"></div>
         <button onclick="addEquipmentInvestment()" style="font-size:10px;padding:2px 8px;">+ ДОБАВИТЬ ТРАНШ</button>
-
+        <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ПРЕДСТАРТОВЫЕ РАСХОДЫ</div>
+        <div class="form-group">
+            <label>ПОДГОТОВКА И ЗАПУСК (₽)</label>
+            <input type="text" id="pj-preprod-costs" value="0" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)">
+            <div style="font-size:9px;color:var(--text-hint);">Обучение, наладка, маркетинг запуска. Списывается в месяце 0.</div>
+        </div>
+        <div class="form-group">
+            <label>ОБОРОТНЫЙ КАПИТАЛ (₽)</label>
+            <input type="text" id="pj-working-capital" value="0" style="width:100%;" onfocus="this.style.color='var(--text-primary)';this.value=this.value.replace(/\s/g,'')" onblur="formatMoneyInput(this)">
+            <div style="font-size:9px;color:var(--text-hint);">Сырьё, товарный запас, дебиторка до первой выручки. Высвобождается в конце проекта.</div>
+        </div>
         <div style="font-size:11px;color:var(--text-hint);margin:12px 0 4px;">ШАГ 2: ЧТО ДАЁТ ОБОРУДОВАНИЕ</div>
         <div class="form-group">
             <label>РОСТ ВЫРУЧКИ (₽/МЕС)</label>
@@ -5464,6 +5474,34 @@
                 if (mgr > 0 && mgrSal > 0) costs.push({ name: 'Менеджер', baseAmount: mgr * mgrSal, type: 'fixed', rampUpMonths: 0 });
             }
 
+            var preprodCosts = parseFloat(document.getElementById('pj-preprod-costs')?.value.replace(/\s/g, '')) || 0;
+            var workingCapital = parseFloat(document.getElementById('pj-working-capital')?.value.replace(/\s/g, '')) || 0;
+
+            if (preprodCosts > 0) {
+                costs.push({
+                    name: 'Предстартовые расходы',
+                    baseAmount: preprodCosts,
+                    type: 'fixed',
+                    rampUpMonths: 0,
+                    month: 0
+                });
+                investments.push({
+                    name: 'Предстартовые расходы',
+                    amount: preprodCosts,
+                    month: 0,
+                    type: 'opex'
+                });
+            }
+
+            if (workingCapital > 0) {
+                investments.push({
+                    name: 'Оборотный капитал',
+                    amount: workingCapital,
+                    month: 0,
+                    type: 'working_capital',
+                    releaseMonth: horizon
+                });
+            }
             // Финансирование
             var ownFunds = parseFloat(document.getElementById('pj-own-funds').value.replace(/\s/g, '')) || 0;
             var creditAmount = parseFloat(document.getElementById('pj-credit-amount').value.replace(/\s/g, '')) || 0;
