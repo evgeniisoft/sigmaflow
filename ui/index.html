@@ -5534,10 +5534,7 @@
                 var singleRate = parseFloat(document.getElementById('pj-discount-rate')?.value || 21) / 100;
                 discSchedule = [{ months: 999, rate: singleRate }];
             }
-            var months = parseInt(row.querySelector('.disc-months').value) || 0;
-            var rate = parseFloat(row.querySelector('.disc-rate').value) / 100;
-            if (months > 0) discSchedule.push({ months: months, rate: rate });
-        });
+            
         if (discSchedule.length === 0) discSchedule = [{ months: 999, rate: 0.21 }];
 
         // Инфляция
