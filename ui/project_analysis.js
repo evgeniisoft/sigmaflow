@@ -1,46 +1,27 @@
 // ============================================================
-// SIGMAFLOW — МОДУЛЬ ИНВЕСТИЦИОННОГО АНАЛИЗА ПРОЕКТОВ v3.0
+// SIGMAFLOW — МОДУЛЬ ИНВЕСТИЦИОННОГО АНАЛИЗА ПРОЕКТОВ v4.0
+// Стандарт UNIDO
 // ============================================================
 
 function Project(config) {
     this.name = config.name || 'Новый проект';
     this.type = config.type || 'equipment';
     this.horizon = config.horizon || 36;
-    this.startMonth = config.startMonth || 0;
 
-    // Инвестиции — массив траншей: [{month, amount, type, usefulLife, salvageValue, includesNDS}]
     this.investments = config.investments || [];
-    this.preprodCosts = config.preprodCosts || 0;
-
-    // Доходы: [{name, month, baseAmount, rampUpMonths}]
     this.revenues = config.revenues || [];
-
-    // Расходы: [{name, month, baseAmount, type, rampUpMonths}]
     this.costs = config.costs || [];
     this.costsStartMonth = config.costsStartMonth !== undefined ? config.costsStartMonth : 0;
+    this.preprodCosts = config.preprodCosts || 0;
 
-    // Финансирование
     this.financing = config.financing || { ownFunds: 0 };
-    // credit: { amount, rate, term, startMonth, type: 'annuity'|'differential'|'deferred', deferredMonths }
-
-    // Налоги
     this.taxRate = config.taxRate || 0.25;
     this.ndsRate = config.ndsRate || 0.22;
-    this.insuranceRate = config.insuranceRate || 0.30;
-    this.propertyTaxRate = config.propertyTaxRate || 0;
-
-    // Амортизация
-    this.amortizationType = config.amortizationType || 'linear'; // 'linear'|'accelerated'
+    this.amortizationType = config.amortizationType || 'linear';
     this.amortizationPremium = config.amortizationPremium || 0;
-
-    // Дисконтирование по периодам: [{months: 12, rate: 0.21}, {months: 12, rate: 0.18}, ...]
-    this.discountSchedule = config.discountSchedule || [{ months: 999, rate: config.discountRate || 0.21 }];
+    this.discountSchedule = config.discountSchedule || [{ months: 999, rate: 0.21 }];
     this.reinvestmentRate = config.reinvestmentRate || 0.15;
-
-    // Инфляция по годам: [0.07, 0.06, 0.05]
     this.inflationRates = config.inflationRates || [0.07, 0.07, 0.07];
-
-    // Сезонность
     this.season = config.season || [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 
     this.calculate();
@@ -52,89 +33,107 @@ Project.prototype.calculate = function () {
 
     self._initArrays(h);
     self._applyInvestments();
-    self._applyDepreciation();
-    self._applyAmortizationPremium();
     self._applyRevenues();
     self._applyCosts();
     self._applyCredit();
-    self._applyTaxes();
+    self._applyDepreciation();
+    self._applyAmortizationPremium();
     self._applyNDS();
-    self._calculateOperatingFlow();
-    self._calculateFinancedFlow();
+    self._applyTaxes();
+    self._calcThreeFlows();
     self._applyInflation();
     self._calculateDiscounted();
     self._calculateMetrics();
     self._calculateMIRR();
     self._calculateBreakeven();
     self._validateFinancing();
+
+    // Для обратной совместимости со старым кодом
+    self.netFlow = self.flows.projectFCFF;
+    self.cumulativeFlow = self.flows.cumProject;
 };
 
-// ==================== ИНИЦИАЛИЗАЦИЯ ====================
+// ==================== ИНИЦИАЛИЗАЦИЯ МАССИВОВ ====================
 Project.prototype._initArrays = function (h) {
     var self = this;
-    var arrs = ['investmentFlow', 'revenueFlow', 'costFlow', 'depreciationFlow',
-        'creditFlow', 'creditRepayment', 'interestFlow', 'taxFlow', 'ndsFlow',
-        'operatingFlow', 'financedFlow', 'netFlow', 'cumulativeFlow',
-        'cumOperating', 'cumFinanced',
-        'realOperating', 'realFinanced', 'discOperating', 'discFinanced',
-        'cumDiscOperating', 'cumDiscFinanced', 'cumulativeDiscounted', 'discountedFlow'];
-    arrs.forEach(function (a) { self[a] = new Array(h).fill(0); });
+    var zeros = function () { var a = new Array(h); for (var i = 0; i < h; i++) a[i] = 0; return a; };
+
+    self.operating = {
+        revenue: zeros(),
+        opex: zeros(),
+        taxes: zeros(),
+        vatNet: zeros(),
+        flow: zeros()
+    };
+
+    self.investment = {
+        capex: zeros(),
+        preprod: zeros(),
+        nwc: zeros(),
+        salvage: zeros(),
+        flow: zeros()
+    };
+
+    self.financing = {
+        equity: zeros(),
+        creditInflow: zeros(),
+        creditRepayment: zeros(),
+        interest: zeros(),
+        flow: zeros()
+    };
+
+    self.flows = {
+        projectFCFF: zeros(),
+        equityFCFE: zeros(),
+        cumProject: zeros(),
+        cumEquity: zeros(),
+        discountedFCFF: zeros(),
+        discountedFCFE: zeros(),
+        cumDiscFCFF: zeros(),
+        cumDiscFCFE: zeros()
+    };
+
+    self.depreciation = zeros();
+
+    // Для совместимости
+    self.revenueFlow = self.operating.revenue;
+    self.costFlow = self.operating.opex;
+    self.taxFlow = self.operating.taxes;
+    self.ndsFlow = self.operating.vatNet;
+    self.investmentFlow = self.investment.flow;
+    self.interestFlow = self.financing.interest;
+    self.creditRepayment = self.financing.creditRepayment;
+    self.creditFlow = self.financing.creditInflow;
 };
 
 // ==================== ИНВЕСТИЦИИ ====================
 Project.prototype._applyInvestments = function () {
     var self = this;
     self.totalInvestment = 0;
+
+    // Предстартовые расходы — в investment.preprod[0]
+    if (self.preprodCosts > 0) {
+        self.investment.preprod[0] = self.preprodCosts;
+        self.totalInvestment += self.preprodCosts;
+    }
+
     self.investments.forEach(function (inv) {
         var m = inv.month || 0;
         var amt = inv.amount || 0;
         if (m < self.horizon) {
-            self.investmentFlow[m] += amt;
-        }
-        self.totalInvestment += amt;
-    });
-};
-
-// ==================== АМОРТИЗАЦИЯ ====================
-Project.prototype._applyDepreciation = function () {
-    var self = this;
-    self.investments.forEach(function (inv) {
-        if (inv.type === 'capex' && inv.usefulLife && inv.usefulLife > 0) {
-            var cost = inv.amount || 0;
-            var life = inv.usefulLife;
-            var startM = (inv.month || 0) + 1; // амортизация со следующего месяца
-
-            if (self.amortizationType === 'accelerated') {
-                // Ускоренная: первые 2 года ×2, потом остаток
-                var doubleRateMonths = Math.min(24, life);
-                var doubleMonthly = (cost / life) * 2;
-                var remaining = cost - doubleMonthly * doubleRateMonths;
-                var normalMonthly = remaining / (life - doubleRateMonths);
-                for (var m = startM; m < Math.min(startM + doubleRateMonths, self.horizon); m++) {
-                    self.depreciationFlow[m] += doubleMonthly;
+            if (inv.type === 'working_capital') {
+                self.investment.nwc[m] += amt;
+                if (inv.releaseMonth && inv.releaseMonth < self.horizon) {
+                    self.investment.nwc[inv.releaseMonth] -= amt; // возврат
+                } else {
+                    self.investment.nwc[self.horizon - 1] -= amt; // возврат в конце
                 }
-                for (var m = startM + doubleRateMonths; m < Math.min(startM + life, self.horizon); m++) {
-                    self.depreciationFlow[m] += normalMonthly;
-                }
+                self.totalInvestment += amt;
+            } else if (inv.type === 'old_sale') {
+                self.investment.salvage[m] += Math.abs(amt);
             } else {
-                var monthly = cost / life;
-                for (var m = startM; m < Math.min(startM + life, self.horizon); m++) {
-                    self.depreciationFlow[m] += monthly;
-                }
-            }
-        }
-    });
-};
-
-// ==================== АМОРТИЗАЦИОННАЯ ПРЕМИЯ ====================
-Project.prototype._applyAmortizationPremium = function () {
-    var self = this;
-    if (self.amortizationPremium <= 0) return;
-    self.investments.forEach(function (inv) {
-        if (inv.type === 'capex' && inv.amount) {
-            var premiumMonth = (inv.month || 0) + 1;
-            if (premiumMonth < self.horizon) {
-                self.depreciationFlow[premiumMonth] += inv.amount * self.amortizationPremium;
+                self.investment.capex[m] += Math.abs(amt);
+                self.totalInvestment += Math.abs(amt);
             }
         }
     });
@@ -150,12 +149,12 @@ Project.prototype._applyRevenues = function () {
         for (var m = startM; m < self.horizon; m++) {
             var coef = Math.min(1, ramp > 0 ? (m - startM) / ramp : 1);
             var mo = m % 12;
-            self.revenueFlow[m] += base * coef * (self.season[mo] || 1);
+            self.operating.revenue[m] += base * coef * (self.season[mo] || 1);
         }
     });
 };
 
-// ==================== РАСХОДЫ ====================
+// ==================== РАСХОДЫ (OPEX) ====================
 Project.prototype._applyCosts = function () {
     var self = this;
     self.costs.forEach(function (cost) {
@@ -167,7 +166,37 @@ Project.prototype._applyCosts = function () {
             if (ramp > 0 && cost.type === 'variable') {
                 coef = Math.min(1, (m - startM) / ramp);
             }
-            self.costFlow[m] += base * coef;
+            self.operating.opex[m] += base * coef;
+        }
+    });
+};
+
+// ==================== АМОРТИЗАЦИЯ ====================
+Project.prototype._applyDepreciation = function () {
+    var self = this;
+    self.investments.forEach(function (inv) {
+        if (inv.type === 'capex' && inv.usefulLife && inv.usefulLife > 0) {
+            var cost = Math.abs(inv.amount || 0);
+            var life = inv.usefulLife;
+            var startM = (inv.month || 0) + 1;
+            var monthly = cost / life;
+            for (var m = startM; m < Math.min(startM + life, self.horizon); m++) {
+                self.depreciation[m] += monthly;
+            }
+        }
+    });
+};
+
+// ==================== АМОРТИЗАЦИОННАЯ ПРЕМИЯ ====================
+Project.prototype._applyAmortizationPremium = function () {
+    var self = this;
+    if (self.amortizationPremium <= 0) return;
+    self.investments.forEach(function (inv) {
+        if (inv.type === 'capex' && inv.amount) {
+            var premiumMonth = (inv.month || 0) + 1;
+            if (premiumMonth < self.horizon) {
+                self.depreciation[premiumMonth] += Math.abs(inv.amount) * self.amortizationPremium;
+            }
         }
     });
 };
@@ -187,16 +216,15 @@ Project.prototype._applyCredit = function () {
     var type = cr.type || 'annuity';
 
     if (startM < self.horizon) {
-        self.creditFlow[startM] = amount;
+        self.financing.creditInflow[startM] = amount;
     }
 
     var remaining = amount;
     var paymentStart = startM + 1 + defMonths;
 
     if (type === 'deferred' && defMonths > 0) {
-        // Проценты в период отсрочки
         for (var m = startM + 1; m < paymentStart && m < self.horizon; m++) {
-            self.interestFlow[m] += amount * monthlyRate;
+            self.financing.interest[m] += amount * monthlyRate;
         }
     }
 
@@ -204,12 +232,11 @@ Project.prototype._applyCredit = function () {
         var bodyPayment = amount / term;
         for (var m = paymentStart; m < Math.min(paymentStart + term, self.horizon); m++) {
             var int = remaining * monthlyRate;
-            self.interestFlow[m] += int;
-            self.creditRepayment[m] += bodyPayment;
+            self.financing.interest[m] += int;
+            self.financing.creditRepayment[m] += bodyPayment;
             remaining -= bodyPayment;
         }
     } else {
-        // Аннуитет
         var activeTerm = term - defMonths;
         var annuity = 0;
         if (monthlyRate > 0 && activeTerm > 0) {
@@ -221,27 +248,10 @@ Project.prototype._applyCredit = function () {
         for (var m = paymentStart; m < Math.min(paymentStart + activeTerm, self.horizon); m++) {
             var int2 = remaining * monthlyRate;
             var body = annuity - int2;
-            self.interestFlow[m] += int2;
-            self.creditRepayment[m] += body;
+            self.financing.interest[m] += int2;
+            self.financing.creditRepayment[m] += body;
             remaining -= body;
         }
-    }
-};
-
-// ==================== НАЛОГИ ====================
-Project.prototype._applyTaxes = function () {
-    var self = this;
-    var cumTaxable = 0;
-    for (var m = 0; m < self.horizon; m++) {
-        var income = self.revenueFlow[m] - self.costFlow[m] - self.interestFlow[m] - self.depreciationFlow[m];
-        cumTaxable += income;
-        if (cumTaxable > 0 && (m + 1) % 3 === 0) {
-            self.taxFlow[m] = cumTaxable * self.taxRate;
-            cumTaxable = 0;
-        }
-    }
-    if (cumTaxable > 0) {
-        self.taxFlow[self.horizon - 1] += cumTaxable * self.taxRate;
     }
 };
 
@@ -249,84 +259,77 @@ Project.prototype._applyTaxes = function () {
 Project.prototype._applyNDS = function () {
     var self = this;
     for (var m = 0; m < self.horizon; m++) {
-        var outputNDS = self.revenueFlow[m] * self.ndsRate;
-        var inputNDS = 0;
-        // НДС с расходов
-        self.costs.forEach(function (c) {
-            if (c.includesNDS && c.month <= m) {
-                inputNDS += (c.baseAmount || 0) * self.ndsRate;
-            }
-        });
-        // НДС с инвестиций
-        self.investments.forEach(function (inv) {
-            if (inv.includesNDS && inv.month === m) {
-                inputNDS += (inv.amount || 0) * self.ndsRate;
-            }
-        });
-        self.ndsFlow[m] = outputNDS - inputNDS;
+        var outputNDS = self.operating.revenue[m] * self.ndsRate;
+        var inputNDS = self.operating.opex[m] * self.ndsRate;
+        self.operating.vatNet[m] = outputNDS - inputNDS;
     }
 };
 
-// ==================== ПОТОКИ ====================
-Project.prototype._calculateOperatingFlow = function () {
+// ==================== НАЛОГ НА ПРИБЫЛЬ ====================
+Project.prototype._applyTaxes = function () {
     var self = this;
-    if (self.preprodCosts > 0) {
-        self.costFlow[0] = (self.costFlow[0] || 0) + self.preprodCosts;
-    }
-    var cum = 0;
+    var cumTaxable = 0;
     for (var m = 0; m < self.horizon; m++) {
-        self.operatingFlow[m] = self.revenueFlow[m] - self.costFlow[m] - self.investmentFlow[m]
-            - self.taxFlow[m] - self.ndsFlow[m];
-        // Продажа старого оборудования
-        self.investments.forEach(function (inv) {
-            if (inv.type === 'old_sale' && inv.month === m) {
-                self.operatingFlow[m] += inv.amount || 0;
-            }
-        });
-        // Ликвидационная стоимость в конце
-        if (m === self.horizon - 1) {
-            self.investments.forEach(function (inv) {
-                if (inv.salvageValue) {
-                    self.operatingFlow[m] += inv.salvageValue;
-                }
-            });
+        var income = self.operating.revenue[m] - self.operating.opex[m] - self.financing.interest[m] - self.depreciation[m];
+        cumTaxable += income;
+        if (cumTaxable > 0 && (m + 1) % 3 === 0) {
+            self.operating.taxes[m] = cumTaxable * self.taxRate;
+            cumTaxable = 0;
         }
-        cum += self.operatingFlow[m];
-        self.cumOperating[m] = cum;
     }
-    self.netFlow = self.operatingFlow;
-    self.cumulativeFlow = self.cumOperating;
+    if (cumTaxable > 0) {
+        self.operating.taxes[self.horizon - 1] += cumTaxable * self.taxRate;
+    }
 };
 
-Project.prototype._calculateFinancedFlow = function () {
+// ==================== СВОИ СРЕДСТВА ====================
+Project.prototype._applyEquity = function () {
     var self = this;
-    var cum = 0;
+    var ownFunds = self.financing.ownFunds || 0;
     var ownMonth = self.financing.ownMonth || 0;
+    if (ownFunds > 0 && ownMonth < self.horizon) {
+        self.financing.equity[ownMonth] = ownFunds;
+    }
+};
+
+// ==================== ТРИ ПОТОКА ====================
+Project.prototype._calcThreeFlows = function () {
+    var self = this;
+    self._applyEquity();
+
     for (var m = 0; m < self.horizon; m++) {
-        var ownInflow = (self.financing.ownFunds > 0 && m === ownMonth) ? self.financing.ownFunds : 0;
-        self.financedFlow[m] = self.operatingFlow[m] + self.creditFlow[m] + ownInflow
-            - self.creditRepayment[m] - self.interestFlow[m];
-        cum += self.financedFlow[m];
-        self.cumFinanced[m] = cum;
+        // Операционный поток
+        self.operating.flow[m] = self.operating.revenue[m] - self.operating.opex[m]
+            - self.operating.taxes[m] - self.operating.vatNet[m];
+
+        // Инвестиционный поток
+        self.investment.flow[m] = -self.investment.capex[m] - self.investment.preprod[m]
+            - self.investment.nwc[m] + self.investment.salvage[m];
+
+        // Финансовый поток
+        self.financing.flow[m] = self.financing.equity[m] + self.financing.creditInflow[m]
+            - self.financing.creditRepayment[m] - self.financing.interest[m];
+
+        // Сводные
+        self.flows.projectFCFF[m] = self.operating.flow[m] + self.investment.flow[m];
+        self.flows.equityFCFE[m] = self.flows.projectFCFF[m] + self.financing.flow[m];
+
+        self.flows.cumProject[m] = (m === 0) ? self.flows.projectFCFF[m] :
+            self.flows.cumProject[m - 1] + self.flows.projectFCFF[m];
+        self.flows.cumEquity[m] = (m === 0) ? self.flows.equityFCFE[m] :
+            self.flows.cumEquity[m - 1] + self.flows.equityFCFE[m];
     }
 };
 
 // ==================== ИНФЛЯЦИЯ ====================
 Project.prototype._applyInflation = function () {
-    var self = this;
-    for (var m = 0; m < self.horizon; m++) {
-        var yearIdx = Math.floor(m / 12);
-        var infRate = self.inflationRates[Math.min(yearIdx, self.inflationRates.length - 1)] || 0.07;
-        var monthlyInf = Math.pow(1 + infRate, 1 / 12) - 1;
-        self.realOperating[m] = self.operatingFlow[m] / Math.pow(1 + monthlyInf, m);
-        self.realFinanced[m] = self.financedFlow[m] / Math.pow(1 + monthlyInf, m);
-    }
+    // Упрощённо — не применяем, оставляем для будущих версий
 };
 
 // ==================== ДИСКОНТИРОВАНИЕ ====================
 Project.prototype._calculateDiscounted = function () {
     var self = this;
-    var cumOp = 0, cumFin = 0;
+    var cumProj = 0, cumEq = 0;
     for (var m = 0; m < self.horizon; m++) {
         var monthsPassed = 0;
         var rate = self.discountSchedule[0].rate;
@@ -338,69 +341,54 @@ Project.prototype._calculateDiscounted = function () {
             monthsPassed += self.discountSchedule[s].months;
         }
         var monthlyR = Math.pow(1 + rate, 1 / 12) - 1;
-        self.discOperating[m] = self.operatingFlow[m] / Math.pow(1 + monthlyR, m);
-        self.discFinanced[m] = self.financedFlow[m] / Math.pow(1 + monthlyR, m);
-        cumOp += self.discOperating[m];
-        cumFin += self.discFinanced[m];
-        self.cumDiscOperating[m] = cumOp;
-        self.cumDiscFinanced[m] = cumFin;
+        self.flows.discountedFCFF[m] = self.flows.projectFCFF[m] / Math.pow(1 + monthlyR, m);
+        self.flows.discountedFCFE[m] = self.flows.equityFCFE[m] / Math.pow(1 + monthlyR, m);
+        cumProj += self.flows.discountedFCFF[m];
+        cumEq += self.flows.discountedFCFE[m];
+        self.flows.cumDiscFCFF[m] = cumProj;
+        self.flows.cumDiscFCFE[m] = cumEq;
     }
 };
 
 // ==================== МЕТРИКИ ====================
 Project.prototype._calculateMetrics = function () {
     var self = this;
+    var h = self.horizon;
 
-    // Операционный NPV
-    self.operatingNPV = self.cumDiscOperating[self.horizon - 1];
+    self.operatingNPV = self.flows.cumDiscFCFF[h - 1];
+    self.financedNPV = self.flows.cumDiscFCFE[h - 1];
+    self.npv = self.operatingNPV;
 
-    // NPV с финансированием
-    self.financedNPV = self.cumDiscFinanced[self.horizon - 1];
+    self.operatingIRR = self._calculateIRR(self.flows.projectFCFF);
+    self.wacc = self.discountSchedule[0].rate;
 
-    // NPV (для обратной совместимости)
-    self.npv = self.financedNPV;
-
-    // Операционный IRR
-    self.operatingIRR = self._calculateIRR(self.operatingFlow);
-
-    // Срок окупаемости (операционный)
     self.paybackPeriod = -1;
-    var firstNegativeMonth = -1;
-    for (var m = 0; m < self.horizon; m++) {
-        if (self.cumOperating[m] < 0 && firstNegativeMonth < 0) firstNegativeMonth = m;
-        if (firstNegativeMonth >= 0 && self.cumOperating[m] >= 0) { self.paybackPeriod = m; break; }
+    for (var m = 0; m < h; m++) {
+        if (self.flows.cumProject[m] >= 0) { self.paybackPeriod = m; break; }
     }
 
-    // Дисконтированный срок окупаемости
     self.discPayback = -1;
-    for (var m = 0; m < self.horizon; m++) {
-        if (self.cumDiscOperating[m] >= 0) { self.discPayback = m; break; }
+    for (var m = 0; m < h; m++) {
+        if (self.flows.cumDiscFCFF[m] >= 0) { self.discPayback = m; break; }
     }
 
-    // ROI
-    var totalNetOp = self.operatingFlow.reduce(function (s, v) { return s + v; }, 0);
+    var totalNetOp = self.flows.projectFCFF.reduce(function (s, v) { return s + v; }, 0);
     self.roi = self.totalInvestment > 0 ? (totalNetOp / self.totalInvestment * 100) : 0;
-
-    // PI
     self.pi = self.totalInvestment > 0 ? (self.operatingNPV + self.totalInvestment) / self.totalInvestment : 0;
 
-    // DSCR
     if (self.financing.credit && self.financing.credit.amount > 0) {
         var totalDebt = 0, totalOper = 0;
-        for (var m = 0; m < self.horizon; m++) {
-            totalDebt += self.creditRepayment[m] + self.interestFlow[m];
-            totalOper += self.revenueFlow[m] - self.costFlow[m] - self.taxFlow[m];
+        for (var m = 0; m < h; m++) {
+            totalDebt += self.financing.creditRepayment[m] + self.financing.interest[m];
+            totalOper += self.operating.revenue[m] - self.operating.opex[m] - self.operating.taxes[m];
         }
         self.dscr = totalDebt > 0 ? totalOper / totalDebt : 0;
     } else {
         self.dscr = null;
     }
 
-    self.maxCashGap = Math.min.apply(null, self.cumFinanced);
-    self.maxGapMonth = self.cumFinanced.indexOf(self.maxCashGap);
-
-    // WACC (упрощённо — первая ставка дисконтирования)
-    self.wacc = self.discountSchedule[0].rate;
+    self.maxCashGap = Math.min.apply(null, self.flows.cumEquity);
+    self.maxGapMonth = self.flows.cumEquity.indexOf(self.maxCashGap);
 };
 
 // ==================== IRR ====================
@@ -427,7 +415,7 @@ Project.prototype._calculateIRR = function (flows) {
 // ==================== MIRR ====================
 Project.prototype._calculateMIRR = function () {
     var self = this;
-    var flows = self.operatingFlow;
+    var flows = self.flows.projectFCFF;
     var mr = Math.pow(1 + self.reinvestmentRate, 1 / 12) - 1;
     var dr = Math.pow(1 + self.wacc, 1 / 12) - 1;
     var fv = 0, pv = 0;
@@ -443,18 +431,22 @@ Project.prototype._calculateMIRR = function () {
 // ==================== ТОЧКА БЕЗУБЫТОЧНОСТИ ====================
 Project.prototype._calculateBreakeven = function () {
     var self = this;
-    var totalRev = self.revenueFlow.reduce(function (s, v) { return s + v; }, 0);
+    var totalRev = self.operating.revenue.reduce(function (s, v) { return s + v; }, 0);
     if (totalRev <= 0) { self.breakevenFactor = -1; return; }
     var lo = 0, hi = 5;
     var npvAtScale = function (sc) {
-        var oRev = self.revenueFlow.slice();
-        var oCost = self.costFlow.slice();
-        for (var i = 0; i < self.horizon; i++) { self.revenueFlow[i] *= sc; self.costFlow[i] = self.costFlow[i] * 0.7 * sc + self.costFlow[i] * 0.3; }
-        self._calculateOperatingFlow();
+        var oRev = self.operating.revenue.slice();
+        var oOpex = self.operating.opex.slice();
+        for (var i = 0; i < self.horizon; i++) {
+            self.operating.revenue[i] *= sc;
+            self.operating.opex[i] = self.operating.opex[i] * 0.7 * sc + self.operating.opex[i] * 0.3;
+        }
+        self._calcThreeFlows();
         self._calculateDiscounted();
-        var n = self.cumDiscOperating[self.horizon - 1];
-        self.revenueFlow = oRev; self.costFlow = oCost;
-        self._calculateOperatingFlow();
+        var n = self.flows.cumDiscFCFF[self.horizon - 1];
+        self.operating.revenue = oRev;
+        self.operating.opex = oOpex;
+        self._calcThreeFlows();
         self._calculateDiscounted();
         return n;
     };
@@ -466,7 +458,7 @@ Project.prototype._calculateBreakeven = function () {
     self.breakevenFactor = (lo + hi) / 2;
 };
 
-// ==================== ВАЛИДАЦИЯ ФИНАНСИРОВАНИЯ ====================
+// ==================== ВАЛИДАЦИЯ ====================
 Project.prototype._validateFinancing = function () {
     var self = this;
     self.financingGap = self.totalInvestment - (self.financing.ownFunds || 0);
@@ -481,6 +473,6 @@ Project.prototype._validateFinancing = function () {
 Project.prototype._calculateNPV_at_rate = function (rate) {
     var mr = Math.pow(1 + rate, 1 / 12) - 1;
     var s = 0;
-    for (var t = 0; t < this.horizon; t++) s += this.operatingFlow[t] / Math.pow(1 + mr, t);
+    for (var t = 0; t < this.horizon; t++) s += this.flows.projectFCFF[t] / Math.pow(1 + mr, t);
     return s;
 };
