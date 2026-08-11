@@ -5644,6 +5644,10 @@
 
 
             var ownMonth = flexFinancing ? 0 : (parseInt(document.getElementById('pj-own-month')?.value) || 0);
+            /// проверка логов в консоли браузера
+            console.log('costsStartMonth перед Project:', costsStart);
+            console.log('costs:', JSON.stringify(costs));
+            console.log('preprodCosts:', preprodCosts);
 
             currentProject = new Project({
                 name: name, type: type, horizon: horizon,
