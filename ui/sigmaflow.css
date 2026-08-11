@@ -585,3 +585,22 @@ main {
     border: 1px solid var(--border);
     padding: 2px 4px;
 }
+.project-table .row-parent td {
+    font-weight: 600;
+    font-size: 10px;
+    background: var(--bg-panel);
+    color: var(--text-heading);
+    padding: 6px 8px;
+}
+
+.project-table .row-child td:first-child {
+    padding-left: 20px;
+    color: var(--text-hint);
+}
+
+.project-table .row-total td {
+    font-weight: 700;
+    font-size: 10px;
+    background: var(--bg-input);
+    border-top: 1px solid var(--border);
+}
