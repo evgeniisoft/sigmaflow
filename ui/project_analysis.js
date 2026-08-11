@@ -297,8 +297,10 @@ Project.prototype._calculateOperatingFlow = function () {
 Project.prototype._calculateFinancedFlow = function () {
     var self = this;
     var cum = 0;
+    var ownMonth = self.financing.ownMonth || 0;
     for (var m = 0; m < self.horizon; m++) {
-        self.financedFlow[m] = self.operatingFlow[m] + self.creditFlow[m]
+        var ownInflow = (self.financing.ownFunds > 0 && m === ownMonth) ? self.financing.ownFunds : 0;
+        self.financedFlow[m] = self.operatingFlow[m] + self.creditFlow[m] + ownInflow
             - self.creditRepayment[m] - self.interestFlow[m];
         cum += self.financedFlow[m];
         self.cumFinanced[m] = cum;
