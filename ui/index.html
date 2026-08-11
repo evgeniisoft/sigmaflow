@@ -5923,12 +5923,7 @@
 
             // Восстанавливаем HTML динамических блоков
             setTimeout(function () {
-                if (proj.eqInvestmentsHTML) document.getElementById('eq-investments').innerHTML = proj.eqInvestmentsHTML;
-                if (proj.discountRowsHTML) {
-                    var discEl = document.getElementById('discount-rows');
-                    if (discEl) discEl.innerHTML = proj.discountRowsHTML;
-                }
-
+                
                 // Восстанавливаем значения полей
                 if (proj.formValues) {
                     Object.keys(proj.formValues).forEach(function (key) {
