@@ -5928,18 +5928,6 @@
 
             var p = currentProject;
 
-            // Вердикт
-            var verdict = '';
-            if (p.operatingNPV > 0 && p.operatingIRR > p.wacc) {
-                verdict = '<div style="font-weight:600;color:var(--ok);font-size:14px;margin-bottom:8px;">🔥 ПРОЕКТ РЕКОМЕНДОВАН К РЕАЛИЗАЦИИ</div>';
-                verdict += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:12px;">Проект окупается, генерирует прибыль и имеет достаточный запас прочности.</div>';
-            } else if (p.operatingNPV > 0) {
-                verdict = '<div style="font-weight:600;color:var(--warning);font-size:14px;margin-bottom:8px;">⚠ ПРОЕКТ НА ГРАНИ ОКУПАЕМОСТИ</div>';
-            } else {
-                verdict = '<div style="font-weight:600;color:var(--critical);font-size:14px;margin-bottom:8px;">❌ ПРОЕКТ НЕ ОКУПАЕТСЯ</div>';
-                verdict += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:12px;">Для окупаемости нужна выручка от ' + formatValue(Math.round(p.breakevenFactor * (p.revenues[0]?.baseAmount || 0))) + ' ₽/мес.</div>';
-            }
-
             // Метрики
             var metrics = [
                 {
@@ -5991,6 +5979,18 @@
                     hint: 'Максимальный кассовый разрыв за весь горизонт проекта.'
                 }
             ];
+
+            // Вердикт
+            var verdict = '';
+            if (p.operatingNPV > 0 && p.operatingIRR > p.wacc) {
+                verdict = '<div style="font-weight:600;color:var(--ok);font-size:14px;margin-bottom:8px;"> ПРОЕКТ РЕКОМЕНДОВАН К РЕАЛИЗАЦИИ</div>';
+                verdict += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:12px;">Проект окупается, генерирует прибыль и имеет достаточный запас прочности.</div>';
+            } else if (p.operatingNPV > 0) {
+                verdict = '<div style="font-weight:600;color:var(--warning);font-size:14px;margin-bottom:8px;">⚠ ПРОЕКТ НА ГРАНИ ОКУПАЕМОСТИ</div>';
+            } else {
+                verdict = '<div style="font-weight:600;color:var(--critical);font-size:14px;margin-bottom:8px;">❌ ПРОЕКТ НЕ ОКУПАЕТСЯ</div>';
+                verdict += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:12px;">Для окупаемости нужна выручка от ' + formatValue(Math.round(p.breakevenFactor * (p.revenues[0]?.baseAmount || 0))) + ' ₽/мес.</div>';
+            }
 
             var mHtml = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
             metrics.forEach(function (m) {
