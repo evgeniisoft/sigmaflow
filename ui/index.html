@@ -5928,7 +5928,6 @@
 
             var p = currentProject;
 
-            // Метрики
             var metrics = [
                 {
                     label: 'NPV',
@@ -5980,42 +5979,36 @@
                 }
             ];
 
-            // Вердикт
-            var verdict = '';
+            // Вердикт и метрики — две колонки
+            var verdictHtml = '';
             if (p.operatingNPV > 0 && p.operatingIRR > p.wacc) {
-                verdict = '<div style="font-weight:600;color:var(--ok);font-size:14px;margin-bottom:8px;"> ПРОЕКТ РЕКОМЕНДОВАН К РЕАЛИЗАЦИИ</div>';
-                verdict += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:12px;">Проект окупается, генерирует прибыль и имеет достаточный запас прочности.</div>';
+                verdictHtml = '<div style="font-weight:600;color:var(--ok);font-size:18px;margin-bottom:8px;">ПРОЕКТ РЕКОМЕНДОВАН</div>';
+                verdictHtml += '<div style="font-size:10px;color:var(--text-hint);">Окупается, генерирует прибыль, имеет запас прочности.</div>';
             } else if (p.operatingNPV > 0) {
-                verdict = '<div style="font-weight:600;color:var(--warning);font-size:14px;margin-bottom:8px;">⚠ ПРОЕКТ НА ГРАНИ ОКУПАЕМОСТИ</div>';
+                verdictHtml = '<div style="font-weight:600;color:var(--warning);font-size:18px;margin-bottom:8px;">НА ГРАНИ ОКУПАЕМОСТИ</div>';
+                verdictHtml += '<div style="font-size:10px;color:var(--text-hint);">NPV положительный, но IRR ниже ставки дисконтирования.</div>';
             } else {
-                verdict = '<div style="font-weight:600;color:var(--critical);font-size:14px;margin-bottom:8px;">❌ ПРОЕКТ НЕ ОКУПАЕТСЯ</div>';
-                verdict += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:12px;">Для окупаемости нужна выручка от ' + formatValue(Math.round(p.breakevenFactor * (p.revenues[0]?.baseAmount || 0))) + ' ₽/мес.</div>';
+                verdictHtml = '<div style="font-weight:600;color:var(--critical);font-size:18px;margin-bottom:8px;">ПРОЕКТ НЕ ОКУПАЕТСЯ</div>';
+                verdictHtml += '<div style="font-size:10px;color:var(--text-hint);">NPV отрицательный. Для окупаемости нужна выручка от ' + formatValueFull(Math.round(p.breakevenFactor * (p.revenues[0]?.baseAmount || 0))) + ' ₽/мес.</div>';
             }
 
-            var mHtml = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
+            var mHtml = '<div style="display:flex;gap:16px;margin-bottom:16px;">';
+            mHtml += '<div style="width:220px;flex-shrink:0;padding:12px;background:var(--bg-input);border:1px solid var(--border);">' + verdictHtml + '</div>';
+            mHtml += '<div style="flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">';
             metrics.forEach(function (m) {
-                mHtml += '<div style="padding:12px;background:var(--bg-input);border:1px solid var(--border);text-align:center;cursor:help;" title="' + m.hint + '">' +
+                mHtml += '<div style="padding:14px 10px;background:var(--bg-input);border:1px solid var(--border);text-align:center;cursor:help;" title="' + m.hint + '">' +
                     '<div style="font-size:9px;color:var(--text-hint);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">' + m.label + '</div>' +
-                    '<div style="font-size:16px;font-weight:700;color:' + m.color + ';">' + m.value + '</div></div>';
+                    '<div style="font-size:18px;font-weight:700;color:' + m.color + ';">' + m.value + '</div></div>';
             });
-            mHtml += '</div>';
-            document.getElementById('project-metrics').innerHTML = mHtml;
-
-            var mHtml = verdict + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">';
-            metrics.forEach(function (m) {
-                mHtml += '<div style="padding:8px;background:var(--bg-input);border:1px solid var(--border);text-align:center;cursor:help;" title="' + m.hint + '">' +
-                    '<div style="font-size:8px;color:var(--text-hint);">' + m.label + '</div>' +
-                    '<div style="font-size:13px;font-weight:700;">' + m.value + '</div></div>';
-            });
-            mHtml += '</div>';
+            mHtml += '</div></div>';
             document.getElementById('project-metrics').innerHTML = mHtml;
 
             // Рекомендации
             var rec = '';
             if (p.dscr && p.dscr < 1.25) rec += '<div>⚠ DSCR ниже 1.25 — проект рискован для банка.</div>';
-            if (p.maxCashGap < 0) rec += '<div>⚠ Кассовый разрыв ' + formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽ на ' + p.maxGapMonth + '-й месяц. Увеличьте оборотный капитал.</div>';
+            if (p.maxCashGap < 0) rec += '<div>⚠ Кассовый разрыв ' + formatValueFull(Math.abs(Math.round(p.maxCashGap))) + ' ₽ на ' + p.maxGapMonth + '-й месяц. Увеличьте оборотный капитал.</div>';
             if (p.financing.credit && p.financing.credit.amount > 0 && p.creditExcess > 0) {
-                rec += '<div>💡 Кредит превышает потребность на ' + formatValue(Math.round(p.creditExcess)) + ' ₽. Уменьшите сумму кредита для экономии на процентах.</div>';
+                rec += '<div>💡 Кредит превышает потребность на ' + formatValueFull(Math.round(p.creditExcess)) + ' ₽. Уменьшите сумму кредита для экономии на процентах.</div>';
             }
             document.getElementById('project-conclusion').innerHTML = rec || '<div style="color:var(--ok);">✅ Проект сбалансирован.</div>';
 
