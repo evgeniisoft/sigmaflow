@@ -5124,54 +5124,47 @@
             var alerts = '';
             var hasError = false;
 
-            // Собираем притоки
             var capitalIn = new Array(horizon).fill(0);
-            var ownFunds = parseFloat(document.getElementById('pj-own-funds')?.value.replace(/\s/g, '')) || 0;
+            var ownFunds = parseFloat((document.getElementById('pj-own-funds')?.value || '0').replace(/\s/g, '')) || 0;
             var ownMonth = parseInt(document.getElementById('pj-own-month')?.value) || 0;
-            var creditAmt = parseFloat(document.getElementById('pj-credit-amount')?.value.replace(/\s/g, '')) || 0;
+            var creditAmt = parseFloat((document.getElementById('pj-credit-amount')?.value || '0').replace(/\s/g, '')) || 0;
             var creditMonth = parseInt(document.getElementById('pj-credit-month')?.value) || 0;
             if (ownMonth < horizon) capitalIn[ownMonth] += ownFunds;
             if (creditMonth < horizon) capitalIn[creditMonth] += creditAmt;
 
-            // Продажи
             document.querySelectorAll('#eq-sales > div').forEach(function (row) {
-                var amt = parseFloat(row.querySelector('.sale-amount')?.value.replace(/\s/g, '')) || 0;
+                var amt = parseFloat((row.querySelector('.sale-amount')?.value || '0').replace(/\s/g, '')) || 0;
                 var month = parseInt(row.querySelector('.sale-month')?.value) || 0;
                 if (month < horizon) capitalIn[month] += amt;
             });
 
-            // Собираем оттоки
             var capitalOut = new Array(horizon).fill(0);
-            var preprod = parseFloat(document.getElementById('pj-preprod-costs')?.value.replace(/\s/g, '')) || 0;
-            var nwc = parseFloat(document.getElementById('pj-working-capital')?.value.replace(/\s/g, '')) || 0;
+            var preprod = parseFloat((document.getElementById('pj-preprod-costs')?.value || '0').replace(/\s/g, '')) || 0;
+            var nwc = parseFloat((document.getElementById('pj-working-capital')?.value || '0').replace(/\s/g, '')) || 0;
             capitalOut[0] += preprod + nwc;
 
             document.querySelectorAll('#eq-capex > div').forEach(function (row) {
-                var cost = parseFloat(row.querySelector('.capex-cost')?.value.replace(/\s/g, '')) || 0;
+                var cost = parseFloat((row.querySelector('.capex-cost')?.value || '0').replace(/\s/g, '')) || 0;
                 var month = parseInt(row.querySelector('.capex-month')?.value) || 0;
                 if (month < horizon) capitalOut[month] += cost;
             });
 
-            document.querySelectorAll('#eq-opex > div').forEach(function (row) {
-                var cost = parseFloat(row.querySelector('.opex-cost')?.value.replace(/\s/g, '')) || 0;
-                var month = parseInt(row.querySelector('.opex-month')?.value) || 0;
-                if (month < horizon) capitalOut[month] += cost;
-            });
-
-            // Проверка баланса
             var buffer = 0;
             for (var m = 0; m < horizon; m++) {
                 buffer += capitalIn[m] - capitalOut[m];
                 if (buffer < 0) {
                     hasError = true;
-                    alerts += '<div style="color:var(--critical);font-size:10px;padding:2px 0;">⚠ Месяц ' + m + ': не хватает ' + formatValue(Math.abs(buffer)) + ' ₽</div>';
+                    alerts += '<div style="color:var(--critical);font-size:10px;padding:2px 0;">⚠ Месяц ' + m + ': не хватает ' + formatValue(Math.abs(Math.round(buffer))) + ' ₽</div>';
                     buffer = 0;
                 }
             }
 
             document.getElementById('ui-validation-alerts').innerHTML = alerts;
             var btn = document.getElementById('btn-calculate-project');
-            if (btn) btn.disabled = hasError;
+            if (btn) {
+                btn.disabled = hasError;
+                btn.style.opacity = hasError ? '0.5' : '1';
+            }
         }
 
         function addOpexRow(data) {
@@ -6183,7 +6176,7 @@
                     includesNDS: row.querySelector('.capex-nds')?.checked || false
                 });
             });
-            
+
             document.querySelectorAll('#eq-sales > div').forEach(function (row) {
                 projectJSON.investments.push({
                     name: row.querySelector('.sale-name')?.value || '',
