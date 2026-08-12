@@ -5928,47 +5928,68 @@
 
             var p = currentProject;
 
-            // Вердикт
-            var verdict = '';
-            if (p.operatingNPV > 0 && p.operatingIRR > p.wacc) {
-                verdict = '<div style="font-weight:600;color:var(--ok);font-size:14px;margin-bottom:8px;">🔥 ПРОЕКТ РЕКОМЕНДОВАН К РЕАЛИЗАЦИИ</div>';
-                verdict += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:12px;">Проект окупается, генерирует прибыль и имеет достаточный запас прочности.</div>';
-            } else if (p.operatingNPV > 0) {
-                verdict = '<div style="font-weight:600;color:var(--warning);font-size:14px;margin-bottom:8px;">⚠ ПРОЕКТ НА ГРАНИ ОКУПАЕМОСТИ</div>';
-            } else {
-                verdict = '<div style="font-weight:600;color:var(--critical);font-size:14px;margin-bottom:8px;">❌ ПРОЕКТ НЕ ОКУПАЕТСЯ</div>';
-                verdict += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:12px;">Для окупаемости нужна выручка от ' + formatValue(Math.round(p.breakevenFactor * (p.revenues[0]?.baseAmount || 0))) + ' ₽/мес.</div>';
+            function metricColor(val, thresholds) {
+                if (val >= thresholds.good) return 'var(--ok)';
+                if (val >= thresholds.warn) return 'var(--warning)';
+                return 'var(--critical)';
             }
 
-            // Метрики
+            var tbuRevenue = Math.round(p.breakevenFactor * (p.revenues[0]?.baseAmount || 0));
+
             var metrics = [
-                { label: 'NPV', value: formatValue(Math.round(p.operatingNPV)) + ' ₽', hint: 'Чистый дисконтированный доход' },
-                { label: 'IRR', value: p.operatingIRR > -0.9 ? (p.operatingIRR * 100).toFixed(1) + '%' : 'убыток', hint: 'Внутренняя норма доходности' },
-                { label: 'MIRR', value: (p.mirr * 100).toFixed(1) + '%', hint: 'Модифицированная IRR' },
-                { label: 'Срок окуп.', value: p.paybackPeriod >= 0 ? p.paybackPeriod + ' мес' : '> ' + p.horizon + ' мес', hint: 'Простой срок окупаемости' },
-                { label: 'DSCR', value: p.dscr ? p.dscr.toFixed(2) : '—', hint: 'Покрытие долга (>1.25 хорошо)' },
-                { label: 'PI', value: p.pi.toFixed(2), hint: 'Индекс прибыльности (>1 выгодно)' },
-                { label: 'ТБУ', value: formatValue(Math.round(p.breakevenFactor * (p.revenues[0]?.baseAmount || 0))) + ' ₽/мес', hint: 'Минимальная выручка для окупаемости' },
-                { label: 'Макс. разрыв', value: p.maxCashGap < 0 ? formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽' : 'нет', hint: 'Максимальный кассовый разрыв' }
+                {
+                    label: 'NPV', value: (p.operatingNPV >= 0 ? '+' : '') + formatValue(Math.round(p.operatingNPV)) + ' ₽',
+                    color: p.operatingNPV > 0 ? 'var(--ok)' : (p.operatingNPV > -100000 ? 'var(--warning)' : 'var(--critical)')
+                },
+                {
+                    label: 'IRR', value: p.operatingIRR > -0.9 ? (p.operatingIRR * 100).toFixed(1) + '%' : 'убыток',
+                    color: p.operatingIRR > p.wacc ? 'var(--ok)' : (p.operatingIRR > 0 ? 'var(--warning)' : 'var(--critical)')
+                },
+                {
+                    label: 'MIRR', value: (p.mirr * 100).toFixed(1) + '%',
+                    color: p.mirr > p.wacc ? 'var(--ok)' : (p.mirr > 0 ? 'var(--warning)' : 'var(--critical)')
+                },
+                {
+                    label: 'Срок окуп.', value: p.paybackPeriod >= 0 ? p.paybackPeriod + ' мес' : '> ' + p.horizon + ' мес',
+                    color: p.paybackPeriod >= 0 && p.paybackPeriod < 24 ? 'var(--ok)' : (p.paybackPeriod < 36 ? 'var(--warning)' : 'var(--critical)')
+                },
+                {
+                    label: 'DSCR', value: p.dscr ? p.dscr.toFixed(2) : '—',
+                    color: p.dscr > 1.25 ? 'var(--ok)' : (p.dscr > 1 ? 'var(--warning)' : 'var(--critical)')
+                },
+                {
+                    label: 'PI', value: p.pi.toFixed(2),
+                    color: p.pi > 1.1 ? 'var(--ok)' : (p.pi > 1 ? 'var(--warning)' : 'var(--critical)')
+                },
+                {
+                    label: 'ТБУ', value: tbuRevenue > 0 ? formatValue(tbuRevenue) + ' ₽/мес' : '—',
+                    color: p.breakevenFactor <= 1 ? 'var(--ok)' : (p.breakevenFactor <= 1.5 ? 'var(--warning)' : 'var(--critical)')
+                },
+                {
+                    label: 'Макс. разрыв', value: p.maxCashGap < 0 ? formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽' : 'нет',
+                    color: p.maxCashGap >= 0 ? 'var(--ok)' : (p.maxCashGap > -1000000 ? 'var(--warning)' : 'var(--critical)')
+                }
             ];
 
-            var mHtml = verdict + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">';
+            var mHtml = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
             metrics.forEach(function (m) {
-                mHtml += '<div style="padding:8px;background:var(--bg-input);border:1px solid var(--border);text-align:center;cursor:help;" title="' + m.hint + '">' +
-                    '<div style="font-size:8px;color:var(--text-hint);">' + m.label + '</div>' +
-                    '<div style="font-size:13px;font-weight:700;">' + m.value + '</div></div>';
+                mHtml += '<div style="padding:12px 14px;background:var(--bg-input);border:1px solid var(--border);text-align:center;">' +
+                    '<div style="font-size:10px;color:var(--text-hint);margin-bottom:6px;">' + m.label + '</div>' +
+                    '<div style="font-size:18px;font-weight:700;color:' + m.color + ';">' + m.value + '</div>' +
+                    '</div>';
             });
             mHtml += '</div>';
             document.getElementById('project-metrics').innerHTML = mHtml;
 
             // Рекомендации
             var rec = '';
-            if (p.dscr && p.dscr < 1.25) rec += '<div>⚠ DSCR ниже 1.25 — проект рискован для банка.</div>';
-            if (p.maxCashGap < 0) rec += '<div>⚠ Кассовый разрыв ' + formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽ на ' + p.maxGapMonth + '-й месяц. Увеличьте оборотный капитал.</div>';
+            if (p.dscr && p.dscr < 1.25) rec += '<div style="font-size:10px;color:var(--warning);padding:2px 0;">⚠ DSCR ниже 1.25 — проект рискован для банка.</div>';
+            if (p.maxCashGap < 0) rec += '<div style="font-size:10px;color:var(--critical);padding:2px 0;">⚠ Кассовый разрыв ' + formatValue(Math.abs(Math.round(p.maxCashGap))) + ' ₽ на ' + p.maxGapMonth + '-й месяц.</div>';
             if (p.financing.credit && p.financing.credit.amount > 0 && p.creditExcess > 0) {
-                rec += '<div>💡 Кредит превышает потребность на ' + formatValue(Math.round(p.creditExcess)) + ' ₽. Уменьшите сумму кредита для экономии на процентах.</div>';
+                rec += '<div style="font-size:10px;color:var(--accent);padding:2px 0;">💡 Кредит превышает потребность на ' + formatValue(Math.round(p.creditExcess)) + ' ₽.</div>';
             }
-            document.getElementById('project-conclusion').innerHTML = rec || '<div style="color:var(--ok);">✅ Проект сбалансирован.</div>';
+            if (!rec) rec = '<div style="font-size:10px;color:var(--ok);">✅ Проект сбалансирован.</div>';
+            document.getElementById('project-conclusion').innerHTML = rec;
 
             renderProjectChart();
             renderProjectTable();
