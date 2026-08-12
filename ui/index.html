@@ -5845,7 +5845,7 @@
             var opexFlow = new Array(h).fill(0);
             if (p.costs || []) {
                 p.costs || [].forEach(function (c) {
-                    if (c.month !== undefined && c.month < h && c.name !== 'Предстартовые расходы') {
+                    if (c.month !== undefined && c.month < h && c.name !== 'Предстартовые расходы' && c.name !== 'Доп. расходы') {
                         opexFlow[c.month] += c.baseAmount || 0;
                     }
                 });
@@ -5881,7 +5881,7 @@
             // 1. ОПЕРАЦИОННЫЙ ПОТОК
             html += '<tr class="row-parent"><td colspan="' + (h + 1) + '">1. ОПЕРАЦИОННЫЙ ПОТОК</td></tr>';
             row('↳ Выручка от продаж', p.revenueFlow, 'row-child');
-            row('↳ Регулярные расходы (OPEX)', p.costFlow.map(function (v, i) { return -(v - (opexFlow[i] || 0) - (preprodFlow[i] || 0) - (nwcFlow[i] || 0)); }), 'row-child');
+            row('↳ Регулярные расходы (OPEX)', p.costFlow.map(function (v, i) { return -(v - (opexFlow[i] || 0) - (preprodFlow[i] || 0)); }), 'row-child');
             row('↳ Разовые стартовые расходы', opexFlow.map(function (v) { return -v; }), 'row-child');
             row('↳ Предстартовые расходы', preprodFlow.map(function (v) { return -v; }), 'row-child');
             row('↳ Налог на прибыль', p.taxFlow.map(function (v) { return -v; }), 'row-child');
@@ -5889,9 +5889,7 @@
 
             // 2. ИНВЕСТИЦИОННЫЙ ПОТОК
             html += '<tr class="row-parent"><td colspan="' + (h + 1) + '">2. ИНВЕСТИЦИОННЫЙ ПОТОК</td></tr>';
-            row('↳ Покупка оборудования (CAPEX)', p.investmentFlow.map(function (v, i) {
-                return -(v - (nwcFlow[i] || 0) + (saleInflow[i] || 0));
-            }), 'row-child');
+            row('↳ Покупка оборудования (CAPEX)', p.investmentFlow.map(function (v, i) { return -(v) + (saleInflow[i] || 0); }), 'row-child');
             row('↳ Изменение оборотного капитала', nwcFlow, 'row-child');
             row('↳ Продажа активов / Ликвидация', saleInflow, 'row-child');
 
