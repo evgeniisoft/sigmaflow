@@ -221,6 +221,8 @@ Project.prototype._calculateOperatingFlow = function () {
         cum += self.operatingFlow[m];
         self.cumOperating[m] = cum;
     }
+    self.netFlow = self.operatingFlow;
+    self.cumulativeFlow = self.cumOperating;
 };
 
 // ==================== ФИНАНСОВЫЙ ПОТОК ====================
@@ -235,6 +237,8 @@ Project.prototype._calculateFinancedFlow = function () {
         cum += self.financedFlow[m];
         self.cumFinanced[m] = cum;
     }
+    self.cumulativeDiscounted = self.cumDiscFinanced;
+    self.discountedFlow = self.discFinanced;
 };
 
 // ==================== ДИСКОНТИРОВАНИЕ ====================
