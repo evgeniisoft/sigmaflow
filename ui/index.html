@@ -6183,15 +6183,7 @@
                     includesNDS: row.querySelector('.capex-nds')?.checked || false
                 });
             });
-            document.querySelectorAll('#eq-opex > div').forEach(function (row) {
-                projectJSON.investments.push({
-                    name: row.querySelector('.opex-name')?.value || '',
-                    amount: row.querySelector('.opex-cost')?.value || '',
-                    month: row.querySelector('.opex-month')?.value || '0',
-                    type: 'opex',
-                    includesNDS: row.querySelector('.opex-nds')?.checked || false
-                });
-            });
+            
             document.querySelectorAll('#eq-sales > div').forEach(function (row) {
                 projectJSON.investments.push({
                     name: row.querySelector('.sale-name')?.value || '',
