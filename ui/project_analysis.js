@@ -96,7 +96,7 @@ Project.prototype._initArrays = function (h) {
 
     // Для совместимости
     self.revenueFlow = self.operating.revenue;
-    self.costFlow = self.operating.opex;
+    self.costFlow = self.costflow;
     self.taxFlow = self.operating.taxes;
     self.ndsFlow = self.operating.vatNet;
     self.investmentFlow = self.investment.flow;
@@ -259,7 +259,7 @@ Project.prototype._applyNDS = function () {
     var self = this;
     for (var m = 0; m < self.horizon; m++) {
         var outputNDS = self.operating.revenue[m] * self.ndsRate;
-        var inputNDS = self.operating.opex[m] * self.ndsRate;
+        var inputNDS = self.costflow[m] * self.ndsRate;
         self.operating.vatNet[m] = outputNDS - inputNDS;
     }
 };
@@ -270,7 +270,7 @@ Project.prototype._applyTaxes = function () {
     var lossCarryForward = 0;
     var taxAccum = 0;
     for (var m = 0; m < self.horizon; m++) {
-        var ebit = self.operating.revenue[m] - self.operating.opex[m] - self.depreciation[m] - self.financing.interest[m];
+        var ebit = self.operating.revenue[m] - self.costflow[m] - self.depreciation[m] - self.financing.interest[m];
         if (ebit < 0) {
             lossCarryForward += Math.abs(ebit);
             self.operating.taxes[m] = 0;
@@ -313,7 +313,7 @@ Project.prototype._calcThreeFlows = function () {
 
     for (var m = 0; m < self.horizon; m++) {
         // Операционный поток
-        self.operating.flow[m] = self.operating.revenue[m] - self.operating.opex[m]
+        self.operating.flow[m] = self.operating.revenue[m] - self.costflow[m]
             - self.operating.taxes[m] - self.operating.vatNet[m];
 
         // Инвестиционный поток
@@ -394,7 +394,7 @@ Project.prototype._calculateMetrics = function () {
         var totalDebt = 0, totalOper = 0;
         for (var m = 0; m < h; m++) {
             totalDebt += self.financing.creditRepayment[m] + self.financing.interest[m];
-            totalOper += self.operating.revenue[m] - self.operating.opex[m] - self.operating.taxes[m];
+            totalOper += self.operating.revenue[m] - self.costflow[m] - self.operating.taxes[m];
         }
         self.dscr = totalDebt > 0 ? totalOper / totalDebt : 0;
     } else {
@@ -450,16 +450,16 @@ Project.prototype._calculateBreakeven = function () {
     var lo = 0, hi = 5;
     var npvAtScale = function (sc) {
         var oRev = self.operating.revenue.slice();
-        var oOpex = self.operating.opex.slice();
+        var oOpex = self.costflow.slice();
         for (var i = 0; i < self.horizon; i++) {
             self.operating.revenue[i] *= sc;
-            self.operating.opex[i] = self.operating.opex[i] * 0.7 * sc + self.operating.opex[i] * 0.3;
+            self.costflow[i] = self.costflow[i] * 0.7 * sc + self.costflow[i] * 0.3;
         }
         self._calcThreeFlows();
         self._calculateDiscounted();
         var n = self.flows.cumDiscFCFF[self.horizon - 1];
         self.operating.revenue = oRev;
-        self.operating.opex = oOpex;
+        self.costflow = oOpex;
         self._calcThreeFlows();
         self._calculateDiscounted();
         return n;
