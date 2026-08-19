@@ -4825,8 +4825,13 @@
 
             // Строим гистограмму
             var data = mcResults.netProfit;
-            var bins = 30;
+            if (!data || data.length === 0) {
+                console.error('netProfit пустой');
+                return;
+            }
+            var bins = Math.min(30, data.length);
             var min = mcResults.min, max = mcResults.max;
+            if (max === min) { max = min + 1; }
             var binWidth = (max - min) / bins;
 
             var histogram = [];
@@ -4834,14 +4839,12 @@
                 histogram.push({ x: min + i * binWidth, count: 0 });
             }
             data.forEach(function (v) {
-                var idx = Math.min(bins - 1, Math.floor((v - min) / binWidth));
+                var idx = Math.min(bins - 1, Math.max(0, Math.floor((v - min) / binWidth)));
                 histogram[idx].count++;
             });
 
             var maxCount = Math.max.apply(null, histogram.map(function (b) { return b.count; }));
-
-            var xScale = d3.scaleLinear().domain([min, max]).range([0, w]);
-            var yScale = d3.scaleLinear().domain([0, maxCount]).range([h, 0]);
+            if (maxCount === 0) maxCount = 1;
 
             // Столбцы
             g.selectAll('rect').data(histogram).enter().append('rect')
