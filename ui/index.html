@@ -4620,52 +4620,61 @@
             return params;
         }
 
-        // Отрисовка панели параметров
+        // Отрисовка панели параметров Монте Карло
+        var mcPresetLevel = 'medium';
+        var mcCustomParams = [];
+
         function renderMonteCarlo() {
             var container = document.getElementById('forecast-left');
             if (!container) return;
 
-            if (mcParams.length === 0) {
-                mcParams = getDefaultMCParams();
+            if (mcCustomParams.length === 0) {
+                // Инициализация из настроек компании
+                mcCustomParams = getDefaultMCParamsCustom();
             }
 
-            var html = '<div style="margin-bottom:12px;font-weight:600;font-size:11px;">ПАРАМЕТРЫ НЕОПРЕДЕЛЁННОСТИ</div>';
+            var html = '';
 
-            mcParams.forEach(function (p, idx) {
-                html += '<div class="mc-param-row">';
-                html += '<input type="checkbox" ' + (p.enabled ? 'checked' : '') + ' onchange="mcParams[' + idx + '].enabled = this.checked" style="width:16px;">';
-                html += '<span style="flex:1;">' + p.label + '</span>';
-                html += '<select onchange="mcParams[' + idx + '].dist = this.value; renderMonteCarlo()" style="width:80px;">';
-                html += '<option value="normal" ' + (p.dist === 'normal' ? 'selected' : '') + '>Норм.</option>';
-                html += '<option value="triangular" ' + (p.dist === 'triangular' ? 'selected' : '') + '>Треуг.</option>';
-                html += '<option value="uniform" ' + (p.dist === 'uniform' ? 'selected' : '') + '>Равн.</option>';
-                html += '<option value="lognormal" ' + (p.dist === 'lognormal' ? 'selected' : '') + '>Логн.</option>';
-                html += '</select>';
+            // Уровень 1: Базовый — ползунок
+            html += '<div style="margin-bottom:12px;font-weight:600;font-size:11px;">УРОВЕНЬ НЕОПРЕДЕЛЁННОСТИ</div>';
+            html += '<div style="padding:10px;background:var(--bg-input);border:1px solid var(--border);">';
+            html += '<div style="font-size:10px;color:var(--text-hint);margin-bottom:4px;">Насколько сильно параметры могут отклоняться от плана</div>';
+            html += '<input type="range" id="mc-level-slider" min="1" max="5" value="3" step="1" style="width:100%;" oninput="updateMCLevel(this.value)">';
+            html += '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-hint);">';
+            html += '<span>Низкая (±5%)</span><span>Средняя (±15%)</span><span>Высокая (±30%)</span>';
+            html += '</div>';
+            html += '<div id="mc-level-label" style="text-align:center;font-size:11px;font-weight:600;margin-top:4px;color:var(--accent);">Средняя</div>';
+            html += '</div>';
 
-                if (p.dist === 'normal') {
-                    html += '<span>μ:</span><input type="number" value="' + (p.p1 || 0) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p1 = parseFloat(this.value)">';
-                    html += '<span>σ:</span><input type="number" value="' + (p.p2 || 0.1) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p2 = parseFloat(this.value)">';
-                } else if (p.dist === 'triangular') {
-                    html += '<span>min:</span><input type="number" value="' + (p.p1 || -0.25) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p1 = parseFloat(this.value)">';
-                    html += '<span>mode:</span><input type="number" value="' + (p.p2 || 0) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p2 = parseFloat(this.value)">';
-                    html += '<span>max:</span><input type="number" value="' + (p.p3 || 0.25) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p3 = parseFloat(this.value)">';
-                } else {
-                    html += '<span>min:</span><input type="number" value="' + (p.p1 || -0.2) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p1 = parseFloat(this.value)">';
-                    html += '<span>max:</span><input type="number" value="' + (p.p2 || 0.2) + '" step="0.01" style="width:50px;" onchange="mcParams[' + idx + '].p2 = parseFloat(this.value)">';
-                }
+            // Уровень 2: Продвинутый — раскрывается
+            html += '<div style="margin-top:12px;">';
+            html += '<button onclick="toggleMCAdvanced()" style="font-size:10px;padding:2px 8px;">⚙ НАСТРОИТЬ ПАРАМЕТРЫ</button>';
+            html += '<div id="mc-advanced" style="display:none;margin-top:8px;">';
 
-                html += '<span style="color:var(--text-hint);">(' + formatValue(p.current) + ')</span>';
+            mcCustomParams.forEach(function (p, idx) {
+                html += '<div style="padding:8px;margin-bottom:6px;background:var(--bg-input);border:1px solid var(--border);">';
+                html += '<div style="font-size:10px;font-weight:600;margin-bottom:4px;">' + p.label + '</div>';
+                html += '<div style="display:flex;gap:4px;align-items:center;">';
+                html += '<span style="font-size:9px;color:var(--text-hint);">Пессимистично:</span>';
+                html += '<input type="number" class="mc-pessimistic" data-idx="' + idx + '" value="' + p.pessimistic + '" step="5" style="width:60px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;"> %';
+                html += '<span style="font-size:9px;color:var(--text-hint);margin-left:6px;">Оптимистично:</span>';
+                html += '<input type="number" class="mc-optimistic" data-idx="' + idx + '" value="' + p.optimistic + '" step="5" style="width:60px;font-size:10px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);padding:2px;"> %';
+                html += '</div>';
+                html += '<div style="font-size:8px;color:var(--text-hint);margin-top:2px;">' + p.hint + '</div>';
                 html += '</div>';
             });
 
+            html += '</div></div>';
+
+            // Итерации
             html += '<div style="margin-top:12px;">';
-            html += '<span>Итераций: </span>';
-            html += '<input type="number" id="mc-iterations" value="' + mcIterations + '" min="100" max="100000" step="1000" style="width:80px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;">';
+            html += '<span style="font-size:10px;">Итераций: </span>';
+            html += '<input type="number" id="mc-iterations" value="10000" min="100" max="100000" step="1000" style="width:80px;font-size:10px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:2px 4px;">';
             html += '</div>';
 
             html += '<button id="btn-run-mc" class="primary" style="width:100%;margin-top:8px;">▶ ЗАПУСТИТЬ СИМУЛЯЦИЮ</button>';
             html += '<div id="mc-progress" style="display:none;margin-top:8px;">';
-            html += '<div style="font-size:10px;color:var(--text-hint);" id="mc-progress-text">0 / ' + mcIterations + '</div>';
+            html += '<div style="font-size:10px;color:var(--text-hint);" id="mc-progress-text">0 / 10000</div>';
             html += '<div class="mc-progress-bar"><div class="mc-progress-fill" id="mc-progress-fill" style="width:0%;"></div></div>';
             html += '</div>';
 
@@ -4674,12 +4683,86 @@
             document.getElementById('btn-run-mc').addEventListener('click', runMonteCarlo);
         }
 
+        function updateMCLevel(val) {
+            var labels = { 1: 'Очень низкая', 2: 'Низкая', 3: 'Средняя', 4: 'Высокая', 5: 'Очень высокая' };
+            document.getElementById('mc-level-label').textContent = labels[val] || 'Средняя';
+
+            // Коэффициент неопределённости
+            var factor = parseInt(val) * 5; // 5, 10, 15, 20, 25%
+
+            // Обновляем параметры
+            mcCustomParams.forEach(function (p) {
+                p.pessimistic = -factor;
+                p.optimistic = factor;
+            });
+
+            // Обновляем поля если они видимы
+            document.querySelectorAll('.mc-pessimistic').forEach(function (el) {
+                var idx = parseInt(el.dataset.idx);
+                if (mcCustomParams[idx]) el.value = mcCustomParams[idx].pessimistic;
+            });
+            document.querySelectorAll('.mc-optimistic').forEach(function (el) {
+                var idx = parseInt(el.dataset.idx);
+                if (mcCustomParams[idx]) el.value = mcCustomParams[idx].optimistic;
+            });
+        }
+
+        function toggleMCAdvanced() {
+            var el = document.getElementById('mc-advanced');
+            if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function getDefaultMCParamsCustom() {
+            if (!graph) return [];
+
+            var params = [];
+            var industry = graph.industry || 'production';
+
+            // Для каждой отрасли — свои параметры
+            if (industry === 'production' || industry === 'retail') {
+                params.push({ id: 'PRICE', label: 'ЦЕНА ПРОДУКЦИИ', pessimistic: -15, optimistic: 10, hint: 'На сколько может упасть цена при плохом сценарии' });
+                params.push({ id: 'VOLUME', label: 'ОБЪЁМ ПРОДАЖ', pessimistic: -25, optimistic: 20, hint: 'На сколько могут упасть продажи при кризисе' });
+                if (industry === 'production') {
+                    params.push({ id: 'UNIT_MATERIAL', label: 'ЦЕНА СЫРЬЯ', pessimistic: 25, optimistic: -15, hint: 'На сколько может подорожать сырьё' });
+                } else {
+                    params.push({ id: 'UNIT_PURCHASE', label: 'ЗАКУПОЧНАЯ ЦЕНА', pessimistic: 20, optimistic: -10, hint: 'На сколько может подорожать закупка' });
+                }
+            } else if (industry === 'it') {
+                params.push({ id: 'MONTHLY_RATE_PER_DEV', label: 'СТАВКА ЗА РАЗРАБОТЧИКА', pessimistic: -10, optimistic: 15, hint: 'На сколько может упасть ставка при конкуренции' });
+                params.push({ id: 'UTILIZATION', label: 'УТИЛИЗАЦИЯ', pessimistic: -20, optimistic: 5, hint: 'На сколько может упасть загрузка команды' });
+                params.push({ id: 'DEV_AVG_SALARY', label: 'ЗП РАЗРАБОТЧИКОВ', pessimistic: 15, optimistic: -5, hint: 'На сколько могут вырасти зарплаты' });
+            } else if (industry === 'logistics') {
+                params.push({ id: 'RATE_PER_KM', label: 'СТАВКА ЗА КМ', pessimistic: -15, optimistic: 10, hint: 'На сколько может упасть ставка' });
+                params.push({ id: 'KM_PER_MONTH', label: 'ПРОБЕГ', pessimistic: -25, optimistic: 15, hint: 'На сколько может упасть объём перевозок' });
+                params.push({ id: 'FUEL_PRICE', label: 'ЦЕНА ДИЗЕЛЯ', pessimistic: 30, optimistic: -10, hint: 'На сколько может подорожать топливо' });
+            } else {
+                params.push({ id: 'HOURLY_RATE', label: 'СТАВКА ЧАСА', pessimistic: -10, optimistic: 10, hint: 'На сколько может упасть ставка' });
+                params.push({ id: 'CLIENTS', label: 'КЛИЕНТЫ', pessimistic: -20, optimistic: 15, hint: 'На сколько может упасть поток клиентов' });
+            }
+
+            return params;
+        }
+
         // Запуск симуляции
         async function runMonteCarlo() {
             if (!graph || mcRunning) return;
 
             mcIterations = parseInt(document.getElementById('mc-iterations').value) || 10000;
-            var enabledParams = mcParams.filter(function (p) { return p.enabled; });
+            var enabledParams = [];
+            document.querySelectorAll('.mc-pessimistic').forEach(function (el) {
+                var idx = parseInt(el.dataset.idx);
+                var p = mcCustomParams[idx];
+                if (!p) return;
+                var pess = parseFloat(el.value) || 0;
+                var opt = parseFloat(document.querySelector('.mc-optimistic[data-idx="' + idx + '"]')?.value) || 0;
+
+                enabledParams.push({
+                    id: p.id,
+                    label: p.label,
+                    pessimistic: pess / 100,
+                    optimistic: opt / 100
+                });
+            });
 
             if (enabledParams.length === 0) {
                 notify('Выберите хотя бы один параметр', true);
@@ -4713,21 +4796,14 @@
                         var node = graph.nodes[p.id];
                         if (!node) return;
                         var baseVal = baseValues[p.id] || 0;
-                        var randomVal = baseVal;
+                        // Случайное значение между pessimistic и optimistic
+                        var range = p.optimistic - p.pessimistic;
+                        var randomPos = Math.random(); // 0..1
+                        var change = p.pessimistic + range * randomPos;
+                        node.value = baseVal * (1 + change);
 
-                        if (p.dist === 'normal') {
-                            randomVal = randomNormal(baseVal * (1 + p.p1), Math.abs(baseVal * p.p2));
-                        } else if (p.dist === 'triangular') {
-                            randomVal = randomTriangular(baseVal * (1 + p.p1), baseVal * (1 + p.p2), baseVal * (1 + (p.p3 || 0.25)));
-                        } else if (p.dist === 'uniform') {
-                            randomVal = randomUniform(baseVal * (1 + p.p1), baseVal * (1 + p.p2));
-                        } else if (p.dist === 'lognormal') {
-                            randomVal = randomLogNormal(Math.abs(baseVal), Math.abs(baseVal * p.p2));
-                        }
-
-                        if (node.min !== null && randomVal < node.min) randomVal = node.min;
-                        if (node.max !== null && randomVal > node.max) randomVal = node.max;
-                        node.value = randomVal;
+                        if (node.min !== null && node.value < node.min) node.value = node.min;
+                        if (node.max !== null && node.value > node.max) node.value = node.max;
                     });
 
                     // Пересчитываем модель
