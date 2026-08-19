@@ -4846,6 +4846,9 @@
             var maxCount = Math.max.apply(null, histogram.map(function (b) { return b.count; }));
             if (maxCount === 0) maxCount = 1;
 
+            var xScale = d3.scaleLinear().domain([min, max]).range([0, w]);
+            var yScale = d3.scaleLinear().domain([0, maxCount]).range([h, 0]);
+
             // Столбцы
             g.selectAll('rect').data(histogram).enter().append('rect')
                 .attr('x', function (d) { return xScale(d.x); })
