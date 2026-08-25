@@ -651,7 +651,8 @@ input[type="range"]::-moz-range-thumb {
     border: none;
 }
 
-.settings-tab-btn {
+/* Табы настроек */
+.settings-tab {
     display: block;
     width: 100%;
     text-align: left;
@@ -666,12 +667,21 @@ input[type="range"]::-moz-range-thumb {
     transition: background-color 0.15s, color 0.15s;
 }
 
-.settings-tab-btn:hover {
-    background: var(--bg-input);
+.settings-tab:hover {
+    background: rgba(90, 159, 212, 0.05);
     color: var(--text-primary);
 }
 
-.settings-tab-btn.active {
-    background: var(--bg-input);
+.settings-tab.active {
+    background: rgba(90, 159, 212, 0.1);
     color: var(--accent);
+}
+
+/* Секции настроек */
+.settings-section-panel {
+    display: none;
+}
+
+.settings-section-panel.active {
+    display: block;
 }
