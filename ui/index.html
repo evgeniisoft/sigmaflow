@@ -397,28 +397,254 @@
 
         <!-- ПАНЕЛЬ НАСТРОЙКИ -->
         <div id="panel-company" class="panel">
-            <div style="display:flex;height:100%;">
-                <!-- Левое суб-меню -->
-                <div
-                    style="width:220px;padding:16px;background:var(--bg-panel);border-right:1px solid var(--border);flex-shrink:0;overflow-y:auto;">
-                    <div style="font-size:11px;color:var(--text-hint);margin-bottom:12px;">Настройки</div>
-                    <button class="settings-tab-btn active" data-settings="company"
-                        onclick="switchSettingsTab('company')">Компания и налоги</button>
-                    <button class="settings-tab-btn" data-settings="assets"
-                        onclick="switchSettingsTab('assets')">Основные
-                        средства</button>
-                    <button class="settings-tab-btn" data-settings="investments"
-                        onclick="switchSettingsTab('investments')">Инвестиции (CAPEX)</button>
-                    <button class="settings-tab-btn" data-settings="credits"
-                        onclick="switchSettingsTab('credits')">Кредиты</button>
-                    <button class="settings-tab-btn" data-settings="season"
-                        onclick="switchSettingsTab('season')">Сезонность</button>
-                    <button class="settings-tab-btn" data-settings="gas" onclick="switchSettingsTab('gas')">Google
-                        Sheets</button>
+            <div style="padding:16px;overflow-y:auto;flex:1;">
+                <h3 style="margin:0 0 16px 0;">НАСТРОЙКИ</h3>
+
+                <!-- Секция: Компания -->
+                <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                        onclick="toggleSettingsSection(this)">
+                        <h4 style="margin:0;">КОМПАНИЯ И НАЛОГИ</h4><span class="section-arrow">▼</span>
+                    </div>
+                    <div class="settings-section">
+                        <div class="form-group"><label>НАЛОГОВЫЙ РЕЖИМ</label><select id="company-tax-system"
+                                style="width:100%;">
+                                <option value="OSNO">ОСНО</option>
+                                <option value="USN_INCOME">УСН «Доходы»</option>
+                                <option value="USN_INCOME_MINUS">УСН «Доходы минус расходы»</option>
+                                <option value="PATENT">Патент</option>
+                            </select></div>
+                        <div id="osno-settings">
+                            <div class="form-group"><label>СТАВКА НДС</label><select id="company-nds-rate"
+                                    style="width:100%;">
+                                    <option value="0.22">22% (ОСНО)</option>
+                                    <option value="0.10">10%</option>
+                                    <option value="0.07">7% (УСН)</option>
+                                    <option value="0.05">5% (УСН)</option>
+                                    <option value="0">0%</option>
+                                </select></div>
+                        </div>
+                        <div class="form-group"><label>НАЛОГ НА ПРИБЫЛЬ</label><select id="company-profit-tax-rate"
+                                style="width:100%;">
+                                <option value="0.25">25% (ОСНО)</option>
+                                <option value="0.15">15% (УСН)</option>
+                                <option value="0.06">6% (УСН)</option>
+                                <option value="0.05">5% (IT)</option>
+                                <option value="0">0%</option>
+                            </select></div>
+                        <div class="form-group"><label>СТРАХОВЫЕ ВЗНОСЫ</label><select id="company-insurance-rate"
+                                style="width:100%;">
+                                <option value="0.30">30%</option>
+                                <option value="0.151">15.1%</option>
+                                <option value="0.15">15% (МСП)</option>
+                                <option value="0.076">7.6% (IT)</option>
+                            </select></div>
+                        <div style="font-size:11px;color:var(--text-hint);margin-top:12px;">УСЛОВИЯ ОПЛАТЫ</div>
+                        <div class="form-group"><label>ОТСРОЧКА (дней, постоплата)</label><input type="number"
+                                id="company-receivables-days" value="30" min="0" max="180" style="width:100%;"></div>
+                        <div class="form-group"><label>ПРЕДОПЛАТА (%)</label><input type="number"
+                                id="company-prepay-pct" value="0" min="0" max="100" style="width:100%;"></div>
+                        <div class="form-group"><label>СРОК ПРЕДОПЛАТЫ (дней до отгрузки)</label><input type="number"
+                                id="company-prepay-days" value="0" min="0" max="90" style="width:100%;"></div>
+                        <div class="form-group"><label>ДОЛЯ КЛИЕНТОВ С ПРЕДОПЛАТОЙ (%)</label><input type="number"
+                                id="company-prepay-share" value="0" min="0" max="100" style="width:100%;"></div>
+                        <div class="form-group">
+                            <label>GOOGLE SHEETS URL (GAS веб-приложение)</label>
+                            <input type="text" id="company-gas-url" placeholder="введите URL базы данных"
+                                style="width:100%;">
+                        </div>
+                        <div style="font-size:11px;color:var(--text-hint);margin-top:12px;">СЕЗОННОСТЬ (коэффициенты по
+                            месяцам)</div>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;" id="season-grid"></div>
+                        <div style="font-size:11px;color:var(--text-hint);margin-top:12px;">ЗАРПЛАТЫ</div>
+                        <div class="form-group">
+                            <label>РЕЖИМ ВВОДА ЗАРПЛАТ</label>
+                            <select id="company-salary-mode" style="width:100%;">
+                                <option value="gross">Начислено (gross, до вычета НДФЛ)</option>
+                                <option value="net">На руки (net, после вычета НДФЛ)</option>
+                            </select>
+                        </div>
+
+                        <div style="font-size:11px;color:var(--text-hint);margin-top:12px;">НДС ПО РАСХОДАМ</div>
+                        <div class="form-group">
+                            <label>МАТЕРИАЛЫ С НДС</label>
+                            <select id="company-materials-nds" style="width:100%;">
+                                <option value="true">Да</option>
+                                <option value="false">Нет</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>АРЕНДА С НДС</label>
+                            <select id="company-rent-nds" style="width:100%;">
+                                <option value="true">Да</option>
+                                <option value="false">Нет</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>ЛОГИСТИКА С НДС</label>
+                            <select id="company-logistics-nds" style="width:100%;">
+                                <option value="true">Да</option>
+                                <option value="false">Нет</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>IT-РАСХОДЫ С НДС</label>
+                            <select id="company-it-nds" style="width:100%;">
+                                <option value="true">Да</option>
+                                <option value="false">Нет</option>
+                            </select>
+                        </div>
+                        <!-- Секция: Основные средства -->
+                        <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                                onclick="toggleSettingsSection(this)">
+                                <h4 style="margin:0;">ОСНОВНЫЕ СРЕДСТВА</h4><span class="section-arrow">▼</span>
+                            </div>
+                            <div class="settings-section">
+                                <div class="form-group"><label>СТОИМОСТЬ ОС НА СТАРТЕ</label><input type="number"
+                                        id="fa-start-value" value="4000000" step="100000" style="width:100%;"></div>
+                                <div class="form-group"><label>НАКОПЛЕННАЯ АМОРТИЗАЦИЯ</label><input type="number"
+                                        id="fa-start-da" value="1000000" step="10000" style="width:100%;"></div>
+                                <div class="form-group"><label>НОРМА АМОРТИЗАЦИИ (%)</label><input type="number"
+                                        id="fa-da-rate" value="10" step="0.5" min="1" max="50" style="width:100%;">
+                                </div>
+                                <div class="form-group"><label>ОСТАВШИЙСЯ СРОК АМОРТИЗАЦИИ (мес)</label><input
+                                        type="number" id="fa-remaining-months" value="60" step="1" min="1" max="360"
+                                        style="width:100%;"></div>
+                            </div>
+                        </div>
+                        <button id="btn-apply-company" class="primary"
+                            style="width:100%;margin-top:8px;">ПРИМЕНИТЬ</button>
+                    </div>
                 </div>
 
-                <!-- Правая рабочая область -->
-                <div style="flex:1;padding:16px;overflow-y:auto;" id="settings-tab-content"></div>
+
+
+                <!-- Секция: Инвестиции -->
+                <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                        onclick="toggleSettingsSection(this)">
+                        <h4 style="margin:0;">ИНВЕСТИЦИИ (CAPEX)</h4><span class="section-arrow">▼</span>
+                    </div>
+                    <div class="settings-section">
+                        <div id="investments-list"></div>
+                        <button id="btn-add-investment" class="primary" style="margin-top:8px;">+ ДОБАВИТЬ
+                            ПРОЕКТ</button>
+                        <div id="investment-form"
+                            style="display:none;padding:8px;background:var(--bg-input);border:1px solid var(--border);margin-top:8px;">
+                            <div class="form-group"><label>НАЗВАНИЕ</label><input type="text" id="inv-name"></div>
+                            <div class="form-group"><label>СТОИМОСТЬ</label><input type="number" id="inv-cost"
+                                    step="10000" min="0" oninput="updateInvSchedule()"></div>
+                            <div class="form-group"><label>МЕСЯЦ ПЛАТЕЖА</label><select id="inv-start-month">
+                                    <option value="0">Янв</option>
+                                    <option value="1">Фев</option>
+                                    <option value="2">Мар</option>
+                                    <option value="3">Апр</option>
+                                    <option value="4">Май</option>
+                                    <option value="5">Июн</option>
+                                    <option value="6">Июл</option>
+                                    <option value="7">Авг</option>
+                                    <option value="8">Сен</option>
+                                    <option value="9">Окт</option>
+                                    <option value="10">Ноя</option>
+                                    <option value="11">Дек</option>
+                                </select></div>
+                            <div class="form-group"><label>МЕСЯЦ ВВОДА В ЭКСПЛУАТАЦИЮ</label><select
+                                    id="inv-commissioning">
+                                    <option value="0">Янв</option>
+                                    <option value="1">Фев</option>
+                                    <option value="2">Мар</option>
+                                    <option value="3">Апр</option>
+                                    <option value="4">Май</option>
+                                    <option value="5">Июн</option>
+                                    <option value="6">Июл</option>
+                                    <option value="7">Авг</option>
+                                    <option value="8">Сен</option>
+                                    <option value="9">Окт</option>
+                                    <option value="10">Ноя</option>
+                                    <option value="11">Дек</option>
+                                </select></div>
+                            <div class="form-group"><label>ПЛАТЕЖЕЙ</label><select id="inv-payments-count"
+                                    onchange="updateInvSchedule()">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="6">6</option>
+                                    <option value="12">12</option>
+                                </select></div>
+                            <div class="form-group"><label>ГРАФИК</label>
+                                <div id="inv-schedule-inputs"></div>
+                            </div>
+                            <button id="btn-save-investment" class="primary">СОХРАНИТЬ</button><button
+                                id="btn-cancel-investment">ОТМЕНА</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Секция: Кредиты -->
+                <div style="margin-bottom:24px;border:1px solid var(--border);padding:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                        onclick="toggleSettingsSection(this)">
+                        <h4 style="margin:0;">КРЕДИТЫ</h4><span class="section-arrow">▼</span>
+                    </div>
+                    <div class="settings-section">
+                        <div id="credits-list"></div>
+                        <button id="btn-add-credit" class="primary" style="margin-top:8px;">+ ДОБАВИТЬ КРЕДИТ</button>
+                        <div id="credit-form"
+                            style="display:none;padding:8px;background:var(--bg-input);border:1px solid var(--border);margin-top:8px;">
+                            <div class="form-group"><label>НАЗВАНИЕ</label><input type="text" id="cr-name"></div>
+                            <div class="form-group"><label>БАНК</label><input type="text" id="cr-bank"></div>
+                            <div class="form-group"><label>СУММА</label><input type="number" id="cr-amount"
+                                    step="100000" min="0" oninput="updateCreditInfo()"></div>
+                            <div class="form-group"><label>МЕСЯЦ ПОЛУЧЕНИЯ</label><select id="cr-start-month">
+                                    <option value="0">Янв</option>
+                                    <option value="1">Фев</option>
+                                    <option value="2">Мар</option>
+                                    <option value="3">Апр</option>
+                                    <option value="4">Май</option>
+                                    <option value="5">Июн</option>
+                                    <option value="6">Июл</option>
+                                    <option value="7">Авг</option>
+                                    <option value="8">Сен</option>
+                                    <option value="9">Окт</option>
+                                    <option value="10">Ноя</option>
+                                    <option value="11">Дек</option>
+                                </select></div>
+                            <div class="form-group"><label>СТАВКА (%)</label><input type="number" id="cr-rate"
+                                    step="0.1" min="0" max="50" oninput="updateCreditInfo()"></div>
+                            <div class="form-group"><label>СРОК (МЕС)</label><input type="number" id="cr-term" step="6"
+                                    min="1" max="120" oninput="updateCreditInfo()"></div>
+                            <div class="form-group"><label>ТИП ПОГАШЕНИЯ</label><select id="cr-repayment-type"
+                                    onchange="updateCreditInfo()">
+                                    <option value="annuity">Аннуитет</option>
+                                    <option value="equal">Равное тело</option>
+                                </select></div>
+                            <div class="form-group"><label>ПЛАТЁЖ/МЕС</label><input type="number"
+                                    id="cr-monthly-payment" readonly></div>
+                            <div style="font-size:11px;color:var(--text-hint);margin-top:8px;">КОВЕНАНТЫ</div>
+                            <div id="cr-covenants-container">
+                                <div class="cr-covenant-row" style="display:flex;gap:8px;margin-bottom:4px;">
+                                    <select class="cr-covenant-type"
+                                        style="flex:1;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">
+                                        <option value="debtEbitda">Debt/EBITDA &lt;</option>
+                                        <option value="icr">Interest Coverage &gt;</option>
+                                        <option value="currentRatio">Текущая ликвидность &gt;</option>
+                                        <option value="maxCapex">Макс CAPEX/год &lt;</option>
+                                        <option value="minRevenue">Мин выручка/квартал &gt;</option>
+                                    </select>
+                                    <input type="number" class="cr-covenant-value" value="3.0" step="0.1"
+                                        style="width:100px;font-size:12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:4px;">
+                                    <button class="btn-remove-covenant"
+                                        style="font-size:10px;padding:2px 6px;">X</button>
+                                </div>
+                            </div>
+                            <button id="btn-add-covenant" style="font-size:11px;margin-top:4px;">+ ДОБАВИТЬ
+                                КОВЕНАНТ</button>
+                            <button id="btn-save-credit" class="primary">СОХРАНИТЬ</button><button
+                                id="btn-cancel-credit">ОТМЕНА</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -6350,70 +6576,6 @@
                 this.textContent = isLight ? '🌙' : '☀️';
             });
 
-            document.querySelector('[data-panel="company"]').addEventListener('click', function () {
-                switchSettingsTab('company');
-                setTimeout(function () {
-                    if (graph && graph.company) {
-                        if (graph.company.tax_system) document.getElementById('company-tax-system').value = graph.company.tax_system;
-                        if (graph.company.nds_rate !== undefined) setSelectByValue('company-nds-rate', graph.company.nds_rate);
-                        if (graph.company.profit_tax_rate !== undefined) setSelectByValue('company-profit-tax-rate', graph.company.profit_tax_rate);
-                        if (graph.company.insurance_rate !== undefined) setSelectByValue('company-insurance-rate', graph.company.insurance_rate);
-                        if (graph.company.salary_mode) document.getElementById('company-salary-mode').value = graph.company.salary_mode;
-                        if (graph.company.receivables_days !== undefined) document.getElementById('company-receivables-days').value = graph.company.receivables_days;
-                        if (graph.company.prepay_pct !== undefined) document.getElementById('company-prepay-pct').value = graph.company.prepay_pct;
-                        if (graph.company.prepay_days !== undefined) document.getElementById('company-prepay-days').value = graph.company.prepay_days;
-                        if (graph.company.prepay_share !== undefined) document.getElementById('company-prepay-share').value = graph.company.prepay_share;
-                        if (graph.company.materials_with_nds !== undefined) document.getElementById('company-materials-nds').value = graph.company.materials_with_nds ? 'true' : 'false';
-                        if (graph.company.rent_with_nds !== undefined) document.getElementById('company-rent-nds').value = graph.company.rent_with_nds ? 'true' : 'false';
-                        if (graph.company.logistics_with_nds !== undefined) document.getElementById('company-logistics-nds').value = graph.company.logistics_with_nds ? 'true' : 'false';
-                        if (graph.company.it_with_nds !== undefined) document.getElementById('company-it-nds').value = graph.company.it_with_nds ? 'true' : 'false';
-                        if (graph.company.gas_url) document.getElementById('company-gas-url').value = graph.company.gas_url;
-                        if (graph.company.fa_start_value !== undefined) document.getElementById('fa-start-value').value = graph.company.fa_start_value;
-                        if (graph.company.fa_start_da !== undefined) document.getElementById('fa-start-da').value = graph.company.fa_start_da;
-                        if (graph.company.fa_da_rate !== undefined) document.getElementById('fa-da-rate').value = (graph.company.fa_da_rate * 100).toFixed(1);
-                        if (graph.company.fa_remaining_months !== undefined) document.getElementById('fa-remaining-months').value = graph.company.fa_remaining_months;
-                    }
-                    renderSeasonGrid();
-                    window.renderInvestments();
-                    window.renderCredits();
-                }, 100);
-            });
-
-            // Инициализация вкладки настроек
-            switchSettingsTab('company');
-            document.getElementById('btn-apply-company').addEventListener('click', function () {
-                if (!graph) { notify('Сначала загрузите модель', true); return; }
-                if (!graph.company) graph.company = {};
-
-                graph.company.tax_system = document.getElementById('company-tax-system').value;
-                graph.company.nds_rate = parseFloat(document.getElementById('company-nds-rate').value);
-                graph.company.profit_tax_rate = parseFloat(document.getElementById('company-profit-tax-rate').value);
-                graph.company.insurance_rate = parseFloat(document.getElementById('company-insurance-rate').value);
-                graph.company.salary_mode = document.getElementById('company-salary-mode').value;
-                graph.company.receivables_days = parseInt(document.getElementById('company-receivables-days').value) || 30;
-                graph.company.prepay_pct = parseInt(document.getElementById('company-prepay-pct').value) || 0;
-                graph.company.prepay_days = parseInt(document.getElementById('company-prepay-days').value) || 0;
-                graph.company.prepay_share = parseInt(document.getElementById('company-prepay-share').value) || 0;
-                graph.company.materials_with_nds = document.getElementById('company-materials-nds').value === 'true';
-                graph.company.rent_with_nds = document.getElementById('company-rent-nds').value === 'true';
-                graph.company.logistics_with_nds = document.getElementById('company-logistics-nds').value === 'true';
-                graph.company.it_with_nds = document.getElementById('company-it-nds').value === 'true';
-                graph.company.gas_url = document.getElementById('company-gas-url')?.value || '';
-
-                if (document.getElementById('fa-start-value')) {
-                    graph.company.fa_start_value = parseFloat(document.getElementById('fa-start-value').value) || 0;
-                    graph.company.fa_start_da = parseFloat(document.getElementById('fa-start-da').value) || 0;
-                    graph.company.fa_da_rate = (parseFloat(document.getElementById('fa-da-rate').value) || 10) / 100;
-                    graph.company.fa_remaining_months = parseInt(document.getElementById('fa-remaining-months').value) || 60;
-                }
-
-                if (graph.nodes['TAX_RATE']) {
-                    graph.nodes['TAX_RATE'].value = graph.company.profit_tax_rate;
-                }
-
-                saveCurrentModel();
-                notify('Параметры компании сохранены');
-            });
 
             document.getElementById('btn-save-plan-gs').addEventListener('click', savePlanToGAS);
             document.getElementById('btn-load-compare-gs').addEventListener('click', loadComparisonFromGAS);
@@ -8744,132 +8906,6 @@
             if (node && node.value !== null && node.value !== 0) return true;
             return false;
         }
-
-        function switchSettingsTab(tabId) {
-            // Обновляем активную кнопку
-            document.querySelectorAll('.settings-tab-btn').forEach(function (btn) {
-                btn.classList.remove('active');
-                if (btn.dataset.settings === tabId) btn.classList.add('active');
-            });
-
-            var container = document.getElementById('settings-tab-content');
-            var html = '';
-
-            switch (tabId) {
-                case 'company':
-                    html = renderCompanySettingsForm();
-                    break;
-                case 'assets':
-                    html = renderAssetsForm();
-                    break;
-                case 'investments':
-                    html = renderInvestmentsList();
-                    break;
-                case 'credits':
-                    html = renderCreditsList();
-                    break;
-                case 'season':
-                    html = renderSeasonForm();
-                    setTimeout(function () { renderSeasonGrid(); }, 50);
-                    break;
-                case 'gas':
-                    html = renderGasSettings();
-                    break;
-            }
-
-            container.innerHTML = html;
-        }
-
-        function renderCompanySettingsForm() {
-            return `
-        <h3 style="margin:0 0 16px;">Компания и налоги</h3>
-        <div class="form-group"><label>Налоговый режим</label><select id="company-tax-system" style="width:100%;">
-            <option value="OSNO">ОСНО</option>
-            <option value="USN_INCOME">УСН «Доходы»</option>
-            <option value="USN_INCOME_MINUS">УСН «Доходы минус расходы»</option>
-            <option value="PATENT">Патент</option>
-        </select></div>
-        <div class="form-group"><label>Ставка НДС</label><select id="company-nds-rate" style="width:100%;">
-            <option value="0.22">22%</option>
-            <option value="0.10">10%</option>
-            <option value="0.07">7%</option>
-            <option value="0.05">5%</option>
-            <option value="0">0%</option>
-        </select></div>
-        <div class="form-group"><label>Налог на прибыль</label><select id="company-profit-tax-rate" style="width:100%;">
-            <option value="0.25">25%</option>
-            <option value="0.15">15%</option>
-            <option value="0.06">6%</option>
-            <option value="0.05">5%</option>
-            <option value="0">0%</option>
-        </select></div>
-        <div class="form-group"><label>Страховые взносы</label><select id="company-insurance-rate" style="width:100%;">
-            <option value="0.30">30%</option>
-            <option value="0.151">15.1%</option>
-            <option value="0.15">15%</option>
-            <option value="0.076">7.6%</option>
-        </select></div>
-        <div class="form-group"><label>Зарплаты</label><select id="company-salary-mode" style="width:100%;">
-            <option value="gross">Начислено (gross)</option>
-            <option value="net">На руки (net)</option>
-        </select></div>
-        <div style="font-size:11px;color:var(--text-hint);margin:16px 0 8px;">Условия оплаты</div>
-        <div class="form-group"><label>Отсрочка (дней)</label><input type="number" id="company-receivables-days" value="30" style="width:100%;"></div>
-        <div class="form-group"><label>Предоплата (%)</label><input type="number" id="company-prepay-pct" value="0" style="width:100%;"></div>
-        <div class="form-group"><label>Срок предоплаты (дней)</label><input type="number" id="company-prepay-days" value="0" style="width:100%;"></div>
-        <div class="form-group"><label>Доля с предоплатой (%)</label><input type="number" id="company-prepay-share" value="0" style="width:100%;"></div>
-        <div style="font-size:11px;color:var(--text-hint);margin:16px 0 8px;">НДС по расходам</div>
-        <div class="form-group"><label>Материалы с НДС</label><select id="company-materials-nds" style="width:100%;"><option value="true">Да</option><option value="false">Нет</option></select></div>
-        <div class="form-group"><label>Аренда с НДС</label><select id="company-rent-nds" style="width:100%;"><option value="true">Да</option><option value="false">Нет</option></select></div>
-        <div class="form-group"><label>Логистика с НДС</label><select id="company-logistics-nds" style="width:100%;"><option value="true">Да</option><option value="false">Нет</option></select></div>
-        <div class="form-group"><label>IT с НДС</label><select id="company-it-nds" style="width:100%;"><option value="true">Да</option><option value="false">Нет</option></select></div>
-        <button id="btn-apply-company" class="primary" style="width:100%;margin-top:12px;">Применить</button>
-    `;
-        }
-
-        function renderAssetsForm() {
-            return `
-        <h3 style="margin:0 0 16px;">Основные средства</h3>
-        <div class="form-group"><label>Стоимость ОС на старте</label><input type="number" id="fa-start-value" value="0" style="width:100%;"></div>
-        <div class="form-group"><label>Накопленная амортизация</label><input type="number" id="fa-start-da" value="0" style="width:100%;"></div>
-        <div class="form-group"><label>Норма амортизации (%)</label><input type="number" id="fa-da-rate" value="10" style="width:100%;"></div>
-        <div class="form-group"><label>Оставшийся срок (мес)</label><input type="number" id="fa-remaining-months" value="60" style="width:100%;"></div>
-        <button id="btn-apply-company" class="primary" style="width:100%;margin-top:12px;">Применить</button>
-    `;
-        }
-
-        function renderInvestmentsList() {
-            return `
-        <h3 style="margin:0 0 16px;">Инвестиции (CAPEX)</h3>
-        <div id="investments-list"></div>
-        <button id="btn-add-investment" class="primary" style="margin-top:8px;">+ Добавить проект</button>
-    `;
-        }
-
-        function renderCreditsList() {
-            return `
-        <h3 style="margin:0 0 16px;">Кредиты</h3>
-        <div id="credits-list"></div>
-        <button id="btn-add-credit" class="primary" style="margin-top:8px;">+ Добавить кредит</button>
-    `;
-        }
-
-        function renderSeasonForm() {
-            return `
-        <h3 style="margin:0 0 16px;">Сезонность</h3>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;" id="season-grid"></div>
-        <button id="btn-apply-company" class="primary" style="width:100%;margin-top:12px;">Применить</button>
-    `;
-        }
-
-        function renderGasSettings() {
-            return `
-        <h3 style="margin:0 0 16px;">Google Sheets</h3>
-        <div class="form-group"><label>URL GAS веб-приложения</label><input type="text" id="company-gas-url" placeholder="https://script.google.com/..." style="width:100%;"></div>
-        <button id="btn-apply-company" class="primary" style="width:100%;margin-top:12px;">Применить</button>
-    `;
-        }
-
 
     </script>
 
