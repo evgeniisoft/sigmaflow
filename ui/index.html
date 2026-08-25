@@ -6379,6 +6379,8 @@
                 }, 100);
             });
 
+            // Инициализация вкладки настроек
+            switchSettingsTab('company');
             document.getElementById('btn-apply-company').addEventListener('click', function () {
                 if (!graph) { notify('Сначала загрузите модель', true); return; }
                 if (!graph.company) graph.company = {};
@@ -8768,6 +8770,7 @@
                     break;
                 case 'season':
                     html = renderSeasonForm();
+                    setTimeout(function () { renderSeasonGrid(); }, 50);
                     break;
                 case 'gas':
                     html = renderGasSettings();
