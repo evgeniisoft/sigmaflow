@@ -3285,6 +3285,20 @@
                 { id: 'OFFICE_EXP', label: 'Офисные расходы', unit: '₽', step: 1000, industry: ['production', 'it', 'services', 'retail'] },
                 { id: 'TRAVEL_COST', label: 'Командировочные', unit: '₽', step: 5000, industry: ['production', 'it', 'services', 'retail'] },
                 { id: 'RD_EXP', label: 'R&D', unit: '₽', step: 10000, industry: ['production', 'it', 'services', 'retail'] }
+                { id: 'RATE_PER_KM', label: 'Ставка за 1 км', unit: '₽', step: 1, industry: ['logistics'] },
+                { id: 'KM_PER_MONTH', label: 'Пробег в месяц', unit: 'км', step: 5000, industry: ['logistics'] },
+                { id: 'CARRIER_RATE', label: 'Ставка перевозчика', unit: '₽/км', step: 1, industry: ['logistics'] },
+                { id: 'FUEL_PRICE', label: 'Цена дизеля', unit: '₽/л', step: 1, industry: ['logistics'] },
+                { id: 'FUEL_CONSUMPTION', label: 'Расход топлива', unit: 'л/100км', step: 1, industry: ['logistics'] },
+                { id: 'DRIVERS_HEADCOUNT', label: 'Водители', unit: 'чел', step: 1, industry: ['logistics'] },
+                { id: 'DRIVERS_AVG_SALARY', label: 'ЗП водителя', unit: '₽', step: 5000, industry: ['logistics'] },
+                { id: 'TRUCKS_COUNT', label: 'Количество тягачей', unit: 'ед', step: 1, industry: ['logistics'] },
+                { id: 'LOGISTICS_HEADCOUNT', label: 'Логисты', unit: 'чел', step: 1, industry: ['logistics'] },
+                { id: 'LOGISTICS_AVG_SALARY', label: 'ЗП логиста', unit: '₽', step: 5000, industry: ['logistics'] },
+                { id: 'TOLL_ROADS_COST', label: 'Платные дороги', unit: '₽', step: 5000, industry: ['logistics'] },
+                { id: 'TIRES_COST', label: 'Резина', unit: '₽', step: 5000, industry: ['logistics'] },
+                { id: 'MAINTENANCE_COST', label: 'ТО и ремонт', unit: '₽', step: 5000, industry: ['logistics'] },
+                { id: 'DISPATCH_SERVICE', label: 'Диспетчерские услуги', unit: '₽', step: 5000, industry: ['logistics'] }
             ];
 
             return allParams.filter(function (p) {
