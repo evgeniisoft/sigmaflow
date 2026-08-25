@@ -29,20 +29,25 @@
 
     <!-- НАВИГАЦИЯ -->
     <nav>
-        <button class="nav-btn active" data-panel="strategy">ДАШБОРД</button>
-        <button class="nav-btn" data-panel="data">ДАННЫЕ</button>
-        <button class="nav-btn" data-panel="calendar">КАЛЕНДАРЬ ДДС</button>
+        <button class="nav-btn active" data-panel="strategy">Дашборд</button>
+        <button class="nav-btn" data-panel="data">Данные</button>
+        <button class="nav-btn" data-panel="calendar">Календарь ДДС</button>
         <button class="nav-btn" data-panel="pnl">P&L</button>
-        <button class="nav-btn" data-panel="planfact">ПЛАН/ФАКТ</button>
-        <button class="nav-btn" data-panel="calibrate">КАЛИБРОВКА</button>
-        <button class="nav-btn" data-panel="live">ЖИВАЯ МОДЕЛЬ</button>
-        <button class="nav-btn" data-panel="scenarios">СЦЕНАРИИ</button>
-        <button class="nav-btn" data-panel="editor">РЕДАКТОР</button>
-        <button class="nav-btn" data-panel="projects">ПРОЕКТЫ</button>
-        <button class="nav-btn" data-panel="driver-tree">KPI-МОСТЫ</button>
-        <button class="nav-btn" data-panel="company">НАСТРОЙКИ</button>
-        <button class="nav-btn" data-panel="forecast">ПРОГНОЗ</button>
-        <button class="nav-btn nav-btn-alert" data-panel="diagnostics" id="nav-diagnostics">ДИАГНОСТИКА</button>
+        <button class="nav-btn" data-panel="planfact">План / Факт</button>
+
+        <div style="width:1px;height:24px;background:var(--border);margin:8px 8px;"></div>
+
+        <button class="nav-btn" data-panel="live">Живая модель</button>
+        <button class="nav-btn" data-panel="calibrate">Калибровка</button>
+        <button class="nav-btn" data-panel="scenarios">Сценарии</button>
+        <button class="nav-btn" data-panel="forecast">Прогноз</button>
+        <button class="nav-btn" data-panel="diagnostics">Диагностика</button>
+
+        <div style="width:1px;height:24px;background:var(--border);margin:8px 8px;"></div>
+
+        <button class="nav-btn" data-panel="projects">Проекты</button>
+        <button class="nav-btn" data-panel="driver-tree">KPI-мосты</button>
+        <button class="nav-btn" data-panel="company">Настройки</button>
     </nav>
 
     <!-- ОСНОВНАЯ ОБЛАСТЬ -->
@@ -769,8 +774,11 @@
                             ПРОЕКТ</button>
                         <button id="btn-export-project">ЭКСПОРТ</button>
                     </div>
-                    <div id="project-empty" style="color:var(--text-hint);text-align:center;padding-top:60px;">Заполните
-                        форму слева и нажмите «РАССЧИТАТЬ ПРОЕКТ»</div>
+                    <div id="project-empty" style="color:#64748B;text-align:center;padding-top:60px;font-size:12px;">
+                        Заполните форму слева и нажмите «Рассчитать проект»
+                        <div style="font-size:11px;margin-top:8px;">Для начала работы импортируйте файл или создайте
+                            проект</div>
+                    </div>
                     <div id="saved-projects-list"
                         style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px;"></div>
                 </div>
@@ -8633,7 +8641,7 @@
                 compHtml += '<td style="text-align:left;">' + (n.label || n.id) + '</td>';
                 compHtml += '<td class="value-cell" style="text-align:center;">' + formatValue(oldVal) + '</td>';
                 compHtml += '<td class="value-cell" style="text-align:center;">' + formatValue(newVal) + '</td>';
-                compHtml += '<td class="value-cell" style="text-align:center;color:' + dColor + ';">' + (delta >= 0 ? '+' : '') + formatValue(delta) + '</td>';
+                compHtml += '<td class="value-cell" style="text-align:center;color:' + dColor + ';font-family:var(--font-mono);">' + (delta >= 0 ? '+' : '') + formatValue(delta) + '</td>';
                 compHtml += '</tr>';
             });
             document.getElementById('live-comparison-body').innerHTML = compHtml;
